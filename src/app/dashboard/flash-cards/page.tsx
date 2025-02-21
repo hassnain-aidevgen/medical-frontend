@@ -50,7 +50,7 @@ export default function FlashcardsPage() {
   return (
     <div className="min-h-[85dvh] bg-gradient-to-br from-teal-50 via-blue-50/80 to-cyan-50/80 border border-slate-200 rounded-md flex items-center justify-center p-4">
       <div className="w-full max-w-4xl">
-        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-8 text-center text-teal-800">Medical Flashcards</h1>
+        <h1 className="text-xl lg:text-2xl font-bold mb-8 text-center text-teal-800">Medical Flashcards</h1>
         <div className="relative">
           <AnimatePresence mode="wait">
             <motion.div
