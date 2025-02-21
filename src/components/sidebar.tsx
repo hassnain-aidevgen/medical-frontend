@@ -13,7 +13,7 @@ const sidebarItems = [
   { name: "Performance Tracking", href: "/dashboard/performance-tracking", icon: BarChart2 },
   { name: "Smart Study Calendar", href: "/dashboard/smart-study", icon: BookOpen },
   { name: "Custom Weekly Goals", href: "/dashboard/custom-weekly-goals", icon: Settings },
-  { name: "Digital Error Notebook", href: "/dashboard/digital-error-notebook", icon: Users },
+  // { name: "Digital Error Notebook", href: "/dashboard/digital-error-notebook", icon: Users },
   { name: "Pomodoro Timer", href: "/dashboard/pomodoro-timer", icon: Clock },
 ]
 
