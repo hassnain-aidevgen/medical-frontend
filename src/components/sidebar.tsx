@@ -27,7 +27,7 @@ export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
 
   return (
     <div
-      className={`h-screen bg-gradient-to-b from-slate-50 via-blue-50 to-indigo-50 w-64 space-y-6 py-7 px-2 fixed inset-y-0 left-0 transform ${isOpen ? "translate-x-0" : "-translate-x-full"
+      className={` bg-gradient-to-b from-slate-50 via-blue-50 to-indigo-50 w-64 space-y-6 py-7 px-2 fixed inset-y-0 left-0 transform ${isOpen ? "translate-x-0" : "-translate-x-full"
         } md:relative md:translate-x-0 transition duration-200 ease-in-out z-30`}
     >
       <div className="flex justify-between items-center px-4 md:hidden">
