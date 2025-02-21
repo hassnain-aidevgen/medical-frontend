@@ -26,25 +26,27 @@ export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   const pathname = usePathname()
 
   return (
-    <aside
-      className={`bg-gradient-to-b from-slate-50 via-blue-50 to-indigo-50 w-64 h-screen flex flex-col fixed left-0 top-0 z-30 transform ${
+    <div
+      className={`bg-gradient-to-b from-slate-50 via-blue-50 to-indigo-50 w-64 h-screen fixed inset-y-0 left-0 transform ${
         isOpen ? "translate-x-0" : "-translate-x-full"
-      } transition-transform duration-200 ease-in-out overflow-hidden`}
+      } md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 flex flex-col`}
     >
-      <div className="flex justify-between items-center px-4 py-4 md:hidden">
-        <span className="font-semibold text-xl">Menu</span>
-        <button onClick={toggleSidebar} className="text-sky-900 hover:text-sky-700">
-          <X className="h-6 w-6" />
-        </button>
-      </div>
-      <div className="flex flex-col items-center mb-6 mt-4">
-        <div className="bg-sky-600 p-3 rounded-full">
-          <Dna className="h-10 w-10 text-white" />
+      <div className="flex-shrink-0 p-4">
+        <div className="flex justify-between items-center md:hidden">
+          <span className="font-semibold text-xl">Menu</span>
+          <button onClick={toggleSidebar} className="text-sky-900 hover:text-sky-700">
+            <X className="h-6 w-6" />
+          </button>
         </div>
-        <h1 className="text-2xl font-bold text-emerald-800 mt-3">BioVerse</h1>
+        <div className="flex flex-col items-center mt-6 mb-6">
+          <div className="bg-sky-600 p-3 rounded-full">
+            <Dna className="h-10 w-10 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-emerald-800 mt-3">BioVerse</h1>
+        </div>
       </div>
-      <nav className="flex-1 overflow-y-auto">
-        <ul className="space-y-2 px-2">
+      <nav className="flex-grow overflow-y-auto scrollbar-thin">
+        <ul className="space-y-2 px-2 pb-4">
           {sidebarItems.map((item) => {
             const isActive = pathname === item.href
             return (
@@ -68,7 +70,7 @@ export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
           })}
         </ul>
       </nav>
-    </aside>
+    </div>
   )
 }
 
