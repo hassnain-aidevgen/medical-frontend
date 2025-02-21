@@ -79,7 +79,7 @@ const SignupPage = () => {
         </div>
         {message && (
           <Alert variant={message.type === "error" ? "destructive" : "default"}>
-            <AlertTitle>{message.type === "error" ? "Error" : "Success"}</AlertTitle>
+            {/* <AlertTitle>{message.type === "error" ? "Error" : "Success"}</AlertTitle> */}
             <AlertDescription className="text-green-500">{message.text}</AlertDescription>
           </Alert>
         )}
