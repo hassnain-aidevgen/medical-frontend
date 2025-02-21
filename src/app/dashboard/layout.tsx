@@ -25,14 +25,12 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <div className="flex min-h-screen bg-gray-100">
-          <div className="flex-shrink-0">
-            <Sidebar isOpen={isOpen} toggleSidebar={toggleSidebar} />
-          </div>
+      <body className={`${inter.className} overflow-hidden`}>
+        <div className="flex h-screen bg-gray-100">
+          <Sidebar isOpen={isOpen} toggleSidebar={toggleSidebar} />
           <div className="flex flex-col flex-1 overflow-hidden">
             <Navbar toggleSidebar={toggleSidebar} />
-            <main className="flex-1 bg-gray-50 p-6 overflow-auto">{children}</main>
+            <main className="flex-1 overflow-auto bg-gray-50 p-6">{children}</main>
           </div>
         </div>
       </body>
