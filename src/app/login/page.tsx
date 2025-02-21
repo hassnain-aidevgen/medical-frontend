@@ -1,4 +1,5 @@
 "use client"
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type React from "react"
 import { Button } from "@/components/ui/button"
@@ -107,24 +108,24 @@ const LoginPage = () => {
                 onChange={handleChange}
               />
             </div>
-            <div>
-              <Label htmlFor="role">Role</Label>
-              <select
-                id="role"
-                name="role"
-                className="mt-1 block w-full"
-                value={formData.role}
-                onChange={handleChange}
-              >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-            <div className="pt-1 pb-1 text-sm text-blue-400">
-              <p onClick={() => router.push("/forgot")} className="cursor-pointer">
-                Forgot Password?
-              </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <select
+                  id="role"
+                  name="role"
+                  className="text-sm text-gray-500 bg-transparent border-none focus:ring-0"
+                  value={formData.role}
+                  onChange={handleChange}
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="text-sm">
+                <p onClick={() => router.push("/forgot")} className="cursor-pointer text-blue-400">
+                  Forgot Password?
+                </p>
+              </div>
             </div>
           </div>
 
@@ -150,3 +151,4 @@ const LoginPage = () => {
 }
 
 export default LoginPage
+
