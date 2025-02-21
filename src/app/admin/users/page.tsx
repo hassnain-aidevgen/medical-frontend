@@ -80,7 +80,7 @@ export default function UsersPage() {
         try {
             if (editingUser) {
                 // Update user
-                const { password, ...updateData } = formData
+                const { password } = formData
                 if (!password) delete formData.password // Only include password if it's being changed
 
                 await axios.put(`${API_BASE_URL}/users/${editingUser._id}`, formData)
@@ -101,7 +101,7 @@ export default function UsersPage() {
             }
             setIsDialogOpen(false)
             resetForm()
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (axios.isAxiosError(error)) {
                 toast.error(`${error.response?.data?.message || error.message}`)
             } else {

@@ -1,30 +1,44 @@
 "use client"
 
 import { useSearchParams } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import QuestionBox from "./QuestionBox"
 import TestSummary from "./TestSummary"
 // const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
 
 type Question = {
-  id: number
+  id: string
   text: string
+  question: string
+  answer: string
   options: string[]
   correctAnswer: string
   explanation?: string, // ✅ Add this line (optional explanation field)
   isExplanationVisible: boolean // ✅ Add this line (required isExplanationVisible field)
-
 }
 
-export default function TakeTest() {
+const TakeTest = () => {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <TakeTestForm />
+    </Suspense>
+  );
+};
+
+
+function TakeTestForm() {
   const searchParams = useSearchParams()
   const mode = searchParams.get("mode") || "tutor"
   const subjectsParam = searchParams.get("subjects") || ""
   const systemsParam = searchParams.get("systems") || ""
   const countParam = searchParams.get("count") || "10"
 
-  const subjects = subjectsParam ? subjectsParam.split(",") : []
-  const systems = systemsParam ? systemsParam.split(",") : []
+  // const subjects = subjectsParam ? subjectsParam.split(",") : []
+  // const systems = systemsParam ? systemsParam.split(",") : []
+  const subjects = useMemo(() => subjectsParam ? subjectsParam.split(",") : [], [subjectsParam]);
+  const systems = useMemo(() => systemsParam ? systemsParam.split(",") : [], [systemsParam]);
+
+
   const totalQuestions = Math.max(1, Number.parseInt(countParam))
   const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false); // ✅ Inside function
   const [questions, setQuestions] = useState<Question[]>([])
@@ -54,12 +68,10 @@ export default function TakeTest() {
 
 
   const fetchQuestions = useCallback(async () => {
+    console.log(startTime);
     setLoading(true);
     setError(null);
     try {
-      console.log(startTime);
-      // const allTopics = [...subjects, ...systems];
-      // const queryString = `subjects=${allTopics.map(encodeURIComponent).join(",")}&count=${totalQuestions}`;
       const queryParams = new URLSearchParams({
         subjects: subjects.join(","),
         systems: systems.join(","),
@@ -67,41 +79,30 @@ export default function TakeTest() {
       });
 
       const url = `http://localhost:5000/api/test/questions?${queryParams.toString()}`;
-
       const response = await fetch(url);
+
       if (!response.ok) {
         throw new Error("Failed to fetch questions");
       }
 
       const fetchedQuestions = await response.json();
-      console.log(fetchQuestions);
-      if (fetchedQuestions.length === 0) {
-        throw new Error("No questions found for selected topics");
-      }
-
-      // Map backend response to frontend structure (keeping older structure intact)
-      const mappedQuestions = fetchedQuestions.map((q: { id: string; question: string; options: string; answer: string; explanation?: string }) => ({
+      const mappedQuestions = fetchedQuestions.map((q: Question) => ({
         id: q.id,
-        text: q.question, // Map backend's "question" to frontend's "text"
+        text: q.question,
         options: q.options,
-        correctAnswer: q.answer, // Map backend's "answer" to frontend's "correctAnswer"
-        explanation: q.explanation || "", // Ensure explanation is included but does not break existing structure
+        correctAnswer: q.answer,
+        explanation: q.explanation || "",
       }));
 
-      // Shuffle and limit the questions
       const shuffled = mappedQuestions.sort(() => 0.5 - Math.random());
       setQuestions(shuffled.slice(0, totalQuestions));
       setStartTime(Date.now());
     } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unknown error occurred");
-      }
+      setError(err instanceof Error ? err.message : "An unknown error occurred");
     } finally {
       setLoading(false);
     }
-  }, [subjects, systems, totalQuestions]); // Keeping dependencies unchanged
+  }, [subjects, systems, totalQuestions]);
 
 
   const handleFinishTest = useCallback(() => {
@@ -114,8 +115,8 @@ export default function TakeTest() {
   }, [currentQuestion, currentQuestionStartTime, questionTimes]);
 
   useEffect(() => {
-    fetchQuestions()
-  }, [totalQuestions])
+    fetchQuestions();
+  }, [fetchQuestions, totalQuestions]);
 
   useEffect(() => {
     if (mode === "timer" && timeLeft > 0) {
@@ -244,6 +245,7 @@ export default function TakeTest() {
           Time left: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
         </div>
       )}
+
       <QuestionBox
         question={currentQuestionData}
         selectedAnswer={selectedAnswers[currentQuestion]}
@@ -282,3 +284,5 @@ export default function TakeTest() {
   )
 }
 
+
+export default TakeTest

@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Plus, Edit2, Trash2, Trophy, Star, Zap, BarChart2, TrendingUp } from "lucide-react"
-import confetti from "canvas-confetti"
+import { BarChart2, Edit2, Plus, Star, Trash2, TrendingUp, Trophy, Zap } from "lucide-react"
+import { useEffect, useState } from "react"
 
 interface Goal {
   id: number
@@ -65,11 +64,6 @@ const CustomWeeklyGoals = () => {
     if (newXp >= level * 100) {
       setLevel(level + 1)
       setShowLevelUp(true)
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-      })
       setTimeout(() => setShowLevelUp(false), 3000)
     }
   }
@@ -88,14 +82,6 @@ const CustomWeeklyGoals = () => {
       })
 
       addXp(xpGained)
-
-      if (newCompletedHours === goal.targetHours) {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-        })
-      }
     }
   }
 

@@ -6,16 +6,18 @@ import { useEffect, useState } from "react"
 
 type QuestionBoxProps = {
   question: {
-    id: number
+    id: string
     text: string
     options: string[]
     correctAnswer: string
     explanation?: string
     isExplanationVisible: boolean // ✅ Add this missing property
   }
+  isExplanationVisible: boolean
   onAnswerSelect: (answer: string) => void
   handleSubmit: () => void
   moveToNextQuestion: () => void
+  toggleExplanation: () => void;
   questionNumber: number
   totalQuestions: number
   showCorrectAnswer: boolean

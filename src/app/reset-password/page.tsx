@@ -1,12 +1,18 @@
 "use client";
 
-import { useState } from "react"; // Removed useEffect
-import { useSearchParams } from "next/navigation";
 import axios from "axios";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 
 const ResetPasswordPage = () => {
-  
-  // const token = localStorage.getItem("authToken");
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ResetPasswordForm />
+    </Suspense>
+  );
+};
+
+const ResetPasswordForm = () => {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
@@ -22,8 +28,8 @@ const ResetPasswordPage = () => {
       setMessage("Passwords do not match");
       return;
     }
-    console.log("Sending request with:", { email, token, newPassword }); // ✅ Add this line
 
+    console.log("Sending request with:", { email, token, newPassword });
 
     try {
       const res = await axios.post("http://localhost:5000/api/auth/reset-password", {
@@ -48,7 +54,7 @@ const ResetPasswordPage = () => {
       <div className="bio-card w-full max-w-md">
         <h2 className="text-3xl font-bold mb-6 text-gray-800">Reset Password</h2>
         <form onSubmit={handleResetPassword} className="space-y-4">
-        <input
+          <input
             type="email"
             placeholder="Email"
             className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500"

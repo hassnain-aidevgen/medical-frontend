@@ -5,7 +5,7 @@ import { useState } from "react"
 
 type TestSummaryProps = {
   questions: {
-    id: number
+    id: string
     text: string
     correctAnswer: string
     explanation?: string
@@ -16,7 +16,7 @@ type TestSummaryProps = {
   totalTime: number
 }
 
-const TestSummary: React.FC<TestSummaryProps> = ({ questions,   selectedAnswers, questionTimes, score, totalTime }) => {
+const TestSummary: React.FC<TestSummaryProps> = ({ questions, selectedAnswers, questionTimes, score, totalTime }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const userId = localStorage.getItem("Medical_User_Id")
@@ -85,7 +85,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions,   selectedAnswers,
         Total time: {Math.floor(totalTime / 60)} minutes {totalTime % 60} seconds
       </p>
       <h2 className="text-2xl font-semibold mb-4">Question Summary</h2>
-  
+
       <div className="space-y-4">
 
         {questions.map((question, index) => {
@@ -94,7 +94,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions,   selectedAnswers,
           const userAnswer = selectedAnswers[index] || "";
           const isCorrect = userAnswer === question.correctAnswer;
           const timeSpent = questionTimes[index] || 0;
-  
+
           return (
             <div key={question.id} className="bg-white shadow rounded-lg p-4">
               <h3 className="font-semibold mb-2">Question {displayQuestionNumber}</h3>
@@ -107,7 +107,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions,   selectedAnswers,
               </p>
               <p className="mb-2">Correct answer: {question.correctAnswer}</p>
               <p>Time spent: {timeSpent} seconds</p>
-  
+
               {!isCorrect && question.explanation && (
                 <div className="mt-4 p-4 bg-gray-100 rounded">
                   <h3 className="font-semibold mb-2">Explanation:</h3>
@@ -118,9 +118,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions,   selectedAnswers,
           );
         })}
       </div>
-  
+
       {error && <p className="text-red-600 mt-4">{error}</p>}
-  
+
       <button
         onClick={handleSubmitResults}
         className="mt-8 bg-primary text-white px-6 py-2 rounded hover:bg-primary-dark transition-colors"
