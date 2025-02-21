@@ -111,6 +111,9 @@ const LoginPage = () => {
                 onChange={handleChange}
               />
             </div>
+            <div className="pt-1 pb-1 text-sm text-blue-400">
+              <p onClick={() => router.push("/forgot")}>Forgot Password?</p>
+            </div>
           </div>
 
           <Button onClick={handleLogin} className="w-full" disabled={isLoading}>
