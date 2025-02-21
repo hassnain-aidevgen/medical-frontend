@@ -80,7 +80,7 @@ const SignupPage = () => {
         {message && (
           <Alert variant={message.type === "error" ? "destructive" : "default"}>
             <AlertTitle>{message.type === "error" ? "Error" : "Success"}</AlertTitle>
-            <AlertDescription>{message.text}</AlertDescription>
+            <AlertDescription className="text-green-500">{message.text}</AlertDescription>
           </Alert>
         )}
         <form className="mt-8 space-y-6" onSubmit={(e) => e.preventDefault()}>
