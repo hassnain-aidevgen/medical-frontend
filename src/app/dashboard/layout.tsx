@@ -65,9 +65,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="flex h-screen bg-gray-100">
+        <div className="flex h-[100%] bg-gray-100">
           <Sidebar isOpen={isOpen} toggleSidebar={toggleSidebar} />
-          <div className="flex h-screen flex-col flex-1 overflow-hidden">
+          <div className="flex flex-col flex-1 overflow-hidden">
             <Navbar toggleSidebar={toggleSidebar} />
             <main className="flex-1  bg-gray-50 p-6">
               {children}
