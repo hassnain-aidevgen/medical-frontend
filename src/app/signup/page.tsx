@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Icons } from "@/components/ui/icons"
@@ -42,8 +44,11 @@ const SignupPage = () => {
       const response = await axios.post("https://medical-backend-loj4.onrender.com/api/auth/signup", formData)
 
       if (response.status === 201) {
-        setMessage({ type: "success", text: "Signup Successful! Redirecting to login..." })
-        setTimeout(() => router.push("/login"), 2000)
+        setMessage({
+          type: "success",
+          text: "Signup Successful! A verification email has been sent to your email address. Please check your inbox and follow the instructions to verify your account.",
+        })
+        // Removed the automatic redirection to login page
       } else {
         setMessage({ type: "error", text: response.data.message || "Signup failed, please try again." })
       }
@@ -59,7 +64,7 @@ const SignupPage = () => {
   const handleGoogleSignup = () => {
     router.push("https://medical-backend-loj4.onrender.com/api/auth/google")
   }
-  // https://medical-backend-loj4.onrender.com/auth/callback/google
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
       <motion.div
@@ -141,7 +146,7 @@ const SignupPage = () => {
             </Button>
 
             <Button className="w-full" onClick={handleGoogleSignup} disabled={isLoading} type="button">
-              <FcGoogle /> <span>Sign in with Google</span>
+              <FcGoogle className="mr-2 h-4 w-4" /> <span>Sign in with Google</span>
             </Button>
           </div>
           <div>

@@ -1,8 +1,12 @@
-import { Loader2, LogIn, UserPlus } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
+import { UserPlus, LoaderPinwheelIcon as Spinner } from "lucide-react"
 
-export const Icons = {
-  spinner: Loader2,
-  login: LogIn,
-  userPlus: UserPlus,
+interface Icons {
+  userPlus: LucideIcon
+  spinner: LucideIcon
 }
 
+export const Icons: Icons = {
+  userPlus: UserPlus,
+  spinner: Spinner,
+}
