@@ -1,16 +1,17 @@
 "use client"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Icons } from "@/components/ui/icons";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { setAuthToken } from "@/utils/auth";
-import axios from "axios";
-import { motion } from "framer-motion";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { FcGoogle } from "react-icons/fc";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import type React from "react"
+
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { setAuthToken } from "@/utils/auth"
+import axios from "axios"
+import { motion } from "framer-motion"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
+import { FcGoogle } from "react-icons/fc"
 
 const LoginPage = () => {
   const router = useRouter()
@@ -37,7 +38,7 @@ const LoginPage = () => {
         setAuthToken(response.data.token)
         localStorage.setItem("authToken", response.data.token)
 
-        console.log(response.data);
+        console.log(response.data)
         if (response.data.role == "admin") {
           router.push("/admin")
           return
@@ -77,7 +78,7 @@ const LoginPage = () => {
       >
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Welcome Back</h2>
-          <p className="mt-2 text-center text-sm text-gray-600">Log  in to access your account</p>
+          <p className="mt-2 text-center text-sm text-gray-600">Log in to access your account</p>
         </div>
         {message && (
           <Alert variant={message.type === "error" ? "destructive" : "default"}>
@@ -112,21 +113,18 @@ const LoginPage = () => {
               />
             </div>
             <div className="pt-1 pb-1 text-sm text-blue-400">
-              <p onClick={() => router.push("/forgot")}>Forgot Password?</p>
+              <p onClick={() => router.push("/forgot")} className="cursor-pointer">
+                Forgot Password?
+              </p>
             </div>
           </div>
 
           <Button onClick={handleLogin} className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Icons.login className="mr-2 h-4 w-4" />
-            )}
-            Log in
+            {isLoading ? <span className="mr-2">Loading...</span> : <span className="mr-2">Log in</span>}
           </Button>
 
           <Button className="w-full" onClick={handleGoogleLogin} disabled={isLoading} type="button">
-            <FcGoogle /> <span>Continue with Google</span>
+            <FcGoogle className="mr-2" /> <span>Continue with Google</span>
           </Button>
         </form>
         <div className="text-sm text-center">
