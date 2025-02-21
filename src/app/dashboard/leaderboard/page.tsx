@@ -22,7 +22,7 @@ export default function LeaderboardPage() {
   useEffect(() => {
     const fetchParticipants = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/test/leaderboard")
+        const response = await fetch("https://medical-backend-loj4.onrender.com/api/test/leaderboard")
         const data = await response.json()
         console.log(data);
         setParticipants(data)

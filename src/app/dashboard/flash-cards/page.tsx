@@ -39,7 +39,7 @@ export default function FlashcardsPage() {
 
   useEffect(() => {
     const fetchFlashcards = async () => {
-      const response = await fetch("http://localhost:5000/api/test/flashcards?numFlashcards=5")
+      const response = await fetch("https://medical-backend-loj4.onrender.com/api/test/flashcards?numFlashcards=5")
       const data = await response.json()
       setFlashcards(data)
     }

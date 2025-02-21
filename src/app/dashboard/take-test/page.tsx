@@ -78,7 +78,7 @@ function TakeTestForm() {
         count: totalQuestions.toString(),
       });
 
-      const url = `http://localhost:5000/api/test/questions?${queryParams.toString()}`;
+      const url = `https://medical-backend-loj4.onrender.com/api/test/questions?${queryParams.toString()}`;
       const response = await fetch(url);
 
       if (!response.ok) {

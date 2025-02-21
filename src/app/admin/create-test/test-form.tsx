@@ -80,7 +80,7 @@ const initialFormData: FormData = {
     questions: [{ ...initialQuestion }],
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/test"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api/test"
 
 export default function DynamicForm() {
     const [formData, setFormData] = useState<FormData>(initialFormData)

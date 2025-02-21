@@ -34,7 +34,7 @@ export default function RootLayout({
       }
 
       try {
-        const response = await axios.get("http://localhost:5000/api/auth/protected", {
+        const response = await axios.get("https://medical-backend-loj4.onrender.com/api/auth/protected", {
           headers: { Authorization: `Bearer ${token}` }, // Send token in Authorization header
         });
 

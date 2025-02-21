@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
 import axios from "axios";
+import Link from "next/link";
+import { useState } from "react";
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
@@ -15,7 +15,7 @@ const ForgotPasswordPage = () => {
     setMessage("");
 
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/forgot-password", { email });
+      const res = await axios.post("https://medical-backend-loj4.onrender.com/api/auth/forgot-password", { email });
       setMessage(res.data.message);
     } catch (err: unknown) {
       console.error("Forgot Password error:", err);
@@ -42,7 +42,7 @@ const ForgotPasswordPage = () => {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
-          <button 
+          <button
             type="submit"
             className="bio-button bio-button-forgot w-full"
             disabled={loading}

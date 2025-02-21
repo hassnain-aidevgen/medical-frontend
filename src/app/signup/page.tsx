@@ -39,7 +39,7 @@ const SignupPage = () => {
     setIsLoading(true)
     setMessage(null)
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/signup", formData)
+      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/auth/signup", formData)
 
       if (response.status === 201) {
         setMessage({ type: "success", text: "Signup Successful! Redirecting to login..." })
@@ -57,9 +57,9 @@ const SignupPage = () => {
   }
 
   const handleGoogleSignup = () => {
-    router.push("http://localhost:5000/api/auth/google")
+    router.push("https://medical-backend-loj4.onrender.com/api/auth/google")
   }
-  // http://localhost:5000/auth/callback/google
+  // https://medical-backend-loj4.onrender.com/auth/callback/google
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
       <motion.div

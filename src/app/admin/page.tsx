@@ -13,7 +13,7 @@ type Stats = {
   verifiedUsers: number
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/test"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api/test"
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null)

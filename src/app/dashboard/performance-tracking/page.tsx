@@ -1,23 +1,23 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import axios from "axios"
-import { Bar, Line } from "react-chartjs-2"
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
   BarElement,
+  CategoryScale,
+  Chart as ChartJS,
+  Legend,
+  LinearScale,
   LineElement,
   PointElement,
   Title,
   Tooltip,
-  Legend,
 } from "chart.js"
-import { Clock, Target, TrendingUp, Book } from "lucide-react"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Book, Clock, Target, TrendingUp } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Bar, Line } from "react-chartjs-2"
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Tooltip, Legend)
 
@@ -49,7 +49,7 @@ const PerformanceTracking = () => {
       }
 
       try {
-        const response = await axios.get<TestResult[]>("http://localhost:5000/api/test/performance", {
+        const response = await axios.get<TestResult[]>("https://medical-backend-loj4.onrender.com/api/test/performance", {
           params: { userId },
         })
 

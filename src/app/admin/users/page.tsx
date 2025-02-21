@@ -23,7 +23,7 @@ import { Edit2, Plus, Search, Trash2, UserCheck, UserX } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { toast, Toaster } from "react-hot-toast"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/auth"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api/auth"
 
 type User = {
     _id: string

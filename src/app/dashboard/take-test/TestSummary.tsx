@@ -53,7 +53,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions, selectedAnswers, q
     }
 
     try {
-      const response = await fetch("http://localhost:5000/api/test/submit-test", {
+      const response = await fetch("https://medical-backend-loj4.onrender.com/api/test/submit-test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(testData),

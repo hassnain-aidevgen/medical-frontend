@@ -81,7 +81,7 @@ export default function CreateTest() {
   const [isLoading, setIsLoading] = useState(true)
   const [maxQuestions, setMaxQuestions] = useState(0)
 
-  const API_BASE_URL = "http://localhost:5000/api/test"
+  const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test"
 
   const fetchData = useCallback(async () => {
     setIsLoading(true)
