@@ -1,7 +1,6 @@
 "use client"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type React from "react"
-
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,11 +14,11 @@ import { FcGoogle } from "react-icons/fc"
 
 const LoginPage = () => {
   const router = useRouter()
-  const [formData, setFormData] = useState({ email: "", password: "" })
+  const [formData, setFormData] = useState({ email: "", password: "", role: "user" })
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData((prevData) => ({
       ...prevData,
       [event.target.name]: event.target.value,
@@ -34,30 +33,26 @@ const LoginPage = () => {
       const response = await axios.post("https://medical-backend-loj4.onrender.com/api/auth/login", formData)
 
       if (response.status === 200) {
-        console.log("Printing: ", response.data.token)
         setAuthToken(response.data.token)
         localStorage.setItem("authToken", response.data.token)
 
-        console.log(response.data)
-        if (response.data.role == "admin") {
+        if (response.data.role === "admin") {
           router.push("/admin")
           return
         }
 
-        // Check if the user is new based on the response
         if (response.data.isNewUser) {
           setMessage({ type: "success", text: "New user! Redirecting to signup..." })
-          setTimeout(() => router.push("/signup"), 2000) // Redirect to signup
+          setTimeout(() => router.push("/signup"), 2000)
         } else {
           setMessage({ type: "success", text: "Login successful! Redirecting..." })
-          setTimeout(() => router.push("/dashboard"), 2000) // Redirect to dashboard for existing user
+          setTimeout(() => router.push("/dashboard"), 2000)
         }
       } else {
         setMessage({ type: "error", text: response.data.message || "Login failed, please try again." })
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } }
-      console.log("Login Error:", error.response?.data?.message || "Unknown error")
       setMessage({ type: "error", text: error.response?.data?.message || "Login failed, please try again." })
     } finally {
       setIsLoading(false)
@@ -112,6 +107,20 @@ const LoginPage = () => {
                 onChange={handleChange}
               />
             </div>
+            <div>
+              <Label htmlFor="role">Role</Label>
+              <select
+                id="role"
+                name="role"
+                className="mt-1 block w-full"
+                value={formData.role}
+                onChange={handleChange}
+              >
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
             <div className="pt-1 pb-1 text-sm text-blue-400">
               <p onClick={() => router.push("/forgot")} className="cursor-pointer">
                 Forgot Password?
@@ -141,4 +150,3 @@ const LoginPage = () => {
 }
 
 export default LoginPage
-
