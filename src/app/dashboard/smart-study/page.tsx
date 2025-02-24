@@ -33,10 +33,9 @@ const SmartStudyCalendar = () => {
 
 
   useEffect(() => {
+    console.log(userId);
     if (userId) {
       fetchTests()
-    } else {
-      toast.error("User ID not found. Please log in.")
     }
   }, [userId])
 
