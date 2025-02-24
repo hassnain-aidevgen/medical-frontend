@@ -1,7 +1,6 @@
 "use client"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import type React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,6 +9,7 @@ import axios from "axios"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import type React from "react"
 import { useState } from "react"
 import { FcGoogle } from "react-icons/fc"
 
@@ -109,7 +109,7 @@ const LoginPage = () => {
               />
             </div>
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
+              {/* <div className="flex items-center space-x-2">
                 <select
                   id="role"
                   name="role"
@@ -120,7 +120,7 @@ const LoginPage = () => {
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
                 </select>
-              </div>
+              </div> */}
               <div className="text-sm">
                 <p onClick={() => router.push("/forgot")} className="cursor-pointer text-blue-400">
                   Forgot Password?

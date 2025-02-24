@@ -1,289 +1,366 @@
 "use client"
 
-import { BarChart2, Edit2, Plus, Star, Trash2, TrendingUp, Trophy, Zap } from "lucide-react"
-import { useEffect, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import axios from "axios"
+import { BarChart2, Plus, Star, Trash2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useCallback, useEffect, useState } from "react"
+import { toast } from "react-hot-toast"
 
+// Types
 interface Goal {
-  id: number
+  _id: string
   subject: string
   description: string
   targetHours: number
   completedHours: number
   dueDate: string
-  streak: number
+  isCompleted: boolean
   level: number
 }
 
-const CustomWeeklyGoals = () => {
+const api = axios.create({
+  baseURL: "https://medical-backend-loj4.onrender.com/api/test",
+  withCredentials: true,
+})
+
+// Validation functions
+const validateQuest = (quest: Partial<Goal>) => {
+  const errors: string[] = []
+
+  if (!quest.subject?.trim()) {
+    errors.push("Subject is required")
+  } else if (quest.subject.length < 2 || quest.subject.length > 100) {
+    errors.push("Subject must be between 2 and 100 characters")
+  }
+
+  if (!quest.description?.trim()) {
+    errors.push("Description is required")
+  } else if (quest.description.length < 10 || quest.description.length > 500) {
+    errors.push("Description must be between 10 and 500 characters")
+  }
+
+  if (!quest.targetHours || quest.targetHours < 1 || quest.targetHours > 168) {
+    errors.push("Target hours must be between 1 and 168")
+  }
+
+  if (!quest.dueDate) {
+    errors.push("Due date is required")
+  } else if (new Date(quest.dueDate) <= new Date()) {
+    errors.push("Due date must be in the future")
+  }
+
+  return errors
+}
+
+export default function StudyQuest() {
+  const router = useRouter()
   const [goals, setGoals] = useState<Goal[]>([])
-  const [newGoal, setNewGoal] = useState<Omit<Goal, "id" | "completedHours" | "streak" | "level">>({
+  const [newGoal, setNewGoal] = useState<Omit<Goal, "_id" | "completedHours" | "isCompleted" | "level">>({
     subject: "",
     description: "",
     targetHours: 0,
     dueDate: "",
   })
-  const [editingGoalId, setEditingGoalId] = useState<number | null>(null)
-  const [xp, setXp] = useState(0)
-  const [level, setLevel] = useState(1)
-  const [showLevelUp, setShowLevelUp] = useState(false)
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
+  const [loading, setLoading] = useState(false)
 
+  // Check for user authentication
   useEffect(() => {
-    const savedGoals = localStorage.getItem("weeklyGoals")
-    const savedXp = localStorage.getItem("xp")
-    const savedLevel = localStorage.getItem("level")
-    if (savedGoals) setGoals(JSON.parse(savedGoals))
-    if (savedXp) setXp(JSON.parse(savedXp))
-    if (savedLevel) setLevel(JSON.parse(savedLevel))
+    const checkAuth = async () => {
+      const userId = await localStorage.getItem("Medical_User_Id")
+      if (!userId) {
+        toast.error("Please login to access Study Quest")
+        router.push("/login") // Redirect to login page
+      }
+    }
+    checkAuth()
+  }, [router])
+
+  const fetchGoals = useCallback(async () => {
+    try {
+      setLoading(true)
+      const userId = await localStorage.getItem("Medical_User_Id")
+      const response = await api.get(`/quest?userId=${userId}`)
+      setGoals(response.data.data)
+    } catch (error) {
+      console.error("Failed to fetch quests:", error)
+      toast.error("Failed to fetch quests")
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
-    localStorage.setItem("weeklyGoals", JSON.stringify(goals))
-    localStorage.setItem("xp", JSON.stringify(xp))
-    localStorage.setItem("level", JSON.stringify(level))
-  }, [goals, xp, level])
+    fetchGoals()
+  }, [fetchGoals])
 
-  const addGoal = () => {
-    if (newGoal.subject && newGoal.description && newGoal.targetHours > 0 && newGoal.dueDate) {
-      setGoals([...goals, { ...newGoal, id: Date.now(), completedHours: 0, streak: 0, level: 1 }])
+
+
+  const addGoal = async () => {
+    const errors = validateQuest(newGoal)
+    if (errors.length > 0) {
+      errors.forEach((error) => toast.error(error))
+      return
+    }
+
+    try {
+      setLoading(true)
+      const userId = await localStorage.getItem("Medical_User_Id")
+      const response = await api.post("/quest", { ...newGoal, userId })
+      setGoals((prev) => [response.data.data, ...prev])
       setNewGoal({ subject: "", description: "", targetHours: 0, dueDate: "" })
-      addXp(50) // Reward XP for adding a new goal
+      toast.success("Quest created successfully")
+    } catch (error) {
+      console.error("Failed to create quest:", error)
+      toast.error("Failed to create quest")
+    } finally {
+      setLoading(false)
     }
   }
 
-  const updateGoal = (id: number, updatedGoal: Partial<Goal>) => {
-    setGoals(goals.map((goal) => (goal.id === id ? { ...goal, ...updatedGoal } : goal)))
-  }
+  const updateGoal = async (id: string, updates: Partial<Goal>) => {
+    const goal = goals.find((g) => g._id === id)
+    if (!goal) return
 
-  const deleteGoal = (id: number) => {
-    setGoals(goals.filter((goal) => goal.id !== id))
-  }
+    // Optimistically update UI
+    setGoals((prev) => prev.map((g) => (g._id === id ? { ...g, ...updates } : g)))
 
-  const addXp = (amount: number) => {
-    const newXp = xp + amount
-    setXp(newXp)
-    if (newXp >= level * 100) {
-      setLevel(level + 1)
-      setShowLevelUp(true)
-      setTimeout(() => setShowLevelUp(false), 3000)
+    try {
+      const userId = localStorage.getItem("Medical_User_Id")
+      const response = await api.patch(`/quest/${id}`, { ...updates, userId })
+
+      if (!response.data.success) {
+        // Revert on failure
+        setGoals((prev) => prev.map((g) => (g._id === id ? goal : g)))
+        throw new Error(
+          Array.isArray(response.data.error) ? response.data.error[0] : response.data.error || "Failed to update quest",
+        )
+      }
+    } catch (error) {
+      console.error("Failed to update quest:", error)
+      toast.error(error instanceof Error ? error.message : "Failed to update quest")
     }
   }
 
-  const completeStudySession = (goalId: number, hours: number) => {
-    const goal = goals.find((g) => g.id === goalId)
-    if (goal) {
-      const newCompletedHours = Math.min(goal.completedHours + hours, goal.targetHours)
-      const newStreak = newCompletedHours > goal.completedHours ? goal.streak + 1 : goal.streak
-      const xpGained = hours * 10 + (newStreak > goal.streak ? 20 : 0)
-
-      updateGoal(goalId, {
-        completedHours: newCompletedHours,
-        streak: newStreak,
-        level: Math.floor(newStreak / 5) + 1,
-      })
-
-      addXp(xpGained)
+  const deleteGoal = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this quest?")) {
+      return
     }
+
+    try {
+      setLoading(true)
+      const userId = await localStorage.getItem("Medical_User_Id")
+      await api.delete(`/quest/${id}?userId=${userId}`)
+      setGoals((prev) => prev.filter((goal) => goal._id !== id))
+      toast.success("Quest deleted successfully")
+    } catch (error) {
+      console.error("Failed to delete quest:", error)
+      toast.error("Failed to delete quest")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // const updateProgress = async (id: string, hours: number) => {
+  //   const goal = goals.find((g) => g._id === id)
+  //   if (!goal) return
+
+  //   const newHours = Math.min(Math.max(0, hours), goal.targetHours)
+  //   await updateGoal(id, { completedHours: newHours })
+  // }
+
+  const markAsComplete = async (id: string) => {
+    await updateGoal(id, { isCompleted: true, completedHours: goals.find((g) => g._id === id)?.targetHours || 0 })
   }
 
   return (
-    <div className="container mx-auto p-4 bg-gray-100 min-h-screen">
-      <h1 className="text-4xl font-bold mb-6 text-center text-indigo-600">Study Quest</h1>
+    <div className="container mx-auto p-4 space-y-8 bg-[#F3F4F6] max-h-[85dvh] overflow-auto">
+      <h1 className="text-4xl font-bold text-center text-primary mb-8">Study Quest</h1>
 
-      {/* User Stats */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-semibold mb-2">Level {level}</h2>
-            <div className="w-64 bg-gray-200 rounded-full h-4">
-              <div className="bg-indigo-600 h-4 rounded-full" style={{ width: `${xp % 100}%` }}></div>
-            </div>
-            <p className="mt-1 text-sm text-gray-600">{xp % 100} / 100 XP</p>
-          </div>
-          <div className="text-right">
-            <p className="text-3xl font-bold text-indigo-600">{xp} XP</p>
-            <p className="text-sm text-gray-600">Total Experience</p>
-          </div>
-        </div>
-      </div>
-
-      {showLevelUp && (
-        <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-8 rounded-lg text-center">
-            <h2 className="text-3xl font-bold mb-4">Level Up!</h2>
-            <p className="text-xl">You&apos;ve reached level {level}!</p>
-            <button
-              onClick={() => setShowLevelUp(false)}
-              className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors"
-            >
-              Continue
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Add New Goal Form */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 className="text-2xl font-semibold mb-4">New Quest</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input
-            type="text"
+      <Card className="shadow-sm">
+        <CardHeader>
+          <CardTitle>New Quest</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Input
             placeholder="Subject"
-            className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
             value={newGoal.subject}
             onChange={(e) => setNewGoal({ ...newGoal, subject: e.target.value })}
+            className="border-input"
           />
-          <input
-            type="text"
+          <Textarea
             placeholder="Description"
-            className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
             value={newGoal.description}
             onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
+            className="border-input"
           />
-          <input
-            type="number"
-            placeholder="Target Hours"
-            className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            value={newGoal.targetHours || ""}
-            onChange={(e) => setNewGoal({ ...newGoal, targetHours: Number.parseInt(e.target.value) || 0 })}
-          />
-          <input
-            type="date"
-            className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            value={newGoal.dueDate}
-            onChange={(e) => setNewGoal({ ...newGoal, dueDate: e.target.value })}
-          />
-        </div>
-        <button
-          onClick={addGoal}
-          className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 transition-colors flex items-center justify-center w-full"
-        >
-          <Plus size={20} className="mr-2" />
-          Start New Quest
-        </button>
-      </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              type="number"
+              placeholder="Target Hours"
+              value={newGoal.targetHours || ""}
+              onChange={(e) => setNewGoal({ ...newGoal, targetHours: Math.max(0, Number(e.target.value)) })}
+              className="border-input"
+              min="0"
+            />
+            <Input
+              type="date"
+              value={newGoal.dueDate}
+              onChange={(e) => setNewGoal({ ...newGoal, dueDate: e.target.value })}
+              className="border-input"
+            />
+          </div>
+          <Button onClick={addGoal} className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition-colors flex items-center justify-center w-full" disabled={loading}>
+            <Plus className="w-4 h-4 mr-2" />
+            Start New Quest
+          </Button>
+        </CardContent>
+      </Card>
 
-      {/* Goals List */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-semibold mb-4">Active Quests</h2>
-        <div className="space-y-6">
+      <Card className="shadow-sm">
+        <CardHeader>
+          <CardTitle>Active Quests</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
           {goals.map((goal) => (
-            <div key={goal.id} className="border-b pb-6">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-xl font-semibold">{goal.subject}</h3>
-                <div className="flex space-x-2">
-                  <button onClick={() => setEditingGoalId(goal.id)} className="text-indigo-500 hover:text-indigo-700">
-                    <Edit2 size={18} />
-                  </button>
-                  <button onClick={() => deleteGoal(goal.id)} className="text-red-500 hover:text-red-700">
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-              {editingGoalId === goal.id ? (
-                <div className="flex flex-col space-y-2">
-                  <input
-                    type="text"
-                    value={goal.description}
-                    onChange={(e) => updateGoal(goal.id, { description: e.target.value })}
-                    className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            <div key={goal._id} className="border-b pb-6 last:border-0 last:pb-0">
+              {editingGoal?._id === goal._id ? (
+                <div className="space-y-4">
+                  <Input
+                    value={editingGoal.subject}
+                    onChange={(e) => setEditingGoal({ ...editingGoal, subject: e.target.value })}
+                    className="border-input"
                   />
-                  <div className="flex space-x-2">
-                    <input
+                  <Textarea
+                    value={editingGoal.description}
+                    onChange={(e) => setEditingGoal({ ...editingGoal, description: e.target.value })}
+                    className="border-input"
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input
                       type="number"
-                      value={goal.targetHours}
-                      onChange={(e) => updateGoal(goal.id, { targetHours: Number.parseInt(e.target.value) || 0 })}
-                      className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={editingGoal.targetHours}
+                      onChange={(e) =>
+                        setEditingGoal({ ...editingGoal, targetHours: Math.max(0, Number(e.target.value)) })
+                      }
+                      className="border-input"
+                      min="0"
                     />
-                    <input
+                    <Input
                       type="date"
-                      value={goal.dueDate}
-                      onChange={(e) => updateGoal(goal.id, { dueDate: e.target.value })}
-                      className="w-1/2 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={editingGoal.dueDate}
+                      onChange={(e) => setEditingGoal({ ...editingGoal, dueDate: e.target.value })}
+                      className="border-input"
                     />
                   </div>
-                  <button
-                    onClick={() => setEditingGoalId(null)}
-                    className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
-                  >
-                    Save
-                  </button>
+                  <div className="flex gap-2">
+                    <Button onClick={() => updateGoal(goal._id, editingGoal)} disabled={loading}>
+                      Save
+                    </Button>
+                    <Button variant="outline" onClick={() => setEditingGoal(null)}>
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <>
-                  <p className="mb-2">{goal.description}</p>
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center">
-                      <div className="w-48 bg-gray-200 rounded-full h-2 mr-4">
-                        <div
-                          className="bg-indigo-600 h-2 rounded-full"
-                          style={{ width: `${(goal.completedHours / goal.targetHours) * 100}%` }}
-                        ></div>
-                      </div>
-                      <span>
-                        {goal.completedHours} / {goal.targetHours} hours
-                      </span>
-                    </div>
-                    <div className="flex items-center">
-                      <Trophy size={18} className="text-yellow-500 mr-1" />
-                      <span className="font-semibold">Level {goal.level}</span>
+                  <div className={`flex justify-between items-center mb-2 ${goal.isCompleted ? "opacity-75" : ""}`}>
+                    <h3 className="text-xl font-semibold flex items-center gap-2">
+                      {goal.subject}
+                      {goal.isCompleted && (
+                        <span className="text-sm text-green-600 bg-green-100 px-2 py-1 rounded-full">Completed</span>
+                      )}
+                    </h3>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteGoal(goal._id)}
+                        className="text-muted-foreground hover:text-destructive"
+                        disabled={loading}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <span className="text-sm text-gray-600 mr-4">
-                        Due: {new Date(goal.dueDate).toLocaleDateString()}
-                      </span>
-                      <span className="text-sm text-indigo-600 font-semibold">
-                        <Zap size={16} className="inline mr-1" />
-                        Streak: {goal.streak}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => completeStudySession(goal.id, 1)}
-                      className="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700 transition-colors"
-                    >
-                      Complete 1 Hour
-                    </button>
+                  <p className={`text-muted-foreground mb-4 ${goal.isCompleted ? "opacity-75" : ""}`}>
+                    {goal.description}
+                  </p>
+                  <div className="space-y-4">
+                    {!goal.isCompleted ? (
+                      <>
+                        <div className="flex justify-between items-center gap-4">
+                          {/* <Progress value={(goal.completedHours / goal.targetHours) * 100} className="flex-1" /> */}
+                          <div className="flex items-center gap-2 min-w-[120px]">
+                            <span className="max-w-20 text-right border-input">{goal.completedHours}</span>
+                            <span className="text-sm text-muted-foreground whitespace-nowrap">
+                              / {goal.targetHours}h
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-4">
+                            <span className="text-sm text-muted-foreground">
+                              Due: {new Date(goal.dueDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <Button
+                            onClick={() => {
+                              markAsComplete(goal._id)
+                            }}
+                            disabled={loading}
+                          >
+                            Mark as Complete
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex justify-between items-center bg-green-50 p-4 rounded-lg">
+                        <div className="flex flex-col gap-2">
+                          <span className="text-sm text-muted-foreground">
+                            Completed on: {new Date(goal.dueDate).toLocaleDateString()}
+                          </span>
+                          <span className="text-sm font-medium text-green-600">Total Hours: {goal.targetHours}h</span>
+                        </div>
+                        <Star className="w-6 h-6 text-yellow-500" />
+                      </div>
+                    )}
                   </div>
                 </>
               )}
             </div>
           ))}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Quick Stats */}
-      <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-semibold mb-4">Quest Stats</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-indigo-100 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold mb-2 flex items-center">
-              <BarChart2 size={20} className="mr-2 text-indigo-600" />
-              Total Quests
-            </h3>
-            <p className="text-3xl font-bold text-indigo-600">{goals.length}</p>
+      <Card className="shadow-sm">
+        <CardHeader>
+          <CardTitle>Quest Stats</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-primary/10 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold mb-2 flex items-center text-primary">
+                <BarChart2 className="w-5 h-5 mr-2" />
+                Total Quests
+              </h3>
+              <p className="text-3xl font-bold text-primary">{goals.length}</p>
+            </div>
+            <div className="bg-green-100 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold mb-2 flex items-center text-green-600">
+                <Star className="w-5 h-5 mr-2" />
+                Completed Quests
+              </h3>
+              <p className="text-3xl font-bold text-green-600">{goals.filter((goal) => goal.isCompleted).length}</p>
+            </div>
           </div>
-          <div className="bg-green-100 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold mb-2 flex items-center">
-              <Star size={20} className="mr-2 text-green-600" />
-              Completed Quests
-            </h3>
-            <p className="text-3xl font-bold text-green-600">
-              {goals.filter((goal) => goal.completedHours >= goal.targetHours).length}
-            </p>
-          </div>
-          <div className="bg-yellow-100 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold mb-2 flex items-center">
-              <TrendingUp size={20} className="mr-2 text-yellow-600" />
-              Highest Streak
-            </h3>
-            <p className="text-3xl font-bold text-yellow-600">{Math.max(...goals.map((goal) => goal.streak), 0)}</p>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
-
-export default CustomWeeklyGoals
 

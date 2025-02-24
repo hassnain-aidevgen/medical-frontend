@@ -1,5 +1,6 @@
 "use client"
 
+import TestPageWarning from "@/components/pageTestWarning"
 import { useSearchParams } from "next/navigation"
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import QuestionBox from "./QuestionBox"
@@ -139,6 +140,7 @@ function TakeTestForm() {
       ...prev,
       [currentQuestion]: answer,
     }));
+
     console.log("✅ Selected Answer Updated:", { [currentQuestion]: answer });
   };
 
@@ -239,6 +241,14 @@ function TakeTestForm() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+
+      <TestPageWarning
+        selectedAnswers={selectedAnswers}
+        showResults={showResults}
+        // currentQuestion={currentQuestion}
+        totalQuestions={questions.length}
+      />
+
       <h1 className="text-3xl font-bold mb-8">Take Test</h1>
       {mode === "timer" && (
         <div className="mb-4 text-xl">

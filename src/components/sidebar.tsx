@@ -27,9 +27,8 @@ export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
 
   return (
     <div
-      className={`bg-gradient-to-b from-slate-50 via-blue-50 to-indigo-50 w-64 h-screen fixed inset-y-0 left-0 transform ${
-        isOpen ? "translate-x-0" : "-translate-x-full"
-      } md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 flex flex-col`}
+      className={`bg-gradient-to-b from-slate-50 via-blue-50 to-indigo-50 w-64 h-screen fixed inset-y-0 left-0 transform ${isOpen ? "translate-x-0" : "-translate-x-full"
+        } md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 flex flex-col`}
     >
       <div className="flex-shrink-0 p-4">
         <div className="flex justify-between items-center md:hidden">
@@ -53,9 +52,8 @@ export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
               <li key={item.name}>
                 <Link
                   href={item.href}
-                  className={`flex items-center space-x-2 px-4 py-3 rounded transition-colors duration-200 ${
-                    isActive ? "bg-sky-300 text-sky-800 font-medium" : "hover:bg-sky-50 hover:text-sky-700"
-                  }`}
+                  className={`flex items-center space-x-2 px-4 py-3 rounded transition-colors duration-200 ${isActive ? "bg-sky-300 text-sky-800 font-medium" : "hover:bg-sky-50 hover:text-sky-700"
+                    }`}
                   onClick={() => {
                     if (window.innerWidth < 768) {
                       toggleSidebar()
