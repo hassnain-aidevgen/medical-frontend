@@ -63,13 +63,13 @@ export default function RootLayout({
   }
 
   return (
-    <html lang="en">
+    <html lang="en" className="overflow-y-hidden">
       <body className={inter.className}>
         <div className="flex h-screen bg-gray-100">
           <AdminSidebar isOpen={isOpen} toggleSidebar={toggleSidebar} />
           <div className="flex flex-col flex-1 overflow-hidden">
             <AdminNavbar toggleSidebar={toggleSidebar} />
-            <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
+            <main className="flex-1 overflow-x-hidden overflow-y-jh bg-gray-50 p-6">
               {children}
             </main>
           </div>
