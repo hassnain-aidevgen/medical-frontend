@@ -73,7 +73,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions, selectedAnswers, q
     console.log(testData);
 
     try {
-      const response = await axios.post("http://localhost:5000/api/test/take-test/submit-test", testData, {
+      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test", testData, {
         headers: { "Content-Type": "application/json" },
       })
 

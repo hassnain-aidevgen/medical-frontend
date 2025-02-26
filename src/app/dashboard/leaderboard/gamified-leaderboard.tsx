@@ -37,8 +37,8 @@ export default function GamifiedLeaderboard() {
             try {
                 setLoading(true)
                 const [leaderboardRes, userStatsRes] = await Promise.all([
-                    fetch("http://localhost:5000/api/test/leaderboard"),
-                    fetch(`http://localhost:5000/api/test/leaderboard/player/${userId}`),
+                    fetch("https://medical-backend-loj4.onrender.com/api/test/leaderboard"),
+                    fetch(`https://medical-backend-loj4.onrender.com/api/test/leaderboard/player/${userId}`),
                 ])
 
                 const leaderboardData = await leaderboardRes.json()

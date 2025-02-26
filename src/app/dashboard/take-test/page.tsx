@@ -56,7 +56,7 @@ const TakeTest = () => {
     setIsLoading(true)
     setError(null)
     try {
-      const response = await axios.get("http://localhost:5000/api/test/take-test/questions", {
+      const response = await axios.get("https://medical-backend-loj4.onrender.com/api/test/take-test/questions", {
         params: {
           subjects: subjectsParam,
           subsections: subsectionsParam,
