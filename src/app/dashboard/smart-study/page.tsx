@@ -31,32 +31,32 @@ const SmartStudyCalendar = () => {
     }
   }, [])
 
-
   useEffect(() => {
+    const fetchTests = async () => {
+      if (!userId) return
+
+      setIsLoading(true)
+      try {
+        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`)
+        if (Array.isArray(response.data)) {
+          setTests(response.data)
+        } else {
+          throw new Error("Invalid data received from server")
+        }
+      } catch (error) {
+        console.error(error)
+        toast.error("Failed to fetch tests. Please try again later.")
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
     console.log(userId);
     if (userId) {
       fetchTests()
     }
   }, [userId])
 
-  const fetchTests = async () => {
-    if (!userId) return
-
-    setIsLoading(true)
-    try {
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`)
-      if (Array.isArray(response.data)) {
-        setTests(response.data)
-      } else {
-        throw new Error("Invalid data received from server")
-      }
-    } catch (error) {
-      console.error(error)
-      toast.error("Failed to fetch tests. Please try again later.")
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate()
   const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay()

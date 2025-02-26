@@ -1,247 +1,169 @@
 "use client"
 
 import TestPageWarning from "@/components/pageTestWarning"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import axios from "axios"
+import { AlertCircle, Clock } from "lucide-react"
 import { useSearchParams } from "next/navigation"
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import QuestionBox from "./QuestionBox"
 import TestSummary from "./TestSummary"
-// const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
 
 type Question = {
-  id: string
-  text: string
+  _id: string
   question: string
-  answer: string
   options: string[]
-  correctAnswer: string
-  explanation?: string, // ✅ Add this line (optional explanation field)
-  isExplanationVisible: boolean // ✅ Add this line (required isExplanationVisible field)
+  answer: string
+  explanation: string
+  subject: string
+  subsection: string
+  system: string
+  topic: string
+  subtopics: string[]
+  exam_type: "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3"
+  year: number
+  difficulty: "easy" | "medium" | "hard"
+  specialty: string
+  state_specific?: string
+  clinical_setting: string
+  question_type: "case_based" | "single_best_answer" | "extended_matching"
 }
 
 const TakeTest = () => {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <TakeTestForm />
-    </Suspense>
-  );
-};
-
-
-function TakeTestForm() {
+  // const router = useRouter()
   const searchParams = useSearchParams()
+
   const mode = searchParams.get("mode") || "tutor"
   const subjectsParam = searchParams.get("subjects") || ""
-  const systemsParam = searchParams.get("systems") || ""
+  const subsectionsParam = searchParams.get("subsections") || ""
   const countParam = searchParams.get("count") || "10"
 
-  // const subjects = subjectsParam ? subjectsParam.split(",") : []
-  // const systems = systemsParam ? systemsParam.split(",") : []
-  const subjects = useMemo(() => subjectsParam ? subjectsParam.split(",") : [], [subjectsParam]);
-  const systems = useMemo(() => systemsParam ? systemsParam.split(",") : [], [systemsParam]);
-
-
-  const totalQuestions = Math.max(1, Number.parseInt(countParam))
-  const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false); // ✅ Inside function
   const [questions, setQuestions] = useState<Question[]>([])
-  const [currentQuestion, setCurrentQuestion] = useState(0)
-
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>(() => {
-    const storedAnswers = localStorage.getItem("selectedAnswers");
-    return storedAnswers ? JSON.parse(storedAnswers) : {};
-  });
-
-  // const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>(() => {
-  //   const savedAnswers = localStorage.getItem("selectedAnswers");
-  //   return savedAnswers ? JSON.parse(savedAnswers) : {};
-  // });
-
-
-
-  const [showResults, setShowResults] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(mode === "timer" ? totalQuestions * 60 : 0)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({})
+  const [submittedAnswers, setSubmittedAnswers] = useState<Record<number, boolean>>({})
+  const [questionTimes, setQuestionTimes] = useState<Record<number, number>>({})
   const [startTime, setStartTime] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [timeLeft, setTimeLeft] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [questionTimes, setQuestionTimes] = useState<{ [key: number]: number }>({})
-  const [currentQuestionStartTime, setCurrentQuestionStartTime] = useState<number>(Date.now())
-  const [explanationsVisible, setExplanationsVisible] = useState<{ [key: number]: boolean }>({})
-  const [submittedQuestions, setSubmittedQuestions] = useState<{ [key: number]: boolean }>({});
+  const [showResults, setShowResults] = useState(false)
 
+  const totalQuestions = Math.max(1, Number.parseInt(countParam, 10))
 
   const fetchQuestions = useCallback(async () => {
-    console.log(startTime);
-    setLoading(true);
-    setError(null);
+    setIsLoading(true)
+    setError(null)
     try {
-      const queryParams = new URLSearchParams({
-        subjects: subjects.join(","),
-        systems: systems.join(","),
-        count: totalQuestions.toString(),
-      });
-
-      const url = `https://medical-backend-loj4.onrender.com/api/test/questions?${queryParams.toString()}`;
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch questions");
+      const response = await axios.get("http://localhost:5000/api/test/take-test/questions", {
+        params: {
+          subjects: subjectsParam,
+          subsections: subsectionsParam,
+          count: totalQuestions,
+        },
+      })
+      setQuestions(response.data)
+      setStartTime(Date.now())
+      if (mode === "timer") {
+        setTimeLeft(totalQuestions * 60) // 60 seconds per question
       }
-
-      const fetchedQuestions = await response.json();
-      const mappedQuestions = fetchedQuestions.map((q: Question) => ({
-        id: q.id,
-        text: q.question,
-        options: q.options,
-        correctAnswer: q.answer,
-        explanation: q.explanation || "",
-      }));
-
-      const shuffled = mappedQuestions.sort(() => 0.5 - Math.random());
-      setQuestions(shuffled.slice(0, totalQuestions));
-      setStartTime(Date.now());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unknown error occurred");
+      setError("Failed to fetch questions. Please try again.")
+      console.error("Error fetching questions:", err)
     } finally {
-      setLoading(false);
+      setIsLoading(false)
     }
-  }, [subjects, systems, totalQuestions]);
-
-
-  const handleFinishTest = useCallback(() => {
-    const timeSpent = Math.round((Date.now() - currentQuestionStartTime) / 1000)
-    setQuestionTimes(prev => ({ ...prev, [currentQuestion]: timeSpent }))
-    const totalTimeSpent = Object.values(questionTimes).reduce((sum, time) => sum + time, 0) + timeSpent
-    setShowResults(true)
-    setTimeLeft(0)
-    return totalTimeSpent
-  }, [currentQuestion, currentQuestionStartTime, questionTimes]);
+  }, [subjectsParam, subsectionsParam, totalQuestions, mode])
 
   useEffect(() => {
-    fetchQuestions();
-  }, [fetchQuestions, totalQuestions]);
+    fetchQuestions()
+  }, [fetchQuestions])
 
-  useEffect(() => {
-    if (mode === "timer" && timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft((prev) => prev - 1), 1000)
-      return () => clearTimeout(timer)
-    } else if (mode === "timer" && timeLeft === 0) {
-      handleFinishTest()
-    }
-  }, [timeLeft, mode, handleFinishTest])
 
-  useEffect(() => {
-    setCurrentQuestionStartTime(Date.now())
-  }, [currentQuestion])
-  // explanations wala kaam yahan se shuru:
-  // const handleAnswerSelect = (answer: string) => {
-  //   setSelectedAnswers({ ...selectedAnswers, [currentQuestion]: answer })
-  // }
   const handleAnswerSelect = (answer: string) => {
     setSelectedAnswers((prev) => ({
       ...prev,
-      [currentQuestion]: answer,
-    }));
+      [currentQuestionIndex]: answer,
+    }))
+  }
+  const handleFinishTest = useCallback(() => {
+    const currentTime = Date.now()
+    const timeSpent = startTime ? Math.round((currentTime - startTime) / 1000) : 0
+    setQuestionTimes((prev) => ({
+      ...prev,
+      [currentQuestionIndex]: timeSpent,
+    }))
+    setShowResults(true)
+  }, [startTime, currentQuestionIndex])
 
-    console.log("✅ Selected Answer Updated:", { [currentQuestion]: answer });
-  };
+  const handleAnswerSubmit = useCallback(() => {
+    if (selectedAnswers[currentQuestionIndex]) {
+      const currentTime = Date.now()
+      const timeSpent = startTime ? Math.round((currentTime - startTime) / 1000) : 0
+      setQuestionTimes((prev) => ({
+        ...prev,
+        [currentQuestionIndex]: timeSpent,
+      }))
+      setStartTime(currentTime)
+      setSubmittedAnswers((prev) => ({
+        ...prev,
+        [currentQuestionIndex]: true,
+      }))
+    }
+  }, [currentQuestionIndex, selectedAnswers, startTime])
 
 
   const handleNextQuestion = () => {
-    if (!selectedAnswers[currentQuestion]) {
-      alert("Please select an answer before moving to the next question.");
-      return;
-    }
-
-    const timeSpent = Math.round((Date.now() - currentQuestionStartTime) / 1000);
-
-    setSelectedAnswers((prev) => ({
-      ...prev,
-      [currentQuestion]: prev[currentQuestion] || selectedAnswers[currentQuestion],
-    }));
-
-    setQuestionTimes((prev) => ({
-      ...prev,
-      [currentQuestion]: timeSpent,
-    }));
-
-    localStorage.setItem("selectedAnswers", JSON.stringify(selectedAnswers)); // Store answers
-
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex((prev) => prev + 1)
+      setStartTime(Date.now())
     } else {
-      handleFinishTest();
+      handleFinishTest()
     }
-  };
+  }
+
+  const handlePreviousQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex((prev) => prev - 1)
+    }
+  }
 
 
   const calculateScore = () => {
     return questions.reduce((score, question, index) => {
-      return score + (selectedAnswers[index] === question.correctAnswer ? 1 : 0)
+      return score + (selectedAnswers[index] === question.answer ? 1 : 0)
     }, 0)
   }
 
-  if (loading) {
-    return <div className="container mx-auto px-4 py-8">Loading questions...</div>
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-screen">Loading questions...</div>
   }
 
   if (error) {
-    return <div className="container mx-auto px-4 py-8 text-red-500">{error}</div>
-  }
-
-  if (questions.length === 0) {
-    return <div className="container mx-auto px-4 py-8">No questions available for the selected subjects.</div>
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    )
   }
 
   if (showResults) {
-    const totalTimeSpent = Object.values(questionTimes).reduce((sum, time) => sum + time, 0)
-    console.log("📌 Selected Answers Before Passing:", selectedAnswers);
-    console.log("📌 Passing to TestSummary:", {
-      questions,
-      selectedAnswers,
-      questionTimes,
-      totalTimeSpent,
-    });
     return (
-
       <TestSummary
         questions={questions}
         selectedAnswers={selectedAnswers}
         questionTimes={questionTimes}
         score={calculateScore()}
-        totalTime={totalTimeSpent}
+        totalTime={Object.values(questionTimes).reduce((sum, time) => sum + time, 0)}
       />
     )
   }
-  const handleSubmit = () => {
-    setSubmittedQuestions((prev) => ({ ...prev, [currentQuestion]: true }));
-    setIsAnswerSubmitted(true)
-  }
-
-  const moveToNextQuestion = () => {
-    handleNextQuestion(); // ✅ Calls the original function
-    setIsAnswerSubmitted(false);  // ✅ Reset answer submission state
-
-    // 🔥 Preserve previous answers instead of resetting to ""
-    setSelectedAnswers((prev) => ({
-      ...prev,
-      [currentQuestion]: prev[currentQuestion] || selectedAnswers[currentQuestion]
-    }));
-
-    setExplanationsVisible({}); // ✅ Hide explanation for the next question
-  };
-
-
-  // explanations wala kaam yahan se shuru:
-  const toggleExplanation = (questionIndex: number) => {
-    setExplanationsVisible((prev) => ({
-      ...prev,
-      [questionIndex]: !prev[questionIndex], // Toggle the visibility
-    }))
-  }
-  const currentQuestionData = questions[currentQuestion]
 
   return (
     <div className="container mx-auto px-4 py-8">
-
       <TestPageWarning
         selectedAnswers={selectedAnswers}
         showResults={showResults}
@@ -249,50 +171,42 @@ function TakeTestForm() {
         totalQuestions={questions.length}
       />
 
-      <h1 className="text-3xl font-bold mb-8">Take Test</h1>
+      <h1 className="text-3xl font-bold mb-8">Medical Test</h1>
+
       {mode === "timer" && (
-        <div className="mb-4 text-xl">
+        <div className="mb-4 text-xl flex items-center">
+          <Clock className="mr-2" />
           Time left: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
         </div>
       )}
 
       <QuestionBox
-        question={currentQuestionData}
-        selectedAnswer={selectedAnswers[currentQuestion]}
+        question={questions[currentQuestionIndex]}
+        selectedAnswer={selectedAnswers[currentQuestionIndex]}
         onAnswerSelect={handleAnswerSelect}
-        questionNumber={currentQuestion + 1}
+        questionNumber={currentQuestionIndex + 1}
         totalQuestions={questions.length}
-        showCorrectAnswer={mode === "tutor"}
-        onSubmit={handleNextQuestion}
-        isExplanationVisible={explanationsVisible[currentQuestion] || false}
-        toggleExplanation={() => toggleExplanation(currentQuestion)}
-        handleSubmit={handleSubmit} // ✅ Add this
-        moveToNextQuestion={moveToNextQuestion} // ✅ Add this
-        isAnswerSubmitted={isAnswerSubmitted} // ✅ Add this
-        isQuestionSubmitted={submittedQuestions[currentQuestion] || false} // ✅ Add this
+        showCorrectAnswer={submittedAnswers[currentQuestionIndex]}
+        onSubmit={handleAnswerSubmit}
       />
 
-      <div className="flex justify-end mt-6">
-        {/* <button
-          onClick={handlePreviousQuestion}
-          disabled={currentQuestion === 0}
-          className="bg-gray-200 text-gray-800 px-6 py-2 rounded hover:bg-gray-300 transition-colors disabled:opacity-50"
-        >
+      <div className="flex gap-5 mt-6">
+        <Button onClick={handlePreviousQuestion} disabled={currentQuestionIndex === 0}>
           Previous
-        </button> */}
-
-        {/* sus code */}
-        {/* <button
-          onClick={handleNextQuestion}
-          disabled={!selectedAnswers[currentQuestion]}
-          className="bg-primary text-white px-6 py-2 rounded hover:bg-primary-dark transition-colors disabled:opacity-50"
-        >
-          {currentQuestion === questions.length - 1 ? "Finish" : "Next"}
-        </button> */}
+        </Button>
+        {!submittedAnswers[currentQuestionIndex] ? (
+          <Button onClick={handleAnswerSubmit} disabled={!selectedAnswers[currentQuestionIndex]}>
+            Submit Answer
+          </Button>
+        ) : (
+          <Button onClick={currentQuestionIndex === questions.length - 1 ? handleFinishTest : handleNextQuestion}>
+            {currentQuestionIndex === questions.length - 1 ? "Finish" : "Next"}
+          </Button>
+        )}
       </div>
     </div>
   )
 }
 
-
 export default TakeTest
+

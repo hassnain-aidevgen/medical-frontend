@@ -38,6 +38,14 @@ interface TestResult {
 const PerformanceTracking = () => {
   const [performanceData, setPerformanceData] = useState<TestResult[]>([])
   const [loading, setLoading] = useState(true)
+  const [statsData, setStatsData] = useState({
+    totalTestsTaken: 0,
+    totalQuestionsAttempted: 0,
+    totalQuestionsCorrect: 0,
+    totalQuestionsWrong: 0,
+    avgTimePerTest: 0,
+    subjectEfficiency: [] as { subject: string; subsection: string; accuracy: number }[],
+  })
 
   useEffect(() => {
     const fetchPerformanceData = async () => {
@@ -49,11 +57,15 @@ const PerformanceTracking = () => {
       }
 
       try {
-        const response = await axios.get<TestResult[]>("https://medical-backend-loj4.onrender.com/api/test/performance", {
-          params: { userId },
-        })
+        const [statsResponse, performanceResponse] = await Promise.all([
+          axios.get(`https://medical-backend-loj4.onrender.com/api/test/user/${userId}/stats`),
+          axios.get<TestResult[]>("https://medical-backend-loj4.onrender.com/api/test/performance", {
+            params: { userId },
+          }),
+        ])
 
-        setPerformanceData(response.data)
+        setStatsData(statsResponse.data)
+        setPerformanceData(performanceResponse.data)
         setLoading(false)
       } catch (err) {
         console.error("Error fetching data:", err)
@@ -78,18 +90,18 @@ const PerformanceTracking = () => {
     ],
   }
 
-  const studyHoursData = {
-    labels: performanceData.length > 0 ? performanceData.map((_, index) => `Test ${index + 1}`) : ["No tests taken"],
-    datasets: [
-      {
-        label: "Study Hours",
-        data: performanceData.length > 0 ? performanceData.map((item) => item.totalTime / 60) : [0],
-        backgroundColor: "rgba(153, 102, 255, 0.6)",
-        borderColor: "rgba(153, 102, 255, 1)",
-        borderWidth: 1,
-      },
-    ],
-  }
+  // const studyHoursData = {
+  //   labels: performanceData.length > 0 ? performanceData.map((_, index) => `Test ${index + 1}`) : ["No tests taken"],
+  //   datasets: [
+  //     {
+  //       label: "Study Hours",
+  //       data: performanceData.length > 0 ? performanceData.map((item) => item.totalTime / 60) : [0],
+  //       backgroundColor: "rgba(153, 102, 255, 0.6)",
+  //       borderColor: "rgba(153, 102, 255, 1)",
+  //       borderWidth: 1,
+  //     },
+  //   ],
+  // }
 
   const progressData = {
     labels: performanceData.length > 0 ? performanceData.map((_, index) => `Test ${index + 1}`) : ["No tests taken"],
@@ -116,10 +128,10 @@ const PerformanceTracking = () => {
     },
   }
 
-  const averageAccuracy =
-    performanceData.length > 0
-      ? (performanceData.reduce((sum, item) => sum + item.percentage, 0) / performanceData.length).toFixed(2)
-      : "0.00"
+  // const averageAccuracy =
+  //   performanceData.length > 0
+  //     ? (performanceData.reduce((sum, item) => sum + item.percentage, 0) / performanceData.length).toFixed(2)
+  //     : "0.00"
 
   const totalStudyHours = performanceData.reduce((sum, item) => sum + item.totalTime, 0) / 60
 
@@ -138,8 +150,11 @@ const PerformanceTracking = () => {
         <div className="bg-white rounded-lg shadow-md p-6 flex items-center">
           <Target className="text-blue-500 mr-4" size={32} />
           <div>
-            <h3 className="text-lg font-semibold text-gray-700">Average Accuracy</h3>
-            <p className="text-2xl font-bold text-blue-600">{averageAccuracy}%</p>
+            <h3 className="text-lg font-semibold text-gray-700">Total Questions</h3>
+            <p className="text-2xl font-bold text-blue-600">{statsData.totalQuestionsAttempted}</p>
+            <p className="text-sm text-gray-500">
+              {statsData.totalQuestionsCorrect} correct / {statsData.totalQuestionsWrong} wrong
+            </p>
           </div>
         </div>
         <div className="bg-white rounded-lg shadow-md p-6 flex items-center">
@@ -160,28 +175,31 @@ const PerformanceTracking = () => {
           <Book className="text-yellow-500 mr-4" size={32} />
           <div>
             <h3 className="text-lg font-semibold text-gray-700">Tests Taken</h3>
-            <p className="text-2xl font-bold text-yellow-600">{performanceData.length}</p>
+            <p className="text-2xl font-bold text-yellow-600">{statsData.totalTestsTaken}</p>
+            <p className="text-sm text-gray-500">Avg. {statsData.avgTimePerTest.toFixed(1)} min/test</p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <div className="bg-white rounded-lg shadow-md p-6" style={{ height: "400px" }}>
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Accuracy Rate</h2>
-          <Bar data={chartData} options={chartOptions} />
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-6" style={{ height: "400px" }}>
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Study Hours</h2>
-          <Bar data={studyHoursData} options={chartOptions} />
+      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 className="text-xl font-semibold mb-4 text-gray-800">Subject Performance</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {statsData.subjectEfficiency.map((subject, index) => (
+            <div key={index} className="p-4 border rounded-lg">
+              <h3 className="font-semibold text-gray-800">{subject.subject}</h3>
+              <p className="text-gray-600">{subject.subsection}</p>
+              <div className="mt-2 flex items-center">
+                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                  <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${subject.accuracy}%` }} />
+                </div>
+                <span className="ml-2 text-sm font-medium text-gray-600">{subject.accuracy.toFixed(1)}%</span>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8" style={{ height: "400px" }}>
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">Overall Progress</h2>
-        <Line data={progressData} options={chartOptions} />
-      </div>
-
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-white rounded-lg shadow-md p-6 mb-10">
         <h2 className="text-xl font-semibold mb-4 text-gray-800">Recent Tests</h2>
         {performanceData.length === 0 ? (
           <Alert>
@@ -231,6 +249,22 @@ const PerformanceTracking = () => {
           </ScrollArea>
         )}
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="bg-white rounded-lg shadow-md p-6" style={{ height: "400px" }}>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">Accuracy Rate</h2>
+          <Bar data={chartData} options={chartOptions} />
+        </div>
+        {/* <div className="bg-white rounded-lg shadow-md p-6" style={{ height: "400px" }}>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">Study Hours</h2>
+          <Bar data={studyHoursData} options={chartOptions} />
+        </div> */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8" style={{ height: "400px" }}>
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">Overall Progress</h2>
+          <Line data={progressData} options={chartOptions} />
+        </div>
+      </div>
+
     </div>
   )
 }

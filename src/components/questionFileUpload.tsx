@@ -10,7 +10,7 @@ import type React from "react"
 import { useState } from "react"
 import { toast, Toaster } from "react-hot-toast"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api/test"
+const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test"
 
 interface UploadError {
     row: number

@@ -114,7 +114,7 @@ export default function CombinedQuestionForm() {
             }
         }
         fetchSubsections()
-    }, [questions[0].subject])
+    }, [questions])
 
     const validateField = (value: string, type: "question" | "option" | "explanation"): string | null => {
         if (!value.trim()) return "This field is required"
