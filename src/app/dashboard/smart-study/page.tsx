@@ -17,12 +17,18 @@ const SmartStudyCalendar = () => {
     testTopic: string
     date: string
     color: string
+    completed?: boolean
   }
 
   const [tests, setTests] = useState<Test[]>([])
-  const [newTest, setNewTest] = useState<Test>({ subjectName: "", testTopic: "", date: "", color: "#3B82F6" })
+  const [newTest, setNewTest] = useState<Test>({
+    subjectName: "",
+    testTopic: "",
+    date: "",
+    color: "#3B82F6",
+    completed: false,
+  })
   const [isLoading, setIsLoading] = useState(false)
-
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -51,12 +57,11 @@ const SmartStudyCalendar = () => {
       }
     }
 
-    console.log(userId);
+    console.log(userId)
     if (userId) {
       fetchTests()
     }
   }, [userId])
-
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate()
   const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay()
@@ -104,7 +109,7 @@ const SmartStudyCalendar = () => {
 
     setIsLoading(true)
     try {
-      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/calender", {
+      const response = await axios.post("http://localhost:5000/api/test/calender", {
         ...newTest,
         userId,
       })
@@ -176,8 +181,9 @@ const SmartStudyCalendar = () => {
       days.push(
         <div
           key={day}
-          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${isSelected ? "bg-blue-500 text-white" : ""
-            }`}
+          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${
+            isSelected ? "bg-blue-500 text-white" : ""
+          }`}
           onClick={() => setSelectedDate(date)}
         >
           {day}
@@ -200,6 +206,28 @@ const SmartStudyCalendar = () => {
   }
 
   const selectedDateTests = tests.filter((test) => new Date(test.date).toDateString() === selectedDate.toDateString())
+
+  const handleToggleCompletion = async (id: string, completed: boolean) => {
+    if (!userId) {
+      toast.error("User ID not found. Please log in.")
+      return
+    }
+    setIsLoading(true)
+    try {
+      const response = await axios.patch(`http://localhost:5000/api/test/calender/completion/${id}`, { completed })
+      if (response.data && response.data._id) {
+        setTests(tests.map((test) => (test._id === id ? { ...test, completed: response.data.completed } : test)))
+        toast.success(`Test marked as ${completed ? "completed" : "incomplete"}`)
+      } else {
+        throw new Error("Invalid response from server")
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error("Failed to update test status. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <div className="container mx-auto p-4">
@@ -319,33 +347,121 @@ const SmartStudyCalendar = () => {
             {isLoading ? (
               <p>Loading tests...</p>
             ) : tests.length > 0 ? (
-              <ul className="space-y-2">
-                {tests.map((test) => (
-                  <li key={test._id} className="flex justify-between items-center">
-                    <div className="flex items-center">
-                      <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: test.color }}></div>
-                      <div>
-                        <strong>{test.subjectName}</strong>: {test.testTopic}
-                        <br />
-                        <small>{new Date(test.date).toLocaleDateString()}</small>
+              <div className="max-h-60 overflow-y-auto">
+                <ul className="space-y-2">
+                  {tests.map((test) => (
+                    <li key={test._id} className="flex justify-between items-center">
+                      <div className="flex items-center">
+                        <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: test.color }}></div>
+                        <div>
+                          <strong>{test.subjectName}</strong>: {test.testTopic}
+                          <br />
+                          <small>{new Date(test.date).toLocaleDateString()}</small>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center">
-                      <button
-                        onClick={() => test._id && handleDeleteTest(test._id)}
-                        className="text-red-500 hover:text-red-700"
-                        disabled={isLoading}
-                      >
-                        <Trash2 size={20} />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                      <div className="flex items-center">
+                        <button
+                          onClick={() => test._id && handleDeleteTest(test._id)}
+                          className="text-red-500 hover:text-red-700"
+                          disabled={isLoading}
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : (
               <p>No upcoming tests.</p>
             )}
           </div>
+        </div>
+        <div className="col-span-3 bg-white rounded-lg shadow-md p-6 mt-6">
+          <h2 className="text-xl font-semibold mb-4">Test Completion Status</h2>
+          {isLoading ? (
+            <p>Loading tests...</p>
+          ) : tests.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Subject
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Topic
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Due Date
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Status
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {tests.map((test) => {
+                    const dueDate = new Date(test.date)
+                    const isPastDue = dueDate < new Date(new Date().setHours(0, 0, 0, 0))
+                    const status = test.completed ? "Completed" : isPastDue ? "Incomplete (Past Due)" : "Pending"
+                    const statusColor = test.completed
+                      ? "text-green-600"
+                      : isPastDue
+                        ? "text-red-600"
+                        : "text-yellow-600"
+
+                    return (
+                      <tr key={test._id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: test.color }}></div>
+                            <div className="text-sm font-medium text-gray-900">{test.subjectName}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{test.testTopic}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(test.date).toLocaleDateString()}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${statusColor}`}>{status}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          {!isPastDue && (
+                            <button
+                              onClick={() => test._id && handleToggleCompletion(test._id, !test.completed)}
+                              className={`${test.completed ? "bg-gray-500" : "bg-green-500"} text-white py-1 px-3 rounded hover:opacity-90 transition-colors`}
+                              disabled={isLoading}
+                            >
+                              {test.completed ? "Mark Incomplete" : "Complete"}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p>No tests available.</p>
+          )}
         </div>
       </div>
     </div>

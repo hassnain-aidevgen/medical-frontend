@@ -15,6 +15,7 @@ const sidebarItems = [
   { name: "Custom Weekly Goals", href: "/dashboard/custom-weekly-goals", icon: Settings },
   // { name: "Digital Error Notebook", href: "/dashboard/digital-error-notebook", icon: Users },
   { name: "Pomodoro Timer", href: "/dashboard/pomodoro-timer", icon: Clock },
+  { name: "Payments", icon: BookOpen, href: "/dashboard/payments", color: "bg-blue-500" },
 ]
 
 interface SidebarProps {
