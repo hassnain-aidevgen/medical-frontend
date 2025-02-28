@@ -19,7 +19,7 @@ import { Edit2, Plus, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { toast, Toaster } from "react-hot-toast"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api/test"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/test"
 
 type Subject = {
     _id: string
@@ -52,7 +52,7 @@ export default function ManagePage() {
                 axios.get(`${API_BASE_URL}/subject`),
                 axios.get(`${API_BASE_URL}/subsection`),
             ])
-            setSubjects(subjectsRes.data)
+            setSubjects(subjectsRes.data.reverse())
             setSubsections(subsectionsRes.data)
             setLoading(false)
         } catch (error) {
@@ -112,17 +112,17 @@ export default function ManagePage() {
 
     const deleteSubject = async (id: string) => {
         if (!confirm("Are you sure? This will delete all associated subsections and questions.")) return
-
+        const toastId = toast.loading("Deleteting Subjects")
         try {
             await axios.delete(`${API_BASE_URL}/subject/${id}`)
             setSubjects((prev) => prev.filter((subject) => subject._id !== id))
             setSubsections((prev) => prev.filter((subsection) => subsection.subject !== id))
-            toast.success("Subject deleted successfully")
+            toast.success("Subject deleted successfully", { id: toastId })
         } catch (error) {
             if (axios.isAxiosError(error)) {
-                toast.error(`Failed to delete subject: ${error.response?.data?.message || error.message}`)
+                toast.error(`Failed to delete subject: ${error.response?.data?.message || error.message}`, { id: toastId })
             } else {
-                toast.error(`Failed to delete subject ${(error as Error).message}`)
+                toast.error(`Failed to delete subject ${(error as Error).message}`, { id: toastId })
             }
         }
     }

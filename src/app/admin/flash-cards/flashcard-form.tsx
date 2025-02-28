@@ -16,24 +16,29 @@ interface FlashCard {
     question: string
     answer: string
     hint: string
+    category: string
 }
 
 const MAX_FLASHCARDS = 5
-const BASE_API_URL = "https://medical-backend-loj4.onrender.com/api/test"
-// 
-// "use client"
-
-
+const BASE_API_URL = "http://localhost:5000/api/test"
 
 export default function FlashcardForm() {
-    const [flashcards, setFlashcards] = useState<FlashCard[]>([{ question: "", answer: "", hint: "" }])
+    const [flashcards, setFlashcards] = useState<FlashCard[]>([
+        {
+            question: "",
+            answer: "",
+            hint: "",
+            category: "",
+        },
+    ])
     const [attemptedSubmit, setAttemptedSubmit] = useState(false)
+    const [isLoading, setIsLoading] = useState<boolean>(false)
 
     const addFlashcard = () => {
         if (flashcards.length < MAX_FLASHCARDS) {
-            setFlashcards([...flashcards, { question: "", answer: "", hint: "" }])
+            setFlashcards([...flashcards, { question: "", answer: "", hint: "", category: "" }])
         } else {
-            toast.error("You can only create up to ${MAX_FLASHCARDS} flashcards.")
+            toast.error(`You can only create up to ${MAX_FLASHCARDS} flashcards.`)
         }
     }
 
@@ -50,18 +55,15 @@ export default function FlashcardForm() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        setIsLoading(true)
         setAttemptedSubmit(true)
+        const toasId = toast.loading("Adding Flashcard(s)...")
 
         // Validate all flashcards
-        const isValid = flashcards.every((card) => card.question && card.answer && card.hint)
+        const isValid = flashcards.every((card) => card.question && card.answer && card.hint && card.category)
 
         if (!isValid) {
             toast.error("Please fill in all fields for each flashcard")
-            // toast({
-            //     title: "Validation Error",
-            //     description: "",
-            //     variant: "destructive",
-            // })
             return
         }
 
@@ -71,22 +73,26 @@ export default function FlashcardForm() {
                     "Content-Type": "application/json",
                 },
             })
-            if (data.status = 201) {
-                toast.success("Flashcards saved successfully")
+            console.log(data);
+            if (data.status === 201) {
+                toast.success("Flashcards saved successfully", { id: toasId })
             }
 
             // Reset form after successful submission
-            setFlashcards([{ question: "", answer: "", hint: "" }])
+            setFlashcards([{ question: "", answer: "", hint: "", category: "" }])
             setAttemptedSubmit(false)
         } catch (error) {
             if (axios.isAxiosError(error)) {
-                toast.error(`Failed to save flashcards: ${error.response?.data?.message || error.message}`)
+                toast.error(`Failed to save flashcards: ${error.response?.data?.message || error.message}`, { id: toasId })
+                setIsLoading(false)
             } else {
-                toast.error(`Failed to save flashcards: ${(error as Error).message}`)
+                toast.error(`Failed to save flashcards: ${(error as Error).message}`, { id: toasId })
+                setIsLoading(false)
             }
         } finally {
             setTimeout(() => {
-                toast.dismiss()
+                toast.dismiss(toasId)
+                setIsLoading(false)
             }, 2500)
         }
     }
@@ -111,9 +117,7 @@ export default function FlashcardForm() {
                                 value={flashcard.question}
                                 onChange={(e) => updateFlashcard(index, "question", e.target.value)}
                                 placeholder="Enter the question"
-                                className={
-                                    attemptedSubmit && !flashcard.question ? "border-red-500 focus-visible:ring-red-500" : ""
-                                }
+                                className={attemptedSubmit && !flashcard.question ? "border-red-500 focus-visible:ring-red-500" : ""}
                             />
                             {attemptedSubmit && !flashcard.question && (
                                 <span className="text-xs text-red-500">Question is required</span>
@@ -129,10 +133,9 @@ export default function FlashcardForm() {
                                 placeholder="Enter the answer"
                                 className={attemptedSubmit && !flashcard.answer ? "border-red-500 focus-visible:ring-red-500" : ""}
                             />
-                            {attemptedSubmit && !flashcard.answer && (
-                                <span className="text-xs text-red-500">Answer is required</span>
-                            )}
+                            {attemptedSubmit && !flashcard.answer && <span className="text-xs text-red-500">Answer is required</span>}
                         </div>
+
                         <div className="space-y-2">
                             <Label htmlFor={`hint-${index}`}>Hint</Label>
                             <Textarea
@@ -143,6 +146,20 @@ export default function FlashcardForm() {
                                 className={attemptedSubmit && !flashcard.hint ? "border-red-500 focus-visible:ring-red-500" : ""}
                             />
                             {attemptedSubmit && !flashcard.hint && <span className="text-xs text-red-500">Hint is required</span>}
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor={`category-${index}`}>Category</Label>
+                            <Input
+                                id={`category-${index}`}
+                                value={flashcard.category}
+                                onChange={(e) => updateFlashcard(index, "category", e.target.value)}
+                                placeholder="Enter a category (e.g., Anatomy, Physiology)"
+                                className={attemptedSubmit && !flashcard.category ? "border-red-500 focus-visible:ring-red-500" : ""}
+                            />
+                            {attemptedSubmit && !flashcard.category && (
+                                <span className="text-xs text-red-500">Category is required</span>
+                            )}
                         </div>
                     </div>
                 ))}
@@ -156,7 +173,7 @@ export default function FlashcardForm() {
                     >
                         <Plus className="h-4 w-4" /> Add Flashcard
                     </Button>
-                    <Button type="submit" className="flex items-center gap-2">
+                    <Button type="submit" className="flex items-center gap-2" disabled={isLoading}>
                         <Save className="h-4 w-4" /> Save All
                     </Button>
                 </div>

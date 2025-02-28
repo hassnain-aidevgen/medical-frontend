@@ -109,7 +109,7 @@ const SmartStudyCalendar = () => {
 
     setIsLoading(true)
     try {
-      const response = await axios.post("http://localhost:5000/api/test/calender", {
+      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/calender", {
         ...newTest,
         userId,
       })
@@ -181,9 +181,8 @@ const SmartStudyCalendar = () => {
       days.push(
         <div
           key={day}
-          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${
-            isSelected ? "bg-blue-500 text-white" : ""
-          }`}
+          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${isSelected ? "bg-blue-500 text-white" : ""
+            }`}
           onClick={() => setSelectedDate(date)}
         >
           {day}
@@ -214,7 +213,7 @@ const SmartStudyCalendar = () => {
     }
     setIsLoading(true)
     try {
-      const response = await axios.patch(`http://localhost:5000/api/test/calender/completion/${id}`, { completed })
+      const response = await axios.patch(`https://medical-backend-loj4.onrender.com/api/test/calender/completion/${id}`, { completed })
       if (response.data && response.data._id) {
         setTests(tests.map((test) => (test._id === id ? { ...test, completed: response.data.completed } : test)))
         toast.success(`Test marked as ${completed ? "completed" : "incomplete"}`)

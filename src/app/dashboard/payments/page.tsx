@@ -4,7 +4,7 @@ import { loadStripe } from "@stripe/stripe-js";
 const stripePromise = loadStripe("pk_test_51Qwr2dQ4u3lPIMsd6lCnTgHH9TBOVoHWlc0uuEbkkd3NP8kip5tIJvLdVmMEBxzz1CloLU2XrKaZPseerPmeJCh3007oito4hM"); // Replace with your actual Stripe public key
 
 const handlePayment = async (amount: number) => {
-    const res = await fetch("http://localhost:5000/api/test/checkout", {
+    const res = await fetch("https://medical-backend-loj4.onrender.com/api/test/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount }),
