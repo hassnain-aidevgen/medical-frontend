@@ -28,7 +28,7 @@ interface EditFlashcardForm {
   category: string
 }
 
-const BASE_API_URL = "http://localhost:5000/api/test"
+const BASE_API_URL = "https://medical-backend-loj4.onrender.com/api/test"
 
 export default function FlashcardRecord() {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([])
