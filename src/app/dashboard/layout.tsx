@@ -41,6 +41,7 @@ export default function RootLayout({
         console.log(`Access granted: ${response.data.message}`);
         console.log("User logged in with id:  ", response.data.userId)
         localStorage.setItem("Medical_User_Id", response.data.userId);
+        localStorage.setItem("Medical_User_Email", response.data.email);
       } catch (err: unknown) {
         if (axios.isAxiosError(err)) {
           // alert("Access denied. Please log in again.");

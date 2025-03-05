@@ -124,14 +124,17 @@ export default function FlashcardsPage() {
   const fetchFlashcards = useCallback(async (selectedCategory: string) => {
     try {
       const response = await fetch(
-        `https://medical-backend-loj4.onrender.com/api/test/flashcards?numFlashcards=10&category=${selectedCategory}`
+        `https://medical-backend-loj4.onrender.com/api/test/flashcards?numFlashcards=10&category=${selectedCategory}`,
       )
       if (response.ok) {
         const data = await response.json()
-        console.log("Fetched flashcards:", data); // Log the fetched data
-        console.log("Selected Category:", selectedCategory);
-console.log("Categories in API Response:", data.map((card: Flashcard) => card.category));
-console.log("First Flashcard Object:", data[0]);
+        console.log("Fetched flashcards:", data) // Log the fetched data
+        console.log("Selected Category:", selectedCategory)
+        console.log(
+          "Categories in API Response:",
+          data.map((card: Flashcard) => card.category),
+        )
+        console.log("First Flashcard Object:", data[0])
         setFlashcards(data)
         //  Filter is not working
         // setFlashcards(data.filter((card: Flashcard) => card.category.toLowerCase() === selectedCategory.toLowerCase()))
@@ -310,8 +313,8 @@ console.log("First Flashcard Object:", data[0]);
         </div>
 
         {/* Category and Controls */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+          <div className="flex items-center space-x-4 w-full md:w-auto">
             <Button variant="ghost" onClick={() => prevCard()}>
               <ChevronLeft className="h-5 w-5" />
             </Button>
@@ -329,7 +332,7 @@ console.log("First Flashcard Object:", data[0]);
               <ChevronRight className="h-5 w-5" />
             </Button>
           </div>
-          <div className="flex space-x-4">
+          <div className="flex space-x-4 w-full md:w-auto justify-center md:justify-start">
             <Button variant="outline" onClick={shuffleCards}>
               <Shuffle className="h-4 w-4 mr-2" />
               Shuffle Cards
@@ -403,3 +406,4 @@ console.log("First Flashcard Object:", data[0]);
     </div>
   )
 }
+
