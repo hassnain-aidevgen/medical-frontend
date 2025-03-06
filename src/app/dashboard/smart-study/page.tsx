@@ -6,6 +6,9 @@ import axios from "axios"
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
+// import WeeklyStreak from "../components/weekly-streak"
+// import WeeklyStreak from "@/components/weekly-streak"
+import WeeklyStreak from "@/components/weekly-streak"
 
 const SmartStudyCalendar = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -214,6 +217,9 @@ const SmartStudyCalendar = () => {
     <div className="container mx-auto p-4">
       <Toaster position="top-right" />
       <h1 className="text-3xl font-bold mb-6">Smart Study Calendar</h1>
+
+      {/* Weekly Streak Component */}
+      <WeeklyStreak />
 
       {/* New Test Form */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
