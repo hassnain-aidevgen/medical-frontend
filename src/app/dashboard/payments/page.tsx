@@ -2,10 +2,10 @@
 
 import { CardFooter } from "@/components/ui/card"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import axios from "axios"
 import { Check, CreditCard, Loader2, TriangleAlert, Wallet } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
 
 import {
@@ -17,11 +17,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const plans = [
   {
@@ -64,7 +64,7 @@ const ManageSubscriptionButton = () => {
   const [subscriptionStatus, setSubscriptionStatus] = useState("")
   const [generatedVideos, setGeneratedVideos] = useState(0)
   const [planLimit, setPlanLimit] = useState(0)
-  const [userEmail, setUserEmail] = useState("")
+  // const [userEmail, setUserEmail] = useState("")
   const [currentPlan, setCurrentPlan] = useState("")
   const [currentPlanName, setCurrentPlanName] = useState("")
   const [subscriptionId, setSubscriptionId] = useState("")
@@ -82,7 +82,7 @@ const ManageSubscriptionButton = () => {
 
         if (user_id) {
           // Call the check-customer API to get subscription status and plan
-          const checkResponse = await axios.post("http://localhost:5000/api/payment/check-customer", {
+          const checkResponse = await axios.post("https://medical-backend-loj4.onrender.com/api/payment/check-customer", {
             user_id: user_id,
           })
 
@@ -124,16 +124,16 @@ const ManageSubscriptionButton = () => {
     try {
       // If customer exists and subscription status is active, redirect to customer portal
       if (subscriptionStatus === "active") {
-        const portalResponse = await axios.post("http://localhost:5000/api/payment/create-portal-session", {
+        const portalResponse = await axios.post("https://medical-backend-loj4.onrender.com/api/payment/create-portal-session", {
           user_id: userId,
           subscription_id: subscriptionId,
         })
         window.location.href = portalResponse.data.url
       } else {
         // If subscription is inactive or canceled, redirect to checkout for a new plan
-        const checkoutResponse = await axios.post("http://localhost:5000/api/payment/create-checkout-session", {
+        const checkoutResponse = await axios.post("https://medical-backend-loj4.onrender.com/api/payment/create-checkout-session", {
           user_id: userId,
-          email: userEmail,
+          // email: userEmail,
           selected_plan: planKey,
           subscription_id: subscriptionId || "",
         })
@@ -258,9 +258,8 @@ const ManageSubscriptionButton = () => {
                     {plans.map((plan, index) => (
                       <Card
                         key={index}
-                        className={`flex flex-col h-full transition-all duration-200 hover:shadow-md ${
-                          plan.plan_id === currentPlan ? "border-primary shadow-sm" : ""
-                        }`}
+                        className={`flex flex-col h-full transition-all duration-200 hover:shadow-md ${plan.plan_id === currentPlan ? "border-primary shadow-sm" : ""
+                          }`}
                       >
                         <CardHeader className="pb-4">
                           <CardTitle className="text-xl font-bold flex items-center justify-between">
@@ -308,9 +307,8 @@ const ManageSubscriptionButton = () => {
                     {plans.map((plan, index) => (
                       <Card
                         key={index}
-                        className={`flex flex-col h-full transition-all duration-200 hover:shadow-md ${
-                          plan.plan_id === currentPlan ? "border-primary shadow-sm" : ""
-                        }`}
+                        className={`flex flex-col h-full transition-all duration-200 hover:shadow-md ${plan.plan_id === currentPlan ? "border-primary shadow-sm" : ""
+                          }`}
                       >
                         <CardHeader className="pb-4">
                           <CardTitle className="text-xl font-bold flex items-center justify-between">

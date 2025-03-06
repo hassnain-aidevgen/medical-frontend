@@ -23,6 +23,9 @@ interface UserStats {
   nearbyPlayers: LeaderboardEntry[]
 }
 
+// Base API URL to ensure all calls go to the same address
+const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test"
+
 export default function GamifiedLeaderboard() {
   const [leaderboardData, setLeaderboardData] = useState<{
     weekly: LeaderboardEntry[]
@@ -69,9 +72,7 @@ export default function GamifiedLeaderboard() {
         }
 
         // Fetch leaderboard data
-        const leaderboardRes = await fetch(
-          `https://medical-backend-loj4.onrender.com/api/test/leaderboard?timeFrame=${timeFrame}`,
-        )
+        const leaderboardRes = await fetch(`${API_BASE_URL}/leaderboard?timeFrame=${timeFrame}`)
 
         if (!leaderboardRes.ok) {
           throw new Error(`Failed to fetch leaderboard data: ${leaderboardRes.status}`)
@@ -88,9 +89,7 @@ export default function GamifiedLeaderboard() {
 
         // Fetch user stats if user is logged in
         if (userId) {
-          const userStatsRes = await fetch(
-            `https://medical-backend-loj4.onrender.com/api/test/leaderboard/player/${userId}?timeFrame=${timeFrame}`,
-          )
+          const userStatsRes = await fetch(`${API_BASE_URL}/leaderboard/player/${userId}?timeFrame=${timeFrame}`)
 
           if (userStatsRes.ok) {
             const userStatsData = await userStatsRes.json()
@@ -125,7 +124,7 @@ export default function GamifiedLeaderboard() {
 
   // Load data for the active tab when it changes
   useEffect(() => {
-    if (initialLoadComplete && activeTab !== "all-time") {
+    if (initialLoadComplete) {
       fetchLeaderboardData(activeTab)
     }
   }, [activeTab, fetchLeaderboardData, initialLoadComplete])
@@ -378,7 +377,7 @@ export default function GamifiedLeaderboard() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
             <h2 className="text-2xl font-bold">Contenders</h2>
-            <p className="text-sm text-muted-foreground">See whos leading the pack</p>
+            <p className="text-sm text-muted-foreground">See who s leading the pack</p>
           </div>
         </div>
 

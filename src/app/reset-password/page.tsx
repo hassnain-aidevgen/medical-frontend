@@ -3,9 +3,9 @@
 import type React from "react"
 
 import axios from "axios"
+import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Suspense, useState } from "react"
-import Link from "next/link"
 
 const ResetPasswordPage = () => {
   return (

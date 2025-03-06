@@ -187,9 +187,8 @@ const SmartStudyCalendar = () => {
       days.push(
         <div
           key={day}
-          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${
-            isSelected ? "bg-blue-500 text-white" : ""
-          }`}
+          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${isSelected ? "bg-blue-500 text-white" : ""
+            }`}
           onClick={() => setSelectedDate(date)}
         >
           {day}

@@ -4,15 +4,27 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import axios from "axios"
 import { motion } from "framer-motion"
+import html2canvas from "html2canvas"
+import { jsPDF } from "jspdf"
 import {
   Activity,
   AlertTriangle,
@@ -23,16 +35,21 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  Copy,
   Download,
+  Facebook,
   Info,
+  Mail,
   MoreHorizontal,
   Share2,
   Target,
   TrendingUp,
+  Twitter,
   XCircle,
-  Zap,
+  Zap
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { toast, Toaster } from "react-hot-toast"
 import {
   Bar,
   BarChart,
@@ -76,6 +93,7 @@ interface StatsData {
   totalQuestionsCorrect: number
   totalQuestionsWrong: number
   avgTimePerTest: number
+  totalStudyHours: number
   subjectEfficiency: { subject: string; subsection: string; accuracy: number }[]
 }
 
@@ -329,8 +347,17 @@ export default function AnalyticsDashboard() {
     comparative: null,
     topicMastery: null,
   })
+
   const [chartType, setChartType] = useState("bar")
   const [selectedSystem, setSelectedSystem] = useState("all")
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const [shareUrl, setShareUrl] = useState("")
+  const [shareEmail, setShareEmail] = useState("")
+  const [shareNote, setShareNote] = useState("")
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
+
+  const dashboardRef = useRef<HTMLDivElement>(null)
+
 
   console.warn(error);
   useEffect(() => {
@@ -388,6 +415,7 @@ export default function AnalyticsDashboard() {
         } finally {
           setLoading((prev) => ({ ...prev, topicMastery: false }))
         }
+        setShareUrl("")
       } catch (err) {
         console.error("Error fetching data:", err)
         setError((prev) => ({
@@ -406,6 +434,236 @@ export default function AnalyticsDashboard() {
 
     fetchData()
   }, [])
+
+
+  const generatePDF = async () => {
+    if (!dashboardRef.current) return
+
+    setIsGeneratingPDF(true)
+    const toastId = toast.loading("Please wait while we prepare your report...")
+    // toast({
+    //   title: "Generating PDF",
+    //   description: "Please wait while we prepare your report...",
+    // })
+
+    try {
+      // Create a new jsPDF instance
+      const pdf = new jsPDF("p", "mm", "a4")
+      const pageWidth = pdf.internal.pageSize.getWidth()
+
+      // Add title
+      pdf.setFontSize(20)
+      pdf.setTextColor(44, 62, 80)
+      pdf.text("Analytics Dashboard Report", pageWidth / 2, 20, { align: "center" })
+
+      // Add date
+      pdf.setFontSize(12)
+      pdf.setTextColor(100, 100, 100)
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, 30, { align: "center" })
+
+      // Add user info
+      pdf.setFontSize(14)
+      pdf.setTextColor(44, 62, 80)
+      pdf.text("User Performance Summary", 20, 45)
+
+      // Add stats
+      pdf.setFontSize(12)
+      pdf.setTextColor(80, 80, 80)
+      pdf.text(`Total Tests Taken: ${statsData?.totalTestsTaken || 0}`, 20, 55)
+      pdf.text(`Total Questions: ${statsData?.totalQuestionsAttempted || 0}`, 20, 62)
+      pdf.text(`Correct Answers: ${statsData?.totalQuestionsCorrect || 0}`, 20, 69)
+      pdf.text(`Total Study Hours: ${statsData?.totalStudyHours?.toFixed(1) || 0}`, 20, 76)
+
+      // Add performance data
+      if (performanceData.length > 0) {
+        pdf.setFontSize(14)
+        pdf.setTextColor(44, 62, 80)
+        pdf.text("Recent Performance", 20, 90)
+
+        pdf.setFontSize(12)
+        pdf.setTextColor(80, 80, 80)
+
+        let yPos = 100
+        performanceData.slice(0, 5).forEach((test, index) => {
+          pdf.text(`Test ${index + 1}: ${test.percentage}% (${test.score}/${test.questions.length})`, 20, yPos)
+          pdf.text(`Date: ${formatDate(test.createdAt)}`, 120, yPos)
+          yPos += 7
+        })
+      }
+
+      // Add mastery data
+      if (topicMasteryData) {
+        pdf.setFontSize(14)
+        pdf.setTextColor(44, 62, 80)
+        pdf.text("Topic Mastery", 20, 140)
+
+        pdf.setFontSize(12)
+        pdf.setTextColor(80, 80, 80)
+
+        let yPos = 150
+        topicMasteryData.strongestTopics.slice(0, 3).forEach((topic, index) => {
+          pdf.text(`Strongest Topic ${index + 1}: ${topic.name} (${topic.masteryScore}%)`, 20, yPos)
+          yPos += 7
+        })
+
+        yPos += 5
+        topicMasteryData.weakestTopics.slice(0, 3).forEach((topic, index) => {
+          pdf.text(`Weakest Topic ${index + 1}: ${topic.name} (${topic.masteryScore}%)`, 20, yPos)
+          yPos += 7
+        })
+      }
+
+      // Add recommendations
+      if (topicMasteryData?.recommendations) {
+        pdf.addPage()
+
+        pdf.setFontSize(16)
+        pdf.setTextColor(44, 62, 80)
+        pdf.text("Study Recommendations", pageWidth / 2, 20, { align: "center" })
+
+        pdf.setFontSize(12)
+        pdf.setTextColor(80, 80, 80)
+
+        let yPos = 40
+        topicMasteryData.recommendations.slice(0, 5).forEach((rec, index) => {
+          pdf.text(`${index + 1}. ${rec.topic} (${rec.masteryLevel})`, 20, yPos)
+
+          // Split recommendation text to fit page width
+          const recText = rec.recommendation
+          const textWidth = pageWidth - 40 // 20mm margins on each side
+          const splitText = pdf.splitTextToSize(recText, textWidth)
+
+          pdf.text(splitText, 25, yPos + 7)
+          yPos += 20
+        })
+      }
+
+      // Add charts
+      try {
+        // Capture charts as images
+        if (dashboardRef.current) {
+          const chartElements = dashboardRef.current.querySelectorAll(".recharts-wrapper")
+
+          if (chartElements.length > 0) {
+            pdf.addPage()
+            pdf.setFontSize(16)
+            pdf.setTextColor(44, 62, 80)
+            pdf.text("Performance Charts", pageWidth / 2, 20, { align: "center" })
+
+            let yPos = 40
+
+            // Only process up to 2 charts to keep PDF size reasonable
+            for (let i = 0; i < Math.min(chartElements.length, 2); i++) {
+              const chart = chartElements[i]
+              const canvas = await html2canvas(chart as HTMLElement)
+              const imgData = canvas.toDataURL("image/png")
+
+              // Calculate dimensions to fit on page
+              const imgWidth = Math.min(pageWidth - 40, 160)
+              const ratio = canvas.height / canvas.width
+              const imgHeight = imgWidth * ratio
+
+              if (yPos + imgHeight > 270) {
+                // Check if we need a new page
+                pdf.addPage()
+                yPos = 20
+              }
+
+              pdf.addImage(imgData, "PNG", 20, yPos, imgWidth, imgHeight)
+              yPos += imgHeight + 20
+            }
+          }
+        }
+      } catch (chartErr) {
+        console.error("Error capturing charts:", chartErr)
+      }
+
+      // Add footer
+      const totalPages = pdf.getNumberOfPages()
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i)
+        pdf.setFontSize(10)
+        pdf.setTextColor(150, 150, 150)
+        pdf.text(`Page ${i} of ${totalPages}`, pageWidth / 2, 285, { align: "center" })
+        pdf.text("Medical Study Analytics Dashboard", 20, 285)
+      }
+
+      // Save the PDF
+      pdf.save(`medical-analytics-report-${new Date().toISOString().slice(0, 10)}.pdf`)
+
+      toast.success("Your analytics report has been downloaded.", { id: toastId })
+      // toast({
+      //   title: "PDF Generated Successfully",
+      //   description: "Your analytics report has been downloaded.",
+      //   variant: "default",
+      // })
+    } catch (err) {
+      console.error("Error generating PDF:", err)
+      toast.error("There was a problem creating your report. Please try again.")
+      // toast({
+      //   title: "Error Generating PDF",
+      //   description: "There was a problem creating your report. Please try again.",
+      //   variant: "destructive",
+      // })
+    } finally {
+      setIsGeneratingPDF(false)
+    }
+  }
+
+  // Function to handle sharing the report
+  const handleShareReport = async (method: "email" | "copy" | "social") => {
+    try {
+      switch (method) {
+        case "email":
+          if (!shareEmail) {
+            toast.error("Please enter an email address to share the report.")
+            // toast({
+            //   title: "Email Required",
+            //   description: "Please enter an email address to share the report.",
+            //   variant: "destructive",
+            // })
+            return
+          }
+
+          // In a real app, you would send this to your backend
+          // For demo purposes, we'll just show a success message
+          toast.success("Report has been shared with ${shareEmail}")
+          // toast({
+          //   title: "Report Shared",
+          //   description: `Report has been shared with ${shareEmail}`,
+          // })
+          setShareEmail("")
+          setShareNote("")
+          setIsShareDialogOpen(false)
+          break
+
+        case "copy":
+          await navigator.clipboard.writeText(shareUrl)
+          toast.success("Report link has been copied to clipboard")
+          // toast({
+          //   title: "Link Copied",
+          //   description: "Report link has been copied to clipboard",
+          // })
+          break
+
+        case "social":
+          // This would open a social sharing dialog in a real app
+          window.open(
+            `https://twitter.com/intent/tweet?text=Check out my medical study analytics report&url=${encodeURIComponent(shareUrl)}`,
+            "_blank",
+          )
+          break
+      }
+    } catch (err) {
+      console.error("Error sharing report:", err)
+      toast.error("There was a problem sharing your report. Please try again.")
+      // toast({
+      //   title: "Error Sharing Report",
+      //   description: "There was a problem sharing your report. Please try again.",
+      //   variant: "destructive",
+      // })
+    }
+  }
 
   // Prepare chart data
   const accuracyChartData = performanceData.map((test, index) => ({
@@ -493,7 +751,7 @@ export default function AnalyticsDashboard() {
             <p className="text-muted-foreground">Track your performance and identify areas for improvement</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon">
@@ -510,8 +768,27 @@ export default function AnalyticsDashboard() {
                   <span>Download PDF</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
+            </DropdownMenu> */}
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setIsShareDialogOpen(true)}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  <span>Share Report</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={generatePDF} disabled={isGeneratingPDF}>
+                  <Download className="mr-2 h-4 w-4" />
+                  <span>{isGeneratingPDF ? "Generating..." : "Download PDF"}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
             </DropdownMenu>
           </div>
+          {/* </div> */}
         </motion.div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
@@ -560,7 +837,7 @@ export default function AnalyticsDashboard() {
               <StatCard
                 icon={<Clock className="h-6 w-6 text-white" />}
                 title="Total Study Hours"
-                value={(performanceData.reduce((sum, item) => sum + item.totalTime, 0) / 3600).toFixed(1)}
+                value={(performanceData.reduce((sum, item) => sum + item.totalTime, 0) / 3600).toFixed(3)}
                 subtitle={`Avg ${statsData?.avgTimePerTest.toFixed(1) || 0} min/test`}
                 color="green"
               />
@@ -570,7 +847,7 @@ export default function AnalyticsDashboard() {
                 title="Progress Rate"
                 value={`${performanceData.length > 1
                   ? (performanceData[performanceData.length - 1].percentage - performanceData[0].percentage).toFixed(
-                    1,
+                    3,
                   )
                   : "0.0"
                   }%`}
@@ -1546,6 +1823,75 @@ export default function AnalyticsDashboard() {
             </div>
           </TabsContent>
         </Tabs>
+
+        <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Share Analytics Report</DialogTitle>
+              <DialogDescription>Share your performance report with colleagues or mentors</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="share-link" className="text-right text-sm font-medium col-span-1">
+                  Link
+                </label>
+                <div className="col-span-3 flex items-center gap-2">
+                  <Input id="share-link" value={shareUrl} readOnly className="col-span-3" />
+                  <Button size="icon" variant="outline" onClick={() => handleShareReport("copy")}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="email" className="text-right text-sm font-medium col-span-1">
+                  Email
+                </label>
+                <Input
+                  id="email"
+                  placeholder="colleague@example.com"
+                  value={shareEmail}
+                  onChange={(e) => setShareEmail(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="note" className="text-right text-sm font-medium col-span-1">
+                  Note
+                </label>
+                <Textarea
+                  id="note"
+                  placeholder="Add a personal note..."
+                  value={shareNote}
+                  onChange={(e) => setShareNote(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="flex justify-center gap-2 mt-2">
+                <Button variant="outline" size="sm" onClick={() => handleShareReport("social")}>
+                  <Twitter className="h-4 w-4 mr-2" />
+                  Twitter
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleShareReport("social")}>
+                  <Facebook className="h-4 w-4 mr-2" />
+                  Facebook
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleShareReport("social")}>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Email
+                </Button>
+              </div>
+            </div>
+            <DialogFooter className="sm:justify-between">
+              <Button variant="ghost" onClick={() => setIsShareDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={() => handleShareReport("email")} type="submit">
+                Share Report
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Toaster position="top-right" />
       </div>
     </TooltipProvider>
   )

@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState, useCallback, useRef } from "react"
-import { useRouter } from "next/navigation"
 import axios from "axios"
 import { BarChart2, BookOpen, Clock, Crown, Dna, Pause, Play, Settings, Star, Users } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { PiRankingDuotone } from "react-icons/pi"
 
 import { Button } from "@/components/ui/button"
@@ -76,7 +76,7 @@ export default function DashboardPage() {
 
       setIsLoading(true)
       try {
-        const response = await axios.get(`http://localhost:5000/api/test/streak/${userId}`)
+        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/streak/${userId}`)
 
         if (response.data && typeof response.data.currentStreak === "number") {
           setCurrentStreak(response.data.currentStreak || 0)

@@ -51,6 +51,7 @@ const TakeTest = () => {
     const [showResults, setShowResults] = useState(false)
 
     const totalQuestions = Math.max(1, Number.parseInt(countParam, 10))
+    const [combinedQuestions, setCombinedQuestions] = useState<Question[]>([])
 
     const fetchQuestions = useCallback(async () => {
         setIsLoading(true)
@@ -64,6 +65,7 @@ const TakeTest = () => {
                 },
             })
             setQuestions(response.data)
+            setCombinedQuestions(response.data)
             setStartTime(Date.now())
             if (mode === "timer") {
                 setTimeLeft(totalQuestions * 60) // 60 seconds per question
@@ -80,13 +82,13 @@ const TakeTest = () => {
         fetchQuestions()
     }, [fetchQuestions])
 
-
     const handleAnswerSelect = (answer: string) => {
         setSelectedAnswers((prev) => ({
             ...prev,
             [currentQuestionIndex]: answer,
         }))
     }
+
     const handleFinishTest = useCallback(() => {
         const currentTime = Date.now()
         const timeSpent = startTime ? Math.round((currentTime - startTime) / 1000) : 0
@@ -113,7 +115,6 @@ const TakeTest = () => {
         }
     }, [currentQuestionIndex, selectedAnswers, startTime])
 
-
     const handleNextQuestion = () => {
         if (currentQuestionIndex < questions.length - 1) {
             setCurrentQuestionIndex((prev) => prev + 1)
@@ -129,9 +130,8 @@ const TakeTest = () => {
         }
     }
 
-
     const calculateScore = () => {
-        return questions.reduce((score, question, index) => {
+        return combinedQuestions.reduce((score, question, index) => {
             return score + (selectedAnswers[index] === question.answer ? 1 : 0)
         }, 0)
     }
@@ -153,7 +153,7 @@ const TakeTest = () => {
     if (showResults) {
         return (
             <TestSummary
-                questions={questions}
+                questions={combinedQuestions}
                 selectedAnswers={selectedAnswers}
                 questionTimes={questionTimes}
                 score={calculateScore()}
@@ -209,4 +209,3 @@ const TakeTest = () => {
 }
 
 export default TakeTest
-
