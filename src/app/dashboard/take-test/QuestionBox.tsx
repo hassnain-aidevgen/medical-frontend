@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import axios from "axios"
-import { AlertCircle, BarChart, Medal, MoveRight, ScrollText } from "lucide-react"
+import { AlertCircle, BarChart, Medal, MoveRight, ScrollText, Sparkles } from "lucide-react"
 import type React from "react"
 import { useEffect, useState } from "react"
 
@@ -46,12 +46,32 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
   const [analyticsError, setAnalyticsError] = useState<string | null>(null)
   const [isExplanationVisible, setIsExplanationVisible] = useState(false)
   const [showPopup, setShowPopup] = useState(false)
+  
+  // AI Explanation states
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null)
+  const [isLoadingAiExplanation, setIsLoadingAiExplanation] = useState(false)
+  const [aiExplanationError, setAiExplanationError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       if (showCorrectAnswer) {
         setIsLoadingAnalytics(true)
         setAnalyticsError(null)
+        
+        // Check if this is a recommended question (starts with 'rec-')
+        if (question._id.startsWith('rec-')) {
+          // Provide default analytics for recommended questions
+          setTimeout(() => {
+            setAnalytics({
+              totalAttempts: 1,
+              avgResponseTime: 30,
+              correctPercentage: 50
+            });
+            setIsLoadingAnalytics(false);
+          }, 500); // Small delay to simulate loading
+          return;
+        }
+        
         try {
           const response = await axios.get(
             `https://medical-backend-loj4.onrender.com/api/test/take-test/question-analytics/${question._id}`,
@@ -68,6 +88,38 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
 
     fetchAnalytics()
   }, [showCorrectAnswer, question._id])
+
+  // Fetch AI explanation when answer is shown
+  useEffect(() => {
+    const fetchAiExplanation = async () => {
+      if (showCorrectAnswer) {
+        setIsLoadingAiExplanation(true)
+        setAiExplanationError(null)
+        
+        try {
+          // Call your backend API that will use OpenAI
+          const response = await axios.post(
+            `http://localhost:5000/api/test/ai-explain`,
+            {
+              question: question.question,
+              options: question.options,
+              correctAnswer: question.answer,
+              userAnswer: selectedAnswer || "No answer provided"
+            }
+          )
+          
+          setAiExplanation(response.data.explanation)
+        } catch (error) {
+          console.error("Error fetching AI explanation:", error)
+          setAiExplanationError("Failed to load AI explanation")
+        } finally {
+          setIsLoadingAiExplanation(false)
+        }
+      }
+    }
+
+    fetchAiExplanation()
+  }, [showCorrectAnswer, question, selectedAnswer])
 
   useEffect(() => {
     if (showCorrectAnswer) {
@@ -218,6 +270,29 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* AI Explanation Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-purple-800">
+                  <Sparkles className="h-5 w-5" />
+                  <h4 className="font-semibold">AI Explanation</h4>
+                </div>
+                <div className="pl-4 border-l-2 border-purple-200">
+                  {isLoadingAiExplanation ? (
+                    <div className="text-slate-600 backdrop-blur-sm bg-white/20 p-4 rounded-lg">
+                      Loading AI explanation...
+                    </div>
+                  ) : aiExplanationError ? (
+                    <div className="text-red-500 backdrop-blur-sm bg-white/20 p-4 rounded-lg">
+                      {aiExplanationError}
+                    </div>
+                  ) : (
+                    <p className="text-slate-700 leading-relaxed whitespace-pre-line backdrop-blur-sm bg-white/20 p-4 rounded-lg">
+                      {aiExplanation || "No AI explanation available"}
+                    </p>
+                  )}
+                </div>
+              </div>
 
               <Card className="mt-6 bg-white/60 backdrop-blur-md border-white/40 shadow-xl">
                 <CardHeader>

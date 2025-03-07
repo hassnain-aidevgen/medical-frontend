@@ -41,6 +41,7 @@ interface Recommendation {
   questionText: string
   correctAnswer: string
   topic: string
+  _id?: string  // Adding _id for API integration
 }
 
 // Add these new interfaces at the top with the other interfaces
@@ -123,12 +124,14 @@ export default function CreateTest() {
 
   // Replace the existing recommendations state with this enhanced version that tracks selected recommendations
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
-  const [selectedRecommendations] = useState<string[]>([])
+  const [selectedRecommendations, setSelectedRecommendations] = useState<string[]>([])
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false)
   const [showRecommendations, setShowRecommendations] = useState(false)
 
   // Add this new state to track if recommendations are being added to the test
-  const [recommendedQuestionsToAdd] = useState<Recommendation[]>([])
+  const [recommendedQuestionsToAdd, setRecommendedQuestionsToAdd] = useState<Recommendation[]>([])
+  const [isCreatingRecommendedTest, setIsCreatingRecommendedTest] = useState(false)
+
   const availableSubsections = subjects.reduce((acc: Subsection[], subject: Subject) => {
     if (selectedSubjects.includes(subject._id)) {
       return [...acc, ...subject.subsections]
@@ -250,26 +253,6 @@ export default function CreateTest() {
     fetchRecommendations()
   }, [fetchRecommendations])
 
-  // Replace the addRecommendedQuestion function with this enhanced version
-  // const addRecommendedQuestion = (recommendation: Recommendation) => {
-  //   // Check if already selected
-  //   if (selectedRecommendations.includes(recommendation.questionText)) {
-  //     // Remove from selected
-  //     setSelectedRecommendations((prev) => prev.filter((text) => text !== recommendation.questionText))
-  //     setRecommendedQuestionsToAdd((prev) => prev.filter((rec) => rec.questionText !== recommendation.questionText))
-
-  //     // Show feedback
-  //     toast.success("Recommendation removed from your test")
-  //   } else {
-  //     // Add to selected
-  //     setSelectedRecommendations((prev) => [...prev, recommendation.questionText])
-  //     setRecommendedQuestionsToAdd((prev) => [...prev, recommendation])
-
-  //     // Show feedback
-  //     toast.success("Recommendation added to your test!")
-  //   }
-  // }
-
   const handleSubjectChange = (subjectId: string) => {
     setSelectedSubjects((prev) => {
       const newSelectedSubjects = prev.includes(subjectId) ? prev.filter((s) => s !== subjectId) : [...prev, subjectId]
@@ -299,6 +282,23 @@ export default function CreateTest() {
   const handleFilterChange = <T extends string>(value: T, setter: React.Dispatch<React.SetStateAction<T>>) => {
     setter(value)
     setError(null)
+  }
+
+  // Add function to toggle recommendation selection
+  const addRecommendedQuestion = (recommendation: Recommendation) => {
+    setSelectedRecommendations(prev => {
+      if (prev.includes(recommendation.questionText)) {
+        // Remove if already selected
+        setRecommendedQuestionsToAdd(current => 
+          current.filter(q => q.questionText !== recommendation.questionText)
+        )
+        return prev.filter(id => id !== recommendation.questionText)
+      } else {
+        // Add if not already selected
+        setRecommendedQuestionsToAdd(current => [...current, recommendation])
+        return [...prev, recommendation.questionText]
+      }
+    })
   }
 
   // Add this new validateForm function
@@ -408,6 +408,27 @@ export default function CreateTest() {
     if (recommendedQuestionsToAdd.length > 0) {
       params.append("recommendedQuestions", JSON.stringify(recommendedQuestionsToAdd))
     }
+
+    router.push(`/dashboard/take-test?${params.toString()}`)
+  }
+
+  // Add new function to create test with only recommended questions
+  const handleCreateRecommendedTest = () => {
+    if (recommendations.length === 0) {
+      toast.error("No recommendations available")
+      return
+    }
+
+    setIsCreatingRecommendedTest(true)
+
+    // Create URL parameters for recommended questions test
+    const params = new URLSearchParams({
+      mode,
+      isRecommendedTest: "true",
+    })
+
+    // Add all recommendations to the test
+    params.append("recommendedQuestions", JSON.stringify(recommendations))
 
     router.push(`/dashboard/take-test?${params.toString()}`)
   }
@@ -539,6 +560,83 @@ export default function CreateTest() {
               </div>
             </div>
 
+            {/* Recommended Questions section with "Create Test from Recommendations" button */}
+            {showRecommendations && (
+              <div>
+                <h2 className="text-2xl font-semibold mb-4 flex items-center text-gray-700">
+                  <Lightbulb className="mr-2" size={24} />
+                  Recommended Questions
+                </h2>
+                <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-sm text-amber-800">
+                      Based on your previous tests, we recommend focusing on these topics:
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleCreateRecommendedTest}
+                      disabled={isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest}
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 shadow ${
+                        isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest
+                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          : "bg-amber-500 text-white hover:bg-amber-600"
+                      }`}
+                    >
+                      {isCreatingRecommendedTest 
+                        ? "Creating..." 
+                        : "Create Test from All Recommendations"}
+                    </button>
+                  </div>
+
+                  {isLoadingRecommendations ? (
+                    <div className="text-center py-4">Loading recommendations...</div>
+                  ) : recommendations.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500">
+                      No recommendations available yet. Complete more tests to get personalized suggestions.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {recommendations.map((recommendation, index) => (
+                        <div
+                          key={index}
+                          className="bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-all duration-200"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="font-medium text-gray-800">{recommendation.questionText}</p>
+                              <p className="text-sm text-gray-500 mt-1">Topic: {recommendation.topic}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => addRecommendedQuestion(recommendation)}
+                              className={`ml-2 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                                selectedRecommendations.includes(recommendation.questionText)
+                                  ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                  : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                              }`}
+                            >
+                              {selectedRecommendations.includes(recommendation.questionText)
+                                ? "Added ✓"
+                                : "Add to Test"}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedRecommendations.length > 0 && (
+                    <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                      <p className="text-sm text-green-800">
+                        <span className="font-medium">{selectedRecommendations.length}</span> recommended{" "}
+                        {selectedRecommendations.length === 1 ? "question" : "questions"} will be added to your test
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Subjects section */}
             <div>
               <h2 className="text-2xl font-semibold mb-4 flex items-center text-gray-700">
@@ -595,66 +693,6 @@ export default function CreateTest() {
                 </div>
               )}
             </div>
-
-            {/* Replace the Recommended Questions section with this enhanced version */}
-            {showRecommendations && (
-              <div>
-                <h2 className="text-2xl font-semibold mb-4 flex items-center text-gray-700">
-                  <Lightbulb className="mr-2" size={24} />
-                  Recommended Questions
-                </h2>
-                <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-                  <p className="text-sm text-amber-800 mb-4">
-                    Based on your previous tests, we recommend focusing on these topics:
-                  </p>
-
-                  {isLoadingRecommendations ? (
-                    <div className="text-center py-4">Loading recommendations...</div>
-                  ) : recommendations.length === 0 ? (
-                    <div className="text-center py-4 text-gray-500">
-                      No recommendations available yet. Complete more tests to get personalized suggestions.
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {recommendations.map((recommendation, index) => (
-                        <div
-                          key={index}
-                          className="bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-all duration-200"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="font-medium text-gray-800">{recommendation.questionText}</p>
-                              <p className="text-sm text-gray-500 mt-1">Topic: {recommendation.topic}</p>
-                            </div>
-                            {/* <button
-                              type="button"
-                              onClick={() => addRecommendedQuestion(recommendation)}
-                              className={`ml-2 px-3 py-1 text-xs font-medium rounded-full transition-colors ${selectedRecommendations.includes(recommendation.questionText)
-                                  ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                  : "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                                }`}
-                            >
-                              {selectedRecommendations.includes(recommendation.questionText)
-                                ? "Added ✓"
-                                : "Add to Test"}
-                            </button> */}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {selectedRecommendations.length > 0 && (
-                    <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
-                      <p className="text-sm text-green-800">
-                        <span className="font-medium">{selectedRecommendations.length}</span> recommended{" "}
-                        {selectedRecommendations.length === 1 ? "question" : "questions"} will be added to your test
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* Filters section */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

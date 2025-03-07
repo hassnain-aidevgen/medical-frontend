@@ -157,8 +157,8 @@ export default function FlashcardForm({
     }
 
     return (
-        <div className="space-y-4">
-            <h2 className="text-xl font-semibold">{title}</h2>
+        <div className="max-h-[80vh] overflow-y-auto p-4 bg-white rounded-lg">
+            <h2 className="text-xl font-semibold sticky top-0 bg-white py-2 z-10">{title}</h2>
 
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleSubmitForm)} className="space-y-4">
@@ -170,7 +170,7 @@ export default function FlashcardForm({
                             <FormItem>
                                 <FormLabel>Question</FormLabel>
                                 <FormControl>
-                                    <Textarea placeholder="Enter your question" className="min-h-[100px]" {...field} />
+                                    <Textarea placeholder="Enter your question" className="min-h-[80px] max-h-[150px]" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -185,27 +185,53 @@ export default function FlashcardForm({
                             <FormItem>
                                 <FormLabel>Answer</FormLabel>
                                 <FormControl>
-                                    <Textarea placeholder="Enter the answer" className="min-h-[100px]" {...field} />
+                                    <Textarea placeholder="Enter the answer" className="min-h-[80px] max-h-[150px]" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
 
-                    {/* Hint Field */}
-                    <FormField
-                        control={form.control}
-                        name="hint"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Hint (Optional)</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Enter a hint" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Hint Field */}
+                        <FormField
+                            control={form.control}
+                            name="hint"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Hint (Optional)</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Enter a hint" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        {/* Difficulty Field */}
+                        <FormField
+                            control={form.control}
+                            name="difficulty"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Difficulty</FormLabel>
+                                    <Select defaultValue={field.value} onValueChange={field.onChange}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select difficulty" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {DIFFICULTY_LEVELS.map((level) => (
+                                                <SelectItem key={level.value} value={level.value}>
+                                                    {level.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
 
                     {/* Category Field */}
                     <div className="space-y-2">
@@ -237,30 +263,6 @@ export default function FlashcardForm({
                         )}
                     </div>
 
-                    {/* Difficulty Field */}
-                    <FormField
-                        control={form.control}
-                        name="difficulty"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Difficulty</FormLabel>
-                                <Select defaultValue={field.value} onValueChange={field.onChange}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select difficulty" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {DIFFICULTY_LEVELS.map((level) => (
-                                            <SelectItem key={level.value} value={level.value}>
-                                                {level.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
                     {/* Tags Field */}
                     <div className="space-y-2">
                         <FormLabel>Tags</FormLabel>
@@ -282,7 +284,7 @@ export default function FlashcardForm({
                             </Button>
                         </div>
 
-                        <div className="flex flex-wrap gap-2 mt-2">
+                        <div className="flex flex-wrap gap-2 mt-2 max-h-[80px] overflow-y-auto p-2 border rounded-md">
                             {form.watch("tags").map((tag: string) => (
                                 <Badge key={tag} variant="secondary" className="flex items-center gap-1">
                                     {tag}
@@ -307,7 +309,7 @@ export default function FlashcardForm({
                     </div>
 
                     {/* Form Actions */}
-                    <div className="flex justify-end gap-2 pt-4">
+                    <div className="flex justify-end gap-2 pt-4 sticky bottom-0 bg-white py-2 z-10">
                         <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
                             Cancel
                         </Button>
@@ -320,4 +322,3 @@ export default function FlashcardForm({
         </div>
     )
 }
-

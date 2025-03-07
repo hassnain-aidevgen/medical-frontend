@@ -254,7 +254,7 @@ export default function DashboardPage() {
         {/* <Button>Start Studying</Button> */}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Student&apos;s current Study Streak</CardTitle>
@@ -326,7 +326,7 @@ export default function DashboardPage() {
             ) : (
               <>
                 <div className="text-2xl font-bold">#{userRank || " "}</div>
-                {leaderboardData.length > 0 && (
+                {/* {leaderboardData.length > 0 && (
                   <div className="mt-2">
                     <p className="text-xs font-medium text-muted-foreground mb-1">Top Performers:</p>
                     <div className="space-y-1">
@@ -344,7 +344,7 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   </div>
-                )}
+                )} */}
               </>
             )}
           </CardContent>
