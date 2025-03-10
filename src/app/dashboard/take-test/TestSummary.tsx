@@ -9,9 +9,9 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import axios from "axios"
 import { ArcElement, Chart as ChartJS, Legend, Tooltip } from "chart.js"
-import { AlertCircle, CheckCircle, Clock, Share2 } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { AlertCircle, CheckCircle, Clock, Share2, Sparkles, Loader2 } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
 import { Doughnut } from "react-chartjs-2"
 import toast, { Toaster } from "react-hot-toast"
 
@@ -35,6 +35,15 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions, selectedAnswers, q
   const [error, setError] = useState<string | null>(null)
   const [showIncorrectOnly, setShowIncorrectOnly] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  // AI Feedback states
+  const [aiFeedback, setAiFeedback] = useState<string | null>(null)
+  const [isLoadingFeedback, setIsLoadingFeedback] = useState(false)
+  const [feedbackError, setFeedbackError] = useState<string | null>(null)
+  
+  // Check if this was a recommended test
+  const isRecommendedTest = searchParams.get("isRecommendedTest") === "true"
 
   const percentage = (score / questions.length) * 100
   const incorrectCount = questions.length - score
@@ -49,6 +58,48 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions, selectedAnswers, q
       },
     ],
   }
+
+  // Fetch AI feedback when component mounts
+  useEffect(() => {
+    const fetchAIFeedback = async () => {
+      setIsLoadingFeedback(true)
+      setFeedbackError(null)
+      
+      try {
+        // Prepare data for the AI feedback request
+        const feedbackData = {
+          questions: questions.map((q, index) => ({
+            questionId: q._id,
+            questionText: q.question,
+            correctAnswer: q.answer,
+            userAnswer: selectedAnswers[index] || "",
+            timeSpent: questionTimes[index] || 0,
+          })),
+          score,
+          totalTime,
+          percentage
+        }
+        
+        // Call the new AI feedback endpoint
+        const response = await axios.post(
+          "http://localhost:5000/api/test/ai-report-feedback",
+          feedbackData
+        )
+        
+        setAiFeedback(response.data.feedback)
+      } catch (error) {
+        console.error("Error fetching AI feedback:", error)
+        setFeedbackError("Unable to load AI feedback at this time")
+      } finally {
+        setIsLoadingFeedback(false)
+      }
+    }
+    
+    // Only fetch feedback if we have at least one question
+    if (questions.length > 0) {
+      fetchAIFeedback()
+    }
+  }, [questions, selectedAnswers, score, totalTime, percentage])
 
   const handleSubmitResults = async () => {
     setLoading(true)
@@ -68,6 +119,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions, selectedAnswers, q
       score,
       totalTime,
       percentage,
+      isRecommendedTest, // Include flag to indicate if this was a recommended test
     }
 
     console.log(testData);
@@ -97,7 +149,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions, selectedAnswers, q
   return (
     <div className="container mx-auto px-4 py-8">
       <Toaster position="top-right" />
-      <h1 className="text-3xl font-bold mb-8">Test Results</h1>
+      <h1 className="text-3xl font-bold mb-8">
+        {isRecommendedTest ? "Recommended Test Results" : "Test Results"}
+      </h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
         <Card>
@@ -142,6 +196,39 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions, selectedAnswers, q
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Feedback Card */}
+      <Card className="mb-8 border-t-4 border-t-purple-500">
+        <CardHeader className="pb-2">
+          <div className="flex items-center">
+            <Sparkles className="mr-2 h-5 w-5 text-purple-500" />
+            <CardTitle>AI Feedback on Your Performance</CardTitle>
+          </div>
+          <CardDescription>Personalized insights and recommendations</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoadingFeedback ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+              <span className="ml-3 text-gray-600">Generating your personalized feedback...</span>
+            </div>
+          ) : feedbackError ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{feedbackError}</AlertDescription>
+            </Alert>
+          ) : (
+            <div className="prose prose-sm max-w-none whitespace-pre-line">
+              {aiFeedback ? (
+                <div dangerouslySetInnerHTML={{ __html: aiFeedback.replace(/\n/g, '<br/>') }} />
+              ) : (
+                <p>No feedback available at this time.</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {error && (
         <Alert variant="destructive" className="mb-6">
@@ -217,4 +304,3 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions, selectedAnswers, q
 }
 
 export default TestSummary
-
