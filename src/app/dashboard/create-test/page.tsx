@@ -35,13 +35,21 @@ interface Question {
   exam_type: "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3"
   difficulty: "easy" | "medium" | "hard"
   question_type: "case_based" | "single_best_answer" | "extended_matching"
+  year: number
 }
+
+// Add new constants for "All" options
+// Add these right after the Question interface
+// const ALL_EXAM_TYPE = "ALL_USMLE_TYPES"
+// const ALL_DIFFICULTY = "ALL_DIFFICULTY_LEVELS"
+// const ALL_QUESTION_TYPE = "ALL_QUESTION_TYPES"
+// const ALL_YEARS = "ALL_YEARS"
 
 interface Recommendation {
   questionText: string
   correctAnswer: string
   topic: string
-  _id?: string  // Adding _id for API integration
+  _id?: string // Adding _id for API integration
 }
 
 // Add these new interfaces at the top with the other interfaces
@@ -107,11 +115,16 @@ export default function CreateTest() {
   const [isFilterLoading, setIsFilterLoading] = useState(false)
   const [maxQuestions, setMaxQuestions] = useState(0)
   // const [questions, setQuestions] = useState<Question[]>([])
-  const [examType, setExamType] = useState<"USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3">("USMLE_STEP1")
-  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium")
-  const [questionType, setQuestionType] = useState<"case_based" | "single_best_answer" | "extended_matching">(
-    "single_best_answer",
+  // Update the state declarations to include the new "All" options
+  // Replace the existing state declarations for examType, difficulty, and questionType with:
+  const [examType, setExamType] = useState<"USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3" | "ALL_USMLE_TYPES">(
+    "USMLE_STEP1",
   )
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | "ALL_DIFFICULTY_LEVELS">("medium")
+  const [questionType, setQuestionType] = useState<
+    "case_based" | "single_best_answer" | "extended_matching" | "ALL_QUESTION_TYPES"
+  >("single_best_answer")
+  const [year, setYear] = useState<string>("ALL_YEARS")
   const [error, setError] = useState<string | null>(null)
   const [inputValue, setInputValue] = useState<string>("10")
   // Replace the existing useState for inputError and inputStatus with this more comprehensive validation state
@@ -140,7 +153,7 @@ export default function CreateTest() {
   }, [])
 
   // Use environment variable or fallback to a relative path for API
-  const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test/create-test"
+  const API_BASE_URL = "http://localhost:5000/api/test/create-test"
 
   // Replace the fetchRecommendations function with this enhanced version
   const fetchRecommendations = useCallback(async () => {
@@ -152,7 +165,7 @@ export default function CreateTest() {
         return
       }
 
-      const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations/${userId}`)
+      const { data } = await axios.get(`http://localhost:5000/api/test/recommendations/${userId}`)
       setRecommendations(data.recommendations)
 
       // If we got recommendations, show the section
@@ -179,7 +192,8 @@ export default function CreateTest() {
     }
   }, [API_BASE_URL])
 
-  // Replace the fetchFilteredQuestions callback with this updated version
+  // Update the fetchFilteredQuestions callback to handle the "All" options
+  // Replace the existing fetchFilteredQuestions function with this updated version:
   const fetchFilteredQuestions = useCallback(async () => {
     if (selectedSubjects.length === 0 || selectedSubsections.length === 0) {
       setMaxQuestions(0)
@@ -197,6 +211,7 @@ export default function CreateTest() {
           exam_type: examType,
           difficulty: difficulty,
           question_type: questionType,
+          year: year,
         },
       })
 
@@ -228,7 +243,7 @@ export default function CreateTest() {
     } finally {
       setIsFilterLoading(false)
     }
-  }, [API_BASE_URL, selectedSubjects, selectedSubsections, examType, difficulty, questionType, totalQuestions])
+  }, [API_BASE_URL, selectedSubjects, selectedSubsections, examType, difficulty, questionType, year, totalQuestions])
 
   useEffect(() => {
     fetchData()
@@ -247,7 +262,7 @@ export default function CreateTest() {
       // setQuestions([])
       setMaxQuestions(0)
     }
-  }, [selectedSubjects, selectedSubsections, examType, difficulty, questionType, fetchFilteredQuestions])
+  }, [selectedSubjects, selectedSubsections, examType, difficulty, questionType, year, fetchFilteredQuestions])
 
   useEffect(() => {
     fetchRecommendations()
@@ -286,16 +301,14 @@ export default function CreateTest() {
 
   // Add function to toggle recommendation selection
   const addRecommendedQuestion = (recommendation: Recommendation) => {
-    setSelectedRecommendations(prev => {
+    setSelectedRecommendations((prev) => {
       if (prev.includes(recommendation.questionText)) {
         // Remove if already selected
-        setRecommendedQuestionsToAdd(current => 
-          current.filter(q => q.questionText !== recommendation.questionText)
-        )
-        return prev.filter(id => id !== recommendation.questionText)
+        setRecommendedQuestionsToAdd((current) => current.filter((q) => q.questionText !== recommendation.questionText))
+        return prev.filter((id) => id !== recommendation.questionText)
       } else {
         // Add if not already selected
-        setRecommendedQuestionsToAdd(current => [...current, recommendation])
+        setRecommendedQuestionsToAdd((current) => [...current, recommendation])
         return [...prev, recommendation.questionText]
       }
     })
@@ -402,6 +415,7 @@ export default function CreateTest() {
       exam_type: examType,
       difficulty: difficulty,
       question_type: questionType,
+      year: year,
     })
 
     // Add recommended questions if any
@@ -576,15 +590,12 @@ export default function CreateTest() {
                       type="button"
                       onClick={handleCreateRecommendedTest}
                       disabled={isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 shadow ${
-                        isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest
-                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                          : "bg-amber-500 text-white hover:bg-amber-600"
-                      }`}
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 shadow ${isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-amber-500 text-white hover:bg-amber-600"
+                        }`}
                     >
-                      {isCreatingRecommendedTest 
-                        ? "Creating..." 
-                        : "Create Test from All Recommendations"}
+                      {isCreatingRecommendedTest ? "Creating..." : "Create Test from All Recommendations"}
                     </button>
                   </div>
 
@@ -609,11 +620,10 @@ export default function CreateTest() {
                             <button
                               type="button"
                               onClick={() => addRecommendedQuestion(recommendation)}
-                              className={`ml-2 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                                selectedRecommendations.includes(recommendation.questionText)
-                                  ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                  : "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                              }`}
+                              className={`ml-2 px-3 py-1 text-xs font-medium rounded-full transition-colors ${selectedRecommendations.includes(recommendation.questionText)
+                                ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                                }`}
                             >
                               {selectedRecommendations.includes(recommendation.questionText)
                                 ? "Added ✓"
@@ -695,7 +705,7 @@ export default function CreateTest() {
             </div>
 
             {/* Filters section */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <h2 className="text-lg font-semibold mb-2">Exam Type</h2>
                 <Select
@@ -707,6 +717,7 @@ export default function CreateTest() {
                     <SelectValue placeholder="Select exam type" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="ALL_USMLE_TYPES">All USMLE Types</SelectItem>
                     <SelectItem value="USMLE_STEP1">USMLE STEP 1</SelectItem>
                     <SelectItem value="USMLE_STEP2">USMLE STEP 2</SelectItem>
                     <SelectItem value="USMLE_STEP3">USMLE STEP 3</SelectItem>
@@ -725,6 +736,7 @@ export default function CreateTest() {
                     <SelectValue placeholder="Select difficulty" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="ALL_DIFFICULTY_LEVELS">All Difficulty Levels</SelectItem>
                     <SelectItem value="easy">Easy</SelectItem>
                     <SelectItem value="medium">Medium</SelectItem>
                     <SelectItem value="hard">Hard</SelectItem>
@@ -743,9 +755,32 @@ export default function CreateTest() {
                     <SelectValue placeholder="Select question type" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="ALL_QUESTION_TYPES">All Question Types</SelectItem>
                     <SelectItem value="case_based">Case Based</SelectItem>
                     <SelectItem value="single_best_answer">Single Best Answer</SelectItem>
                     <SelectItem value="extended_matching">Extended Matching</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <h2 className="text-lg font-semibold mb-2">Year</h2>
+                <Select
+                  value={year}
+                  onValueChange={(value: string) => handleFilterChange(value, setYear)}
+                  disabled={isFilterLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL_YEARS">All Years</SelectItem>
+                    <SelectItem value="2024">2024</SelectItem>
+                    <SelectItem value="2023">2023</SelectItem>
+                    <SelectItem value="2022">2022</SelectItem>
+                    <SelectItem value="2021">2021</SelectItem>
+                    <SelectItem value="2020">2020</SelectItem>
+                    <SelectItem value="2019">2019</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -840,3 +875,4 @@ export default function CreateTest() {
     </div>
   )
 }
+
