@@ -9,9 +9,9 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import axios from "axios"
 import { ArcElement, Chart as ChartJS, Legend, Tooltip } from "chart.js"
-import { AlertCircle, CheckCircle, Clock, Share2, Sparkles, Loader2 } from "lucide-react"
+import { AlertCircle, CheckCircle, Clock, Loader2, Share2, Sparkles } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Doughnut } from "react-chartjs-2"
 import toast, { Toaster } from "react-hot-toast"
 
@@ -36,12 +36,12 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions, selectedAnswers, q
   const [showIncorrectOnly, setShowIncorrectOnly] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  
+
   // AI Feedback states
   const [aiFeedback, setAiFeedback] = useState<string | null>(null)
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false)
   const [feedbackError, setFeedbackError] = useState<string | null>(null)
-  
+
   // Check if this was a recommended test
   const isRecommendedTest = searchParams.get("isRecommendedTest") === "true"
 
@@ -64,7 +64,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions, selectedAnswers, q
     const fetchAIFeedback = async () => {
       setIsLoadingFeedback(true)
       setFeedbackError(null)
-      
+
       try {
         // Prepare data for the AI feedback request
         const feedbackData = {
@@ -79,13 +79,13 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions, selectedAnswers, q
           totalTime,
           percentage
         }
-        
+
         // Call the new AI feedback endpoint
         const response = await axios.post(
           "http://localhost:5000/api/test/ai-report-feedback",
           feedbackData
         )
-        
+
         setAiFeedback(response.data.feedback)
       } catch (error) {
         console.error("Error fetching AI feedback:", error)
@@ -94,12 +94,12 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions, selectedAnswers, q
         setIsLoadingFeedback(false)
       }
     }
-    
+
     // Only fetch feedback if we have at least one question
     if (questions.length > 0) {
       fetchAIFeedback()
     }
-  }, [questions, selectedAnswers, score, totalTime, percentage])
+  }, [questions, selectedAnswers, questionTimes, score, totalTime, percentage])
 
   const handleSubmitResults = async () => {
     setLoading(true)

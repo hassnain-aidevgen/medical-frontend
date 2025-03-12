@@ -50,6 +50,7 @@ import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import Image from "next/image"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/user-stats"
 
@@ -573,10 +574,14 @@ export default function StatisticsPage() {
                                         ) : (
                                             <div className="flex items-center space-x-4">
                                                 <div className="relative h-12 w-12 rounded-full bg-muted">
-                                                    <img
+                                                    <Image
                                                         src={userStats?.avatarUrl || "/placeholder.svg?height=48&width=48"}
                                                         alt="User avatar"
                                                         className="rounded-full"
+                                                        layout="fill"
+                                                        objectFit="cover"
+                                                        width={12}
+                                                        height={12}
                                                     />
                                                     <span
                                                         className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background ${userStats?.status === "active" ? "bg-green-500" : "bg-gray-400"
@@ -1135,8 +1140,7 @@ export default function StatisticsPage() {
                                                     <Progress
                                                         value={userStats?.quests?.byPriority?.urgent || 0}
                                                         max={userStats?.quests?.total || 1}
-                                                        className="h-2 bg-muted"
-                                                        indicatorClassName="bg-red-500"
+                                                        className="h-2 bg-muted bg-red-500"
                                                     />
                                                 </div>
 
@@ -1151,8 +1155,7 @@ export default function StatisticsPage() {
                                                     <Progress
                                                         value={userStats?.quests?.byPriority?.high || 0}
                                                         max={userStats?.quests?.total || 1}
-                                                        className="h-2 bg-muted"
-                                                        indicatorClassName="bg-orange-500"
+                                                        className="h-2 bg-muted bg-orange-500"
                                                     />
                                                 </div>
 
@@ -1167,8 +1170,7 @@ export default function StatisticsPage() {
                                                     <Progress
                                                         value={userStats?.quests?.byPriority?.medium || 0}
                                                         max={userStats?.quests?.total || 1}
-                                                        className="h-2 bg-muted"
-                                                        indicatorClassName="bg-yellow-500"
+                                                        className="h-2 bg-muted bg-yellow-500"
                                                     />
                                                 </div>
 
@@ -1183,8 +1185,7 @@ export default function StatisticsPage() {
                                                     <Progress
                                                         value={userStats?.quests?.byPriority?.low || 0}
                                                         max={userStats?.quests?.total || 1}
-                                                        className="h-2 bg-muted"
-                                                        indicatorClassName="bg-blue-500"
+                                                        className="h-2 bg-muted bg-blue-500"
                                                     />
                                                 </div>
                                             </div>
@@ -1215,8 +1216,7 @@ export default function StatisticsPage() {
                                                     <Progress
                                                         value={userStats?.quests?.byCategory?.medication || 0}
                                                         max={userStats?.quests?.total || 1}
-                                                        className="h-2 bg-muted"
-                                                        indicatorClassName="bg-purple-500"
+                                                        className="h-2 bg-muted bg-purple-500"
                                                     />
                                                 </div>
 
@@ -1231,8 +1231,7 @@ export default function StatisticsPage() {
                                                     <Progress
                                                         value={userStats?.quests?.byCategory?.exercise || 0}
                                                         max={userStats?.quests?.total || 1}
-                                                        className="h-2 bg-muted"
-                                                        indicatorClassName="bg-green-500"
+                                                        className="h-2 bg-muted bg-green-500"
                                                     />
                                                 </div>
 
@@ -1247,8 +1246,7 @@ export default function StatisticsPage() {
                                                     <Progress
                                                         value={userStats?.quests?.byCategory?.diet || 0}
                                                         max={userStats?.quests?.total || 1}
-                                                        className="h-2 bg-muted"
-                                                        indicatorClassName="bg-blue-500"
+                                                        className="h-2 bg-muted bg-blue-500"
                                                     />
                                                 </div>
 
@@ -1265,8 +1263,7 @@ export default function StatisticsPage() {
                                                     <Progress
                                                         value={userStats?.quests?.byCategory?.monitoring || 0}
                                                         max={userStats?.quests?.total || 1}
-                                                        className="h-2 bg-muted"
-                                                        indicatorClassName="bg-pink-500"
+                                                        className="h-2 bg-muted bg-pink-500"
                                                     />
                                                 </div>
 
@@ -1283,8 +1280,7 @@ export default function StatisticsPage() {
                                                     <Progress
                                                         value={userStats?.quests?.byCategory?.assessment || 0}
                                                         max={userStats?.quests?.total || 1}
-                                                        className="h-2 bg-muted"
-                                                        indicatorClassName="bg-orange-500"
+                                                        className="h-2 bg-muted bg-orange-500"
                                                     />
                                                 </div>
                                             </div>

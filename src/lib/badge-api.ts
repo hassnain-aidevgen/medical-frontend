@@ -1,5 +1,6 @@
 import type { Badge } from "@/types/badge"
 import axios from "axios"
+import type { ApiError, ApiResponse } from "./types/api-error"
 
 const BASE_API_URL = "http://localhost:5000/api/badges"
 
@@ -51,89 +52,95 @@ api.interceptors.response.use(
 
 export const badgeApi = {
   // Get all badges
-  getAllBadges: async () => {
+  getAllBadges: async (): Promise<ApiResponse<Badge[]>> => {
     try {
       const response = await api.get(BASE_API_URL)
       return {
         success: response.data.success || true,
         data: response.data.data || response.data,
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching badges:", error)
+      const apiError = error as ApiError
       return {
         success: false,
-        error: error.error || "Failed to fetch badges",
+        error: apiError.response?.data?.error || "Failed to fetch badges",
       }
     }
   },
 
   // Get a single badge
-  getBadge: async (id: string) => {
+  getBadge: async (id: string): Promise<ApiResponse<Badge>> => {
     try {
       const response = await api.get(`${BASE_API_URL}/${id}`)
       return {
         success: response.data.success || true,
         data: response.data.data || response.data,
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error fetching badge ${id}:`, error)
+      const apiError = error as ApiError
       return {
         success: false,
-        error: error.error || `Failed to fetch badge ${id}`,
+        error: apiError.response?.data?.error || `Failed to fetch badge ${id}`,
       }
     }
   },
 
   // Create a new badge
-  createBadge: async (badgeData: Omit<Badge, "_id">) => {
+  createBadge: async (badgeData: Omit<Badge, "_id">): Promise<ApiResponse<Badge>> => {
     try {
       const response = await api.post(BASE_API_URL, badgeData)
       return {
         success: response.data.success || true,
         data: response.data.data || response.data,
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating badge:", error)
+      const apiError = error as ApiError
       return {
         success: false,
-        error: error.error || "Failed to create badge",
-        errors: error.errors || [],
+        error: apiError.response?.data?.error || "Failed to create badge",
+        errors: apiError.response?.data?.errors || [],
       }
     }
   },
 
   // Update a badge
-  updateBadge: async (id: string, badgeData: Partial<Badge>) => {
+  updateBadge: async (id: string, badgeData: Partial<Badge>): Promise<ApiResponse<Badge>> => {
     try {
       const response = await api.put(`${BASE_API_URL}/${id}`, badgeData)
       return {
         success: response.data.success || true,
         data: response.data.data || response.data,
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error updating badge ${id}:`, error)
+      const apiError = error as ApiError
       return {
         success: false,
-        error: error.error || `Failed to update badge ${id}`,
-        errors: error.errors || [],
+        error: apiError.response?.data?.error || `Failed to update badge ${id}`,
+        errors: apiError.response?.data?.errors || [],
       }
     }
   },
 
   // Delete a badge
-  deleteBadge: async (id: string) => {
+  deleteBadge: async (id: string): Promise<ApiResponse> => {
     try {
       const response = await api.delete(`${BASE_API_URL}/${id}`)
       return {
         success: response.data.success || true,
         data: response.data.data || response.data,
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error deleting badge ${id}:`, error)
+      const apiError = error as ApiError
       return {
         success: false,
-        error: error.error || `Failed to delete badge ${id}`,
+        error: apiError.response?.data?.error || `Failed to delete badge ${id}`,
       }
     }
   },
 }
+

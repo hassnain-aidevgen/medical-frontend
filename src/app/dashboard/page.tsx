@@ -1,11 +1,12 @@
 "use client"
 
 import axios from "axios"
-import { BarChart2, BookOpen, Clock, Crown, Dna, Pause, Play, Settings, Star, Users } from "lucide-react"
+import { BarChart2, BookOpen, Clock, Dna, Pause, Play, Settings, Users } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { PiRankingDuotone } from "react-icons/pi"
 
+import DailyChallengeButton from "@/components/daily-challenge-button"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -83,6 +84,7 @@ export default function DashboardPage() {
         } else {
           console.error("Invalid streak data format:", response.data)
           setError("Invalid data format received from server")
+          console.log(leaderboardData)
         }
       } catch (error) {
         console.error("Error fetching streak data:", error)
@@ -95,7 +97,7 @@ export default function DashboardPage() {
     if (userId) {
       fetchStreakData()
     }
-  }, [userId])
+  }, [userId, leaderboardData])
 
   // Fetch leaderboard data
   useEffect(() => {
@@ -242,6 +244,7 @@ export default function DashboardPage() {
     router.push("/dashboard/custom-weekly-goals")
   }
 
+
   // Calculate weekly goals progress
   const totalQuests = goals.length
   const completedQuests = goals.filter((goal) => goal.isCompleted).length
@@ -251,7 +254,7 @@ export default function DashboardPage() {
     <div className="flex-1 space-y-4 p-4 md:pl-8 md:pr-8">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Welcome back, Student!</h2>
-        {/* <Button>Start Studying</Button> */}
+        <DailyChallengeButton />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">

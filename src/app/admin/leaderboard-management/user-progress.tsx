@@ -25,10 +25,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
-import { badgeApi } from "@/lib/badge-api"
-import { userApi } from "@/lib/user-api"
-import { userBadgeApi } from "@/lib/user-badge-api"
-import type { BadgeAssignmentFormData, Badge as BadgeType, UserBadge, UserWithBadges } from "@/types"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import axios from "axios"
 import {
     Award,
     BadgeCheck,
@@ -45,6 +43,199 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast, Toaster } from "react-hot-toast"
+
+// Define API response types
+interface ApiResponse<T = unknown> {
+    success: boolean
+    data?: T
+    error?: string
+    errors?: string[]
+    count?: number
+    pagination?: {
+        total: number
+        perPage: number
+        currentPage: number
+        totalPages: number
+    }
+    hasBadge?: boolean
+    badgeDetails?: Record<string, unknown>
+}
+
+// Define API error type
+type ApiError = {
+    response?: {
+        data?: {
+            error?: string
+            message?: string
+            errors?: string[]
+        }
+        status?: number
+    }
+}
+
+// Define Badge type
+interface BadgeType {
+    _id: string
+    name: string
+    description: string
+    icon?: string
+    representation?: "emoji" | "icon" | "image"
+    isActive?: boolean
+    createdAt: string // Changed from string | undefined to string
+    updatedAt?: string
+}
+
+// Define UserBadge type
+interface UserBadge {
+    _id: string
+    userId: string
+    badgeId: string | BadgeType
+    awardedAt: string
+    awardReason?: string
+    awardedBy?: "system" | "admin"
+    createdAt?: string
+    updatedAt?: string
+}
+
+// Define UserWithBadges type
+interface UserWithBadges {
+    userId: string
+    _id: string
+    name?: string
+    username?: string
+    email?: string
+    profilePicture?: string
+    score?: number
+    rank?: number
+    quizzesTaken?: number
+    totalTime?: number
+    badges: BadgeType[]
+    badgesEarned: number
+    recentBadges: BadgeType[]
+    createdAt?: string
+    updatedAt?: string
+}
+
+// Define BadgeAssignmentFormData type
+interface BadgeAssignmentFormData {
+    userId: string
+    badgeId: string
+    awardReason?: string
+}
+
+// API services
+const API_BASE_URL = "http://localhost:5000/api"
+
+// Badge API service
+const badgeApi = {
+    getAllBadges: async (): Promise<ApiResponse<BadgeType[]>> => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/badges`)
+            return {
+                success: response.data.success || true,
+                data: response.data.data || response.data,
+            }
+        } catch (error: unknown) {
+            console.error("Error fetching badges:", error)
+            const apiError = error as ApiError
+            return {
+                success: false,
+                error: apiError.response?.data?.error || "Failed to fetch badges",
+            }
+        }
+    },
+}
+
+// User API service
+const userApi = {
+    getAllUsers: async (): Promise<ApiResponse<UserWithBadges[]>> => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/user-badges/leaderboard-users`)
+            return {
+                success: true,
+                data: response.data,
+            }
+        } catch (error: unknown) {
+            const apiError = error as ApiError
+            return {
+                success: false,
+                error: apiError.response?.data?.error || "Failed to fetch users",
+            }
+        }
+    },
+}
+
+// User Badge API service
+const userBadgeApi = {
+    getUserBadges: async (userId: string): Promise<ApiResponse<UserBadge[]>> => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/user-badges/getUserBadges/user/${userId}`)
+            return {
+                success: true,
+                data: response.data.data,
+                count: response.data.count,
+            }
+        } catch (error: unknown) {
+            const apiError = error as ApiError
+            return {
+                success: false,
+                error: apiError.response?.data?.error || "Failed to fetch user badges",
+            }
+        }
+    },
+
+    assignBadge: async (userId: string, badgeId: string, awardReason?: string): Promise<ApiResponse<UserBadge>> => {
+        try {
+            const response = await axios.post(`${API_BASE_URL}/user-badges/assignBadge`, {
+                userId,
+                badgeId,
+                awardReason,
+            })
+            return {
+                success: true,
+                data: response.data.data,
+            }
+        } catch (error: unknown) {
+            const apiError = error as ApiError
+            return {
+                success: false,
+                error: apiError.response?.data?.error || "Failed to assign badge",
+            }
+        }
+    },
+
+    revokeBadge: async (userBadgeId: string): Promise<ApiResponse> => {
+        try {
+            await axios.delete(`${API_BASE_URL}/user-badges/revokeBadge/user-badges/${userBadgeId}`)
+            return {
+                success: true,
+            }
+        } catch (error: unknown) {
+            const apiError = error as ApiError
+            return {
+                success: false,
+                error: apiError.response?.data?.error || "Failed to revoke badge",
+            }
+        }
+    },
+
+    checkUserBadge: async (userId: string, badgeId: string): Promise<ApiResponse> => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/user-badges/checkUserBadge/${userId}/${badgeId}`)
+            return {
+                success: true,
+                hasBadge: response.data.data.hasBadge,
+                badgeDetails: response.data.data.badgeDetails,
+            }
+        } catch (error: unknown) {
+            const apiError = error as ApiError
+            return {
+                success: false,
+                error: apiError.response?.data?.error || "Failed to check badge status",
+            }
+        }
+    },
+}
 
 export default function UserBadgeManagement() {
     // State for users and badges
@@ -81,7 +272,6 @@ export default function UserBadgeManagement() {
         try {
             // Fetch users
             const usersResponse = await userApi.getAllUsers()
-            console.log(usersResponse.data.data.leaderboard)
             if (!usersResponse.success) {
                 toast.error(usersResponse.error || "Failed to fetch users")
                 setLoading(false)
@@ -96,7 +286,13 @@ export default function UserBadgeManagement() {
                 return
             }
 
-            setBadges(badgesResponse.data || [])
+            // Ensure all badges have a createdAt property
+            const activeBadges = (badgesResponse.data?.filter((badge) => badge.isActive !== false) || []).map((badge) => ({
+                ...badge,
+                createdAt: badge.createdAt || new Date().toISOString(), // Ensure createdAt is always present
+            }))
+
+            setBadges(activeBadges)
 
             // Process users and fetch their badges
             const usersData = usersResponse.data || []
@@ -105,37 +301,89 @@ export default function UserBadgeManagement() {
 
             // Fetch badges for each user
             for (const user of usersData) {
-                const userBadgesResponse = await userBadgeApi.getUserBadges(user._id)
+                try {
+                    const userBadgesResponse = await userBadgeApi.getUserBadges(user.userId)
 
-                if (userBadgesResponse.success) {
-                    const userBadgesList = userBadgesResponse.data || []
-                    userBadgesMap[user._id] = userBadgesList
+                    // Initialize with empty badges array even if the request fails
+                    let userBadgesList: UserBadge[] = []
+                    let userBadgeObjects: BadgeType[] = []
 
-                    // Extract badge objects from user badges
-                    const userBadgeObjects = userBadgesList
-                        .map((ub) => {
-                            return typeof ub.badgeId === "string"
-                                ? badgesResponse.data?.find((b) => b._id === ub.badgeId)
-                                : (ub.badgeId as BadgeType)
-                        })
-                        .filter(Boolean) as BadgeType[]
+                    if (userBadgesResponse.success && userBadgesResponse.data) {
+                        userBadgesList = userBadgesResponse.data || []
+                        userBadgesMap[user.userId] = userBadgesList
 
+                        // Extract badge objects from user badges
+                        userBadgeObjects = userBadgesList
+                            .map((ub) => {
+                                if (typeof ub.badgeId === "string") {
+                                    const foundBadge = activeBadges.find((b) => b._id === ub.badgeId)
+                                    return foundBadge
+                                } else {
+                                    // Ensure badgeId object has createdAt
+                                    const badgeObj = ub.badgeId as BadgeType
+                                    return {
+                                        ...badgeObj,
+                                        createdAt: badgeObj.createdAt || new Date().toISOString(),
+                                    }
+                                }
+                            })
+                            .filter((badge): badge is BadgeType => badge !== undefined) // Type guard to ensure non-null
+                    } else {
+                        // If we fail to get badges, still add empty arrays
+                        userBadgesMap[user.userId] = []
+                    }
+
+                    // Always add the user with whatever badges we found (or empty array)
                     processedUsers.push({
                         ...user,
+                        _id: user.userId, // Ensure _id is set to userId for consistency
                         badges: userBadgeObjects,
                         badgesEarned: userBadgeObjects.length,
+                        recentBadges: userBadgesList
+                            .sort((a, b) => new Date(b.awardedAt).getTime() - new Date(a.awardedAt).getTime())
+                            .slice(0, 3)
+                            .map((ub) => {
+                                if (typeof ub.badgeId === "string") {
+                                    const foundBadge = activeBadges.find((b) => b._id === ub.badgeId)
+                                    return foundBadge
+                                        ? {
+                                            ...foundBadge,
+                                            createdAt: foundBadge.createdAt || new Date().toISOString(), // Ensure createdAt exists
+                                        }
+                                        : undefined
+                                } else {
+                                    // Ensure badgeId object has createdAt
+                                    const badgeObj = ub.badgeId as BadgeType
+                                    return {
+                                        ...badgeObj,
+                                        createdAt: badgeObj.createdAt || new Date().toISOString(),
+                                    }
+                                }
+                            })
+                            .filter((badge): badge is BadgeType => badge !== undefined), // Type guard to ensure non-null
                     })
-                } else {
-                    // If we fail to get badges, still add the user with empty badges
+                } catch (error) {
+                    console.error(`Error fetching badges for user ${user.userId}:`, error)
+                    // Still add the user even if there was an error
                     processedUsers.push({
                         ...user,
+                        _id: user.userId,
                         badges: [],
                         badgesEarned: 0,
+                        recentBadges: [],
                     })
                 }
             }
 
-            setUsers(processedUsers)
+            // Sort users by score in descending order and add rank
+            const sortedUsers = [...processedUsers]
+                .sort((a, b) => (b.score || 0) - (a.score || 0))
+                .map((user, index) => ({
+                    ...user,
+                    rank: index + 1,
+                }))
+
+            setUsers(sortedUsers)
             setUserBadges(userBadgesMap)
         } catch (error) {
             console.error("Error fetching data:", error)
@@ -148,8 +396,9 @@ export default function UserBadgeManagement() {
     // Filter users based on search
     const filteredUsers = users.filter(
         (user) =>
-            user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            user.email?.toLowerCase().includes(searchTerm.toLowerCase()),
+            (user?.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            (user?.email?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            (user?.username?.toLowerCase() || "").includes(searchTerm.toLowerCase()),
     )
 
     // Filter badges based on search
@@ -164,6 +413,8 @@ export default function UserBadgeManagement() {
 
     // Format date to relative time (e.g., "2 hours ago")
     const formatRelativeTime = (dateString: string) => {
+        if (!dateString) return "Never"
+
         const date = new Date(dateString)
         const now = new Date()
         const diffMs = now.getTime() - date.getTime()
@@ -185,7 +436,7 @@ export default function UserBadgeManagement() {
     }
 
     // Validate badge assignment form
-    const validateAssignmentForm = (data: BadgeAssignmentFormData) => {
+    const validateAssignmentForm = (data: BadgeAssignmentFormData): string[] => {
         const errors: string[] = []
 
         if (!data.userId) errors.push("User is required")
@@ -195,16 +446,16 @@ export default function UserBadgeManagement() {
     }
 
     // Handle opening user details
-    const handleViewUserDetails = async (user: UserWithBadges) => {
+    const handleViewUserDetails = (user: UserWithBadges): void => {
         setSelectedUser(user)
         setIsUserDetailsOpen(true)
     }
 
     // Handle opening badge assignment dialog
-    const handleOpenAssignBadge = (user: UserWithBadges) => {
+    const handleOpenAssignBadge = (user: UserWithBadges): void => {
         setSelectedUser(user)
         setAssignmentForm({
-            userId: user._id,
+            userId: user.userId,
             badgeId: "",
             awardReason: "",
         })
@@ -213,11 +464,11 @@ export default function UserBadgeManagement() {
     }
 
     // Handle assigning a badge to a user
-    const handleAssignBadge = async (badgeId: string) => {
+    const handleAssignBadge = async (badgeId: string): Promise<void> => {
         if (!selectedUser) return
 
         // Update form data
-        const formData = {
+        const formData: BadgeAssignmentFormData = {
             ...assignmentForm,
             badgeId,
         }
@@ -230,14 +481,15 @@ export default function UserBadgeManagement() {
         }
 
         // Check if user already has this badge
-        const hasBadgeResponse = await userBadgeApi.checkUserBadge(selectedUser._id, badgeId)
+        const userId = selectedUser.userId
+        const hasBadgeResponse = await userBadgeApi.checkUserBadge(userId, badgeId)
         if (hasBadgeResponse.success && hasBadgeResponse.hasBadge) {
             toast.error("User already has this badge")
             return
         }
 
         // Assign badge
-        const response = await userBadgeApi.assignBadge(selectedUser._id, badgeId, formData.awardReason)
+        const response = await userBadgeApi.assignBadge(userId, badgeId, formData.awardReason)
 
         if (response.success) {
             toast.success("Badge assigned successfully")
@@ -248,24 +500,28 @@ export default function UserBadgeManagement() {
             if (badge) {
                 // Update local state
                 const updatedUsers = users.map((user) => {
-                    if (user._id === selectedUser._id) {
+                    if (user.userId === selectedUser.userId) {
+                        // Update recent badges (add new badge to front, keep only 3)
+                        const updatedRecentBadges = [badge, ...(user.recentBadges || [])].slice(0, 3)
+
                         return {
                             ...user,
-                            badges: [...user.badges, badge],
-                            badgesEarned: user.badgesEarned + 1,
+                            badges: [...(user.badges || []), badge],
+                            badgesEarned: (user.badgesEarned || 0) + 1,
+                            recentBadges: updatedRecentBadges,
                         }
                     }
                     return user
                 })
 
                 setUsers(updatedUsers)
-                setSelectedUser(updatedUsers.find((u) => u._id === selectedUser._id) || null)
+                setSelectedUser(updatedUsers.find((u): u is UserWithBadges => u.userId === selectedUser.userId) || null)
 
                 // Update user badges map
                 if (response.data) {
-                    const updatedUserBadges = {
+                    const updatedUserBadges: Record<string, UserBadge[]> = {
                         ...userBadges,
-                        [selectedUser._id]: [...(userBadges[selectedUser._id] || []), response.data],
+                        [userId]: [...(userBadges[userId] || []), response.data],
                     }
                     setUserBadges(updatedUserBadges)
                 }
@@ -277,14 +533,29 @@ export default function UserBadgeManagement() {
         }
     }
 
+    // Type guard to check if badgeId is a string or Badge object
+    const isBadgeIdString = (badgeId: string | BadgeType): badgeId is string => {
+        return typeof badgeId === "string"
+    }
+
+    // Type guard to check if badgeId is a Badge object
+    const isBadgeObject = (badgeId: string | BadgeType): badgeId is BadgeType => {
+        return typeof badgeId === "object" && badgeId !== null && "_id" in badgeId
+    }
+
     // Handle removing a badge from a user
-    const handleRevokeBadge = async (badge: BadgeType) => {
+    const handleRevokeBadge = async (badge: BadgeType): Promise<void> => {
         if (!selectedUser) return
 
         // Find the user badge entry
-        const userBadgeEntry = userBadges[selectedUser._id]?.find((ub) =>
-            typeof ub.badgeId === "string" ? ub.badgeId === badge._id : (ub.badgeId as BadgeType)._id === badge._id,
-        )
+        const userBadgeEntry = userBadges[selectedUser.userId]?.find((ub) => {
+            if (isBadgeIdString(ub.badgeId)) {
+                return ub.badgeId === badge._id
+            } else if (isBadgeObject(ub.badgeId)) {
+                return ub.badgeId._id === badge._id
+            }
+            return false
+        })
 
         if (!userBadgeEntry) {
             toast.error("Badge assignment not found")
@@ -292,7 +563,11 @@ export default function UserBadgeManagement() {
         }
 
         // Confirm before revoking
-        if (!window.confirm(`Are you sure you want to revoke the "${badge.name}" badge from ${selectedUser.username}?`)) {
+        if (
+            !window.confirm(
+                `Are you sure you want to revoke the "${badge.name}" badge from ${selectedUser.name || selectedUser.username || "this user"}?`,
+            )
+        ) {
             return
         }
 
@@ -304,23 +579,30 @@ export default function UserBadgeManagement() {
 
             // Update local state
             const updatedUsers = users.map((user) => {
-                if (user._id === selectedUser._id) {
+                if (user.userId === selectedUser.userId) {
+                    // Remove badge from user's badges
+                    const updatedBadges = (user.badges || []).filter((b) => b._id !== badge._id)
+
+                    // Update recent badges - remove the revoked badge
+                    const updatedRecentBadges = (user.recentBadges || []).filter((b) => b && b._id !== badge._id)
+
                     return {
                         ...user,
-                        badges: user.badges.filter((b) => b._id !== badge._id),
-                        badgesEarned: user.badgesEarned - 1,
+                        badges: updatedBadges,
+                        badgesEarned: updatedBadges.length,
+                        recentBadges: updatedRecentBadges,
                     }
                 }
                 return user
             })
 
             setUsers(updatedUsers)
-            setSelectedUser(updatedUsers.find((u) => u._id === selectedUser._id) || null)
+            setSelectedUser(updatedUsers.find((u) => u.userId === selectedUser.userId) || null)
 
             // Update user badges map
             const updatedUserBadges = {
                 ...userBadges,
-                [selectedUser._id]: userBadges[selectedUser._id]?.filter((ub) => ub._id !== userBadgeEntry._id) || [],
+                [selectedUser.userId]: (userBadges[selectedUser.userId] || []).filter((ub) => ub._id !== userBadgeEntry._id),
             }
             setUserBadges(updatedUserBadges)
         } else {
@@ -342,6 +624,34 @@ export default function UserBadgeManagement() {
                 </ul>
             </div>
         )
+    }
+
+    // Render badge icon
+    const renderBadgeIcon = (badge: BadgeType | undefined) => {
+        if (!badge) return <Award className="h-5 w-5 text-primary" />
+
+        if (badge.representation === "emoji") {
+            return <span className="text-xl">{badge.icon}</span>
+        } else if (badge.representation === "icon") {
+            return <Award className="h-5 w-5 text-primary" />
+        } else if (badge.icon) {
+            return (
+                <div className="w-6 h-6 rounded-full bg-cover bg-center" style={{ backgroundImage: `url(${badge.icon})` }} />
+            )
+        }
+
+        return <Award className="h-5 w-5 text-primary" />
+    }
+
+    // Extract badge name safely from a UserBadge
+    const getBadgeName = (userBadge: UserBadge): string => {
+        if (isBadgeIdString(userBadge.badgeId)) {
+            const foundBadge = badges.find((b) => b._id === userBadge.badgeId)
+            return foundBadge?.name || "Unknown Badge"
+        } else if (isBadgeObject(userBadge.badgeId)) {
+            return userBadge.badgeId.name
+        }
+        return "Unknown Badge"
     }
 
     return (
@@ -390,24 +700,25 @@ export default function UserBadgeManagement() {
                                         <TableHead>Rank</TableHead>
                                         <TableHead>Score</TableHead>
                                         <TableHead>Badges</TableHead>
+                                        <TableHead>Recent Badges</TableHead>
                                         <TableHead>Last Active</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filteredUsers.map((user) => (
-                                        <TableRow key={user._id}>
+                                        <TableRow key={user.userId}>
                                             <TableCell>
                                                 <div className="flex items-center gap-3">
                                                     <Avatar>
-                                                        {user.profilePicture ? (
-                                                            <AvatarImage src={user.profilePicture} alt={user.username} />
+                                                        {user?.profilePicture ? (
+                                                            <AvatarImage src={user.profilePicture} alt={user.name || user.username || ""} />
                                                         ) : (
-                                                            <AvatarFallback>{user.username.charAt(0)}</AvatarFallback>
+                                                            <AvatarFallback>{(user.name || user.username || "U").charAt(0)}</AvatarFallback>
                                                         )}
                                                     </Avatar>
                                                     <div>
-                                                        <div className="font-medium">{user.username}</div>
+                                                        <div className="font-medium">{user.name || user.username}</div>
                                                         <div className="text-xs text-muted-foreground">{user.email}</div>
                                                     </div>
                                                 </div>
@@ -417,7 +728,7 @@ export default function UserBadgeManagement() {
                                                     {user.rank === 1 && <Trophy className="h-4 w-4 text-yellow-500" />}
                                                     {user.rank === 2 && <Medal className="h-4 w-4 text-gray-400" />}
                                                     {user.rank === 3 && <Award className="h-4 w-4 text-amber-600" />}
-                                                    <span>#{user.rank || "N/A"}</span>
+                                                    <span>#{user.rank}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -430,6 +741,28 @@ export default function UserBadgeManagement() {
                                                 <div className="flex items-center gap-2">
                                                     <BadgeCheck className="h-4 w-4 text-primary" />
                                                     <span>{user.badgesEarned}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-1">
+                                                    {user.recentBadges && user.recentBadges.length > 0 ? (
+                                                        <TooltipProvider>
+                                                            {user.recentBadges.map((badge, index) => (
+                                                                <Tooltip key={index}>
+                                                                    <TooltipTrigger asChild>
+                                                                        <div className="bg-primary/10 p-1 rounded-full flex items-center justify-center w-8 h-8">
+                                                                            {renderBadgeIcon(badge)}
+                                                                        </div>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>{badge.name}</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            ))}
+                                                        </TooltipProvider>
+                                                    ) : (
+                                                        <span className="text-muted-foreground text-sm">No badges</span>
+                                                    )}
                                                 </div>
                                             </TableCell>
                                             <TableCell>{user.updatedAt ? formatRelativeTime(user.updatedAt) : "Never"}</TableCell>
@@ -480,21 +813,26 @@ export default function UserBadgeManagement() {
                     <DialogContent className="sm:max-w-[700px]">
                         <DialogHeader>
                             <DialogTitle>User Details</DialogTitle>
-                            <DialogDescription>Detailed information about the user's progress and achievements.</DialogDescription>
+                            <DialogDescription>Detailed information about the user progress and achievements.</DialogDescription>
                         </DialogHeader>
 
                         {selectedUser && (
                             <div className="space-y-6">
                                 <div className="flex items-center gap-4">
                                     <Avatar className="h-16 w-16">
-                                        {selectedUser.profilePicture ? (
-                                            <AvatarImage src={selectedUser.profilePicture} alt={selectedUser.username} />
+                                        {selectedUser?.profilePicture ? (
+                                            <AvatarImage
+                                                src={selectedUser.profilePicture}
+                                                alt={selectedUser.name || selectedUser.username || ""}
+                                            />
                                         ) : (
-                                            <AvatarFallback className="text-xl">{selectedUser.username.charAt(0)}</AvatarFallback>
+                                            <AvatarFallback className="text-xl">
+                                                {(selectedUser.name || selectedUser.username || "U").charAt(0)}
+                                            </AvatarFallback>
                                         )}
                                     </Avatar>
                                     <div>
-                                        <h3 className="text-xl font-bold">{selectedUser.username}</h3>
+                                        <h3 className="text-xl font-bold">{selectedUser.name || selectedUser.username}</h3>
                                         <p className="text-muted-foreground">{selectedUser.email}</p>
                                         <div className="flex items-center gap-2 mt-1">
                                             {selectedUser.rank && (
@@ -503,7 +841,7 @@ export default function UserBadgeManagement() {
                                                     Rank #{selectedUser.rank}
                                                 </Badge>
                                             )}
-                                            {selectedUser.score && (
+                                            {selectedUser.score !== undefined && (
                                                 <Badge variant="outline" className="flex items-center gap-1">
                                                     <Star className="h-3 w-3" />
                                                     {selectedUser.score} points
@@ -517,7 +855,7 @@ export default function UserBadgeManagement() {
                                     <Card>
                                         <CardContent className="p-4 flex flex-col items-center justify-center">
                                             <div className="text-muted-foreground text-sm mb-1">Quizzes Taken</div>
-                                            <div className="text-2xl font-bold">{selectedUser.quizzesTaken || 0}</div>
+                                            <div className="text-2xl font-bold">{selectedUser?.quizzesTaken || 0}</div>
                                         </CardContent>
                                     </Card>
                                     <Card>
@@ -529,14 +867,14 @@ export default function UserBadgeManagement() {
                                     <Card>
                                         <CardContent className="p-4 flex flex-col items-center justify-center">
                                             <div className="text-muted-foreground text-sm mb-1">Total Time</div>
-                                            <div className="text-2xl font-bold">{formatTime(selectedUser.totalTime)}</div>
+                                            <div className="text-2xl font-bold">{formatTime(selectedUser?.totalTime)}</div>
                                         </CardContent>
                                     </Card>
                                     <Card>
                                         <CardContent className="p-4 flex flex-col items-center justify-center">
                                             <div className="text-muted-foreground text-sm mb-1">Last Active</div>
                                             <div className="text-2xl font-bold">
-                                                {selectedUser.updatedAt ? formatRelativeTime(selectedUser.updatedAt) : "Never"}
+                                                {selectedUser?.updatedAt ? formatRelativeTime(selectedUser.updatedAt) : "Never"}
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -557,7 +895,7 @@ export default function UserBadgeManagement() {
                                         </div>
 
                                         <ScrollArea className="h-[200px] rounded-md border p-4">
-                                            {selectedUser.badges.length === 0 ? (
+                                            {!selectedUser.badges || selectedUser.badges.length === 0 ? (
                                                 <div className="text-center py-8 text-muted-foreground">
                                                     No badges earned yet. Assign a badge to get started.
                                                 </div>
@@ -570,16 +908,7 @@ export default function UserBadgeManagement() {
                                                         >
                                                             <div className="flex items-center gap-2">
                                                                 <div className="bg-primary/10 p-2 rounded-full flex items-center justify-center w-10 h-10">
-                                                                    {badge.representation === "emoji" ? (
-                                                                        <span className="text-xl">{badge.icon}</span>
-                                                                    ) : badge.representation === "icon" ? (
-                                                                        <Award className="h-5 w-5 text-primary" />
-                                                                    ) : (
-                                                                        <div
-                                                                            className="w-6 h-6 rounded-full bg-cover bg-center"
-                                                                            style={{ backgroundImage: `url(${badge.icon})` }}
-                                                                        />
-                                                                    )}
+                                                                    {renderBadgeIcon(badge)}
                                                                 </div>
                                                                 <div className="text-sm font-medium">{badge.name}</div>
                                                             </div>
@@ -600,19 +929,16 @@ export default function UserBadgeManagement() {
                                     <TabsContent value="activity">
                                         <ScrollArea className="h-[200px] rounded-md border">
                                             <div className="p-4 space-y-4">
-                                                {userBadges[selectedUser._id]?.slice(0, 5).map((userBadge, index) => {
-                                                    const badge =
-                                                        typeof userBadge.badgeId === "string"
-                                                            ? selectedUser.badges.find((b) => b._id === userBadge.badgeId)
-                                                            : (userBadge.badgeId as BadgeType)
+                                                {userBadges[selectedUser.userId]?.slice(0, 5).map((userBadge, index) => {
+                                                    const badgeName = getBadgeName(userBadge)
 
-                                                    return badge ? (
+                                                    return (
                                                         <div key={index} className="flex items-center gap-4 pb-4 border-b">
                                                             <div className="bg-primary/10 p-2 rounded-full">
                                                                 <Award className="h-4 w-4 text-primary" />
                                                             </div>
                                                             <div className="flex-1">
-                                                                <p className="text-sm">Earned the "{badge.name}" badge</p>
+                                                                <p className="text-sm">Earned the &quot;{badgeName}&quot; badge</p>
                                                                 <p className="text-xs text-muted-foreground">
                                                                     {formatRelativeTime(userBadge.awardedAt)}
                                                                 </p>
@@ -621,10 +947,10 @@ export default function UserBadgeManagement() {
                                                                 )}
                                                             </div>
                                                         </div>
-                                                    ) : null
+                                                    )
                                                 })}
 
-                                                {(!userBadges[selectedUser._id] || userBadges[selectedUser._id].length === 0) && (
+                                                {(!userBadges[selectedUser.userId] || userBadges[selectedUser.userId].length === 0) && (
                                                     <div className="text-center py-8 text-muted-foreground">No activity recorded yet.</div>
                                                 )}
                                             </div>
@@ -641,7 +967,9 @@ export default function UserBadgeManagement() {
                     <DialogContent className="sm:max-w-[500px]">
                         <DialogHeader>
                             <DialogTitle>Assign Badge</DialogTitle>
-                            <DialogDescription>Select a badge to assign to {selectedUser?.username}.</DialogDescription>
+                            <DialogDescription>
+                                Select a badge to assign to {selectedUser?.name || selectedUser?.username || "this user"}.
+                            </DialogDescription>
                         </DialogHeader>
 
                         {renderFormErrors()}
@@ -678,7 +1006,7 @@ export default function UserBadgeManagement() {
                                 <ScrollArea className="h-[300px] rounded-md border p-4">
                                     <div className="grid grid-cols-1 gap-4">
                                         {filteredBadges
-                                            .filter((badge) => !selectedUser.badges.some((userBadge) => userBadge._id === badge._id))
+                                            .filter((badge) => !selectedUser?.badges?.some((userBadge) => userBadge._id === badge._id))
                                             .map((badge) => (
                                                 <Button
                                                     key={badge._id}
@@ -688,16 +1016,7 @@ export default function UserBadgeManagement() {
                                                 >
                                                     <div className="flex items-center gap-3">
                                                         <div className="bg-primary/10 p-2 rounded-full flex items-center justify-center w-10 h-10">
-                                                            {badge.representation === "emoji" ? (
-                                                                <span className="text-xl">{badge.icon}</span>
-                                                            ) : badge.representation === "icon" ? (
-                                                                <Award className="h-5 w-5 text-primary" />
-                                                            ) : (
-                                                                <div
-                                                                    className="w-6 h-6 rounded-full bg-cover bg-center"
-                                                                    style={{ backgroundImage: `url(${badge.icon})` }}
-                                                                />
-                                                            )}
+                                                            {renderBadgeIcon(badge)}
                                                         </div>
                                                         <div className="text-left">
                                                             <div className="font-medium">{badge.name}</div>
@@ -708,7 +1027,7 @@ export default function UserBadgeManagement() {
                                             ))}
 
                                         {filteredBadges.filter(
-                                            (badge) => !selectedUser.badges.some((userBadge) => userBadge._id === badge._id),
+                                            (badge) => !selectedUser?.badges?.some((userBadge) => userBadge._id === badge._id),
                                         ).length === 0 && (
                                                 <div className="text-center py-8 text-muted-foreground">
                                                     No badges available to assign. User has earned all available badges.

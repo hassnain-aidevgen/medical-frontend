@@ -1,6 +1,14 @@
-// User type
+
+  export interface UserWithBadges extends User {
+    badges?: UserBadge[]
+  }
+  
+
+  // User type
 export interface User {
     _id: string
+    userId: string
+    name: string
     username: string
     email: string
     profilePicture?: string
@@ -25,6 +33,7 @@ export interface User {
     isActive: boolean
     createdAt: string
     updatedAt: string
+    imageUrl?: string
   }
   
   // UserBadge type
@@ -37,12 +46,14 @@ export interface User {
     awardReason?: string
     createdAt: string
     updatedAt: string
+    user?: UserRef[]
   }
   
   // User with badges
   export interface UserWithBadges extends User {
-    badges: Badge[]
+    badges?: UserBadge[]
     badgesEarned: number
+    recentBadges: Badge[];
   }
   
   // Badge assignment form data
@@ -66,4 +77,68 @@ export interface User {
     }
   }
   
-  
+
+// Reference types for populated fields
+export interface UserRef {
+  _id: string
+  name?: string
+  profilePicture?: string
+}
+
+export interface BadgeRef {
+  _id: string
+  name: string
+}
+
+// Badge stats types
+export interface BadgeStats {
+  recentAwards?: UserBadge[]
+  awardsByBadge?: BadgeAwardCount[]
+  totalAwards?: number
+}
+
+export interface BadgeAwardCount {
+  badgeId: string
+  name: string
+  count: number
+}
+
+// Dashboard stats types
+export interface DashboardStats {
+  totalUsers: number
+  activeBadges: number
+  badgesAwarded: number
+  engagementRate: number
+  recentActivity: RecentActivity[]
+  topBadges: TopBadge[]
+  topUsers: TopUser[]
+}
+
+export interface RecentActivity {
+  id: string
+  user: string
+  userId: string
+  profilePicture?: string
+  action: string
+  time: string
+  badgeId?: string
+  badgeName?: string
+}
+
+export interface TopBadge {
+  id: string
+  name: string
+  awarded: number
+  icon: string
+  representation: string
+}
+
+export interface TopUser {
+  id: string
+  name: string
+  username: string
+  profilePicture?: string
+  badges: number
+  score: number
+}
+

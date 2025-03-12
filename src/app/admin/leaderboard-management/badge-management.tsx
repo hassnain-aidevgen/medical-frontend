@@ -75,7 +75,9 @@ export function BadgeManagement() {
             const response = await badgeApi.getAllBadges()
             console.log(response.data);
             if (response.success) {
-                setBadges(response.data)
+                if (response.data) {
+                    setBadges(response.data)
+                }
             } else {
                 toast.error(response.error || "Failed to fetch badges")
             }
@@ -127,7 +129,9 @@ export function BadgeManagement() {
             const response = await badgeApi.createBadge(newBadge)
 
             if (response.success) {
-                setBadges([...badges, response.data])
+                if (response.data) {
+                    setBadges([...badges, response.data])
+                }
                 setIsCreateDialogOpen(false)
                 toast.success(`Badge "${newBadge.name}" created successfully`)
                 resetNewBadgeForm()
@@ -175,7 +179,7 @@ export function BadgeManagement() {
         try {
             const response = await badgeApi.updateBadge(currentBadge._id, currentBadge)
             if (response.success) {
-                setBadges(badges.map((badge) => (badge._id === currentBadge._id ? response.data : badge)))
+                setBadges(badges.map((badge) => (badge._id === currentBadge._id && response.data ? response.data : badge)))
                 setIsEditDialogOpen(false)
                 toast.success(`Badge "${currentBadge.name}" updated successfully`)
                 setFormErrors([])

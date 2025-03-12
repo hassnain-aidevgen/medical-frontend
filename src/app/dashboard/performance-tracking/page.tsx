@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -46,7 +48,7 @@ import {
   TrendingUp,
   Twitter,
   XCircle,
-  Zap
+  Zap,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast, Toaster } from "react-hot-toast"
@@ -337,10 +339,10 @@ export default function AnalyticsDashboard() {
     topicMastery: true,
   })
   const [error, setError] = useState<{
-    performance: string | null,
-    stats: string | null,
-    comparative: string | null,
-    topicMastery: string | null,
+    performance: string | null
+    stats: string | null
+    comparative: string | null
+    topicMastery: string | null
   }>({
     performance: null,
     stats: null,
@@ -358,8 +360,12 @@ export default function AnalyticsDashboard() {
 
   const dashboardRef = useRef<HTMLDivElement>(null)
 
+  // Add state for managing the view mode for tests and questions
+  const [viewAllTests, setViewAllTests] = useState(false)
+  const [viewAllQuestions, setViewAllQuestions] = useState(false)
+  const [selectedTestIndex, setSelectedTestIndex] = useState<number | null>(null)
 
-  console.warn(error);
+  console.warn(error)
   useEffect(() => {
     const fetchData = async () => {
       const userId = localStorage.getItem("Medical_User_Id")
@@ -376,24 +382,22 @@ export default function AnalyticsDashboard() {
 
       try {
         // Fetch performance data
-        const performanceResponse = await axios.get<TestResult[]>(
-          "https://medical-backend-loj4.onrender.com/api/test/performance",
-          { params: { userId } },
-        )
+        const performanceResponse = await axios.get<TestResult[]>("http://localhost:5000/api/test/performance", {
+          params: { userId },
+        })
         setPerformanceData(performanceResponse.data)
         setLoading((prev) => ({ ...prev, performance: false }))
 
         // Fetch stats data
-        const statsResponse = await axios.get<StatsData>(
-          `https://medical-backend-loj4.onrender.com/api/test/user/${userId}/stats`,
-        )
+        const statsResponse = await axios.get<StatsData>(`http://localhost:5000/api/test/user/${userId}/stats`)
         setStatsData(statsResponse.data)
+        console.log(statsResponse.data)
         setLoading((prev) => ({ ...prev, stats: false }))
 
         // Fetch comparative analytics
         try {
           const comparativeResponse = await axios.get<ComparativeAnalytics>(
-            `https://medical-backend-loj4.onrender.com/api/test/comparative/${userId}`,
+            `http://localhost:5000/api/test/comparative/${userId}`,
           )
           setComparativeData(comparativeResponse.data)
         } catch (err) {
@@ -406,7 +410,7 @@ export default function AnalyticsDashboard() {
         // Fetch topic mastery data
         try {
           const topicMasteryResponse = await axios.get<TopicMasteryMetrics>(
-            `https://medical-backend-loj4.onrender.com/api/test/topic-mastery/${userId}`,
+            `http://localhost:5000/api/test/topic-mastery/${userId}`,
           )
           setTopicMasteryData(topicMasteryResponse.data)
         } catch (err) {
@@ -434,7 +438,6 @@ export default function AnalyticsDashboard() {
 
     fetchData()
   }, [])
-
 
   const generatePDF = async () => {
     if (!dashboardRef.current) return
@@ -930,7 +933,7 @@ export default function AnalyticsDashboard() {
                             <Line
                               type="monotone"
                               dataKey="accuracy"
-                              stroke="var(--primary)"
+                              stroke="#555"
                               strokeWidth={3}
                               dot={{ r: 6, strokeWidth: 2 }}
                               activeDot={{ r: 8 }}
@@ -1036,8 +1039,8 @@ export default function AnalyticsDashboard() {
                       <CardTitle>Recent Tests</CardTitle>
                       <CardDescription>Your most recent test results</CardDescription>
                     </div>
-                    <Button variant="outline" size="sm">
-                      View All
+                    <Button variant="outline" size="sm" onClick={() => setViewAllTests(!viewAllTests)}>
+                      {viewAllTests ? "Show Less" : "View All"}
                     </Button>
                   </div>
                 </CardHeader>
@@ -1051,7 +1054,7 @@ export default function AnalyticsDashboard() {
                   ) : (
                     <ScrollArea className="h-[400px] pr-4">
                       <Accordion type="single" collapsible className="w-full">
-                        {performanceData.slice(0, 5).map((test, index) => (
+                        {(viewAllTests ? performanceData : performanceData.slice(0, 5)).map((test, index) => (
                           <AccordionItem value={`item-${index}`} key={index} className="border-b">
                             <AccordionTrigger className="py-4 hover:no-underline">
                               <div className="flex justify-between items-center w-full">
@@ -1096,7 +1099,10 @@ export default function AnalyticsDashboard() {
 
                                 <h3 className="font-semibold mt-4 mb-2">Questions:</h3>
                                 <div className="space-y-3">
-                                  {test.questions.slice(0, 3).map((q, qIndex) => (
+                                  {(viewAllQuestions && selectedTestIndex === index
+                                    ? test.questions
+                                    : test.questions.slice(0, 3)
+                                  ).map((q, qIndex) => (
                                     <div key={qIndex} className="border-b pb-3">
                                       <p className="font-medium">
                                         Q{qIndex + 1}: {q.questionText}
@@ -1125,8 +1131,18 @@ export default function AnalyticsDashboard() {
                                     </div>
                                   ))}
                                   {test.questions.length > 3 && (
-                                    <Button variant="ghost" size="sm" className="mt-2">
-                                      View all {test.questions.length} questions{" "}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="mt-2"
+                                      onClick={() => {
+                                        setSelectedTestIndex(index)
+                                        setViewAllQuestions(!viewAllQuestions)
+                                      }}
+                                    >
+                                      {viewAllQuestions && selectedTestIndex === index
+                                        ? "Show Less"
+                                        : `View all ${test.questions.length} questions`}{" "}
                                       <ChevronRight className="ml-1 h-4 w-4" />
                                     </Button>
                                   )}
@@ -1612,16 +1628,14 @@ export default function AnalyticsDashboard() {
                             </div>
                             <Progress
                               value={rec.masteryScore}
-                              className={
-                                `h-2 ${rec.masteryLevel === "Expert"
-                                  ? "bg-green-500"
-                                  : rec.masteryLevel === "Advanced"
-                                    ? "bg-blue-500"
-                                    : rec.masteryLevel === "Intermediate"
-                                      ? "bg-yellow-500"
-                                      : "bg-red-500"
-                                }`
-                              }
+                              className={`h-2 ${rec.masteryLevel === "Expert"
+                                ? "bg-green-500"
+                                : rec.masteryLevel === "Advanced"
+                                  ? "bg-blue-500"
+                                  : rec.masteryLevel === "Intermediate"
+                                    ? "bg-yellow-500"
+                                    : "bg-red-500"
+                                }`}
                             />
                           </div>
                           <Button variant="ghost" size="sm" className="w-full mt-3">
@@ -1896,4 +1910,3 @@ export default function AnalyticsDashboard() {
     </TooltipProvider>
   )
 }
-

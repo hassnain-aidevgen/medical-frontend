@@ -6,9 +6,9 @@ import { Award, BarChart3, FileBarChart, Gauge, Settings2, Users } from "lucide-
 import { useState } from "react"
 import { BadgeManagement } from "./badge-management"
 import { DashboardOverview } from "./dashboard-overview"
-import { ReportsAnalytics } from "./reports-analytics"
-import { RuleBuilder } from "./rule-builder"
-import { Settings } from "./settings"
+// import { ReportsAnalytics } from "./reports-analytics"
+// import { RuleBuilder } from "./rule-builder"
+// import { Settings } from "./settings"
 import UserProgress from "./user-progress"
 
 export default function AdminDashboard() {
@@ -56,14 +56,14 @@ export default function AdminDashboard() {
                         <FileBarChart className="mr-2 h-4 w-4" />
                         Reports & Analytics
                     </Button> */}
-                    <Button
+                    {/* <Button
                         variant={activeTab === "rules" ? "secondary" : "ghost"}
                         className="w-full justify-start"
                         onClick={() => setActiveTab("rules")}
                     >
                         <BarChart3 className="mr-2 h-4 w-4" />
                         Rule Builder
-                    </Button>
+                    </Button> */}
                     {/* <Button
                         variant={activeTab === "settings" ? "secondary" : "ghost"}
                         className="w-full justify-start"
@@ -106,9 +106,9 @@ export default function AdminDashboard() {
                 {activeTab === "overview" && <DashboardOverview />}
                 {activeTab === "badges" && <BadgeManagement />}
                 {activeTab === "users" && <UserProgress />}
-                {activeTab === "reports" && <ReportsAnalytics />}
-                {activeTab === "rules" && <RuleBuilder />}
-                {activeTab === "settings" && <Settings />}
+                {/* {activeTab === "reports" && <ReportsAnalytics />} */}
+                {/* {activeTab === "rules" && <RuleBuilder />} */}
+                {/* {activeTab === "settings" && <Settings />} */}
             </div>
         </div>
     )

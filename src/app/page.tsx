@@ -1,11 +1,11 @@
 "use client"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Calendar, BarChart2, Target, BookOpen, Clock } from "lucide-react"
+import { BarChart2, BookOpen, Calendar, Clock, Target } from "lucide-react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 export default function LandingPage() {
-  const router =  useRouter()
+  const router = useRouter()
   return (
     <div className="flex flex-col min-h-screen">
       <header className="py-4 px-4 sm:px-6 lg:px-8">

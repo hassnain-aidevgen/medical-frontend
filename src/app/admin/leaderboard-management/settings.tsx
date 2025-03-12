@@ -24,7 +24,7 @@ export function Settings() {
         language: "en",
     })
 
-    const handleGeneralSettingsChange = (field: string, value: any) => {
+    const handleGeneralSettingsChange = (field: keyof typeof generalSettings, value: string | boolean) => {
         setGeneralSettings({
             ...generalSettings,
             [field]: value,

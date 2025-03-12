@@ -1,16 +1,17 @@
 "use client"
 
-import TestPageWarning from "@/components/pageTestWarning"
+import type React from "react"
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import axios from "axios"
-import { AlertCircle, Clock } from "lucide-react"
-import { useSearchParams } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
-import QuestionBox from "./QuestionBox"
-import TestSummary from "./TestSummary"
+import { AlertCircle } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
-type Question = {
+interface Question {
     _id: string
     question: string
     options: string[]
@@ -30,310 +31,146 @@ type Question = {
     question_type: "case_based" | "single_best_answer" | "extended_matching"
 }
 
-// Interface for recommended questions from create-test page
-interface RecommendedQuestion {
-    questionText: string
-    correctAnswer: string
-    topic: string
-    _id?: string
+interface TakeTestProps {
+    initialQuestions: Question[]
+    mode: "daily-challenge" | "practice"
+    challengeId?: string
 }
 
-const TakeTest = () => {
-    // const router = useRouter()
-    const searchParams = useSearchParams()
-
-    const mode = searchParams.get("mode") || "tutor"
-    const subjectsParam = searchParams.get("subjects") || ""
-    const subsectionsParam = searchParams.get("subsections") || ""
-    const countParam = searchParams.get("count") || "10"
-    const isRecommendedTest = searchParams.get("isRecommendedTest") === "true"
-
-    const [questions, setQuestions] = useState<Question[]>([])
+const TakeTest: React.FC<TakeTestProps> = ({ initialQuestions, mode, challengeId }) => {
+    const [questions, setQuestions] = useState<Question[]>(initialQuestions)
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-    const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({})
-    const [submittedAnswers, setSubmittedAnswers] = useState<Record<number, boolean>>({})
-    const [questionTimes, setQuestionTimes] = useState<Record<number, number>>({})
-    const [startTime, setStartTime] = useState<number | null>(null)
-    const [timeLeft, setTimeLeft] = useState(0)
-    const [isLoading, setIsLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
-    const [showResults, setShowResults] = useState(false)
-
-    const totalQuestions = Math.max(1, Number.parseInt(countParam, 10))
-    const [combinedQuestions, setCombinedQuestions] = useState<Question[]>([])
-
-    // Generate contextually relevant incorrect options based on the correct answer
-    const generatePlausibleOptions = (correctAnswer: string, topic: string): string[] => {
-        // Get base words from the correct answer to create variations
-        const words = correctAnswer.split(' ');
-        
-        // Medical terminology common modifiers
-        const medicalModifiers = [
-            'acute', 'chronic', 'mild', 'severe', 'primary', 'secondary', 
-            'early', 'late', 'benign', 'malignant', 'partial', 'complete',
-            'anterior', 'posterior', 'bilateral', 'unilateral'
-        ];
-        
-        // Common medical conditions that could be substituted
-        const medicalConditions = [
-            'hypertension', 'hypotension', 'tachycardia', 'bradycardia',
-            'hyperglycemia', 'hypoglycemia', 'anemia', 'leukemia',
-            'pneumonia', 'bronchitis', 'hepatitis', 'nephritis',
-            'syndrome', 'disease', 'disorder', 'deficiency'
-        ];
-        
-        // Generate options based on the context
-        const options: string[] = [correctAnswer];
-        
-        // Option 1: Modify a word in the correct answer
-        if (words.length > 1) {
-            const modifiedWords = [...words];
-            const randomIndex = Math.floor(Math.random() * words.length);
-            modifiedWords[randomIndex] = medicalModifiers[Math.floor(Math.random() * medicalModifiers.length)];
-            options.push(modifiedWords.join(' '));
-        } else {
-            // If only one word, prepend a modifier
-            options.push(`${medicalModifiers[Math.floor(Math.random() * medicalModifiers.length)]} ${correctAnswer}`);
-        }
-        
-        // Option 2: Replace with a related but incorrect condition
-        options.push(`${topic} related ${medicalConditions[Math.floor(Math.random() * medicalConditions.length)]}`);
-        
-        // Option 3: Negate or invert the meaning
-        if (correctAnswer.includes('increase')) {
-            options.push(correctAnswer.replace('increase', 'decrease'));
-        } else if (correctAnswer.includes('decrease')) {
-            options.push(correctAnswer.replace('decrease', 'increase'));
-        } else if (correctAnswer.includes('high')) {
-            options.push(correctAnswer.replace('high', 'low'));
-        } else if (correctAnswer.includes('low')) {
-            options.push(correctAnswer.replace('low', 'high'));
-        } else {
-            // Default option if no specific pattern to invert
-            options.push(`No ${correctAnswer}`);
-        }
-        
-        // Shuffle the options to randomize the position of the correct answer
-        return shuffleArray(options);
-    };
-
-    // Helper function to shuffle an array
-    const shuffleArray = <T,>(array: T[]): T[] => {
-        const shuffled = [...array];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        return shuffled;
-    };
-
-    const fetchQuestions = useCallback(async () => {
-        setIsLoading(true)
-        setError(null)
-        
-        try {
-            // Check if we're using recommended questions
-            if (isRecommendedTest) {
-                // Get user ID from localStorage
-                const userId = localStorage.getItem("Medical_User_Id")
-                if (!userId) {
-                    throw new Error("User ID not found. Please log in again.")
-                }
-                
-                // Fetch recommended questions using the existing API endpoint
-                const recommendationsResponse = await axios.get(
-                    `https://medical-backend-loj4.onrender.com/api/test/recommendations/${userId}`
-                );
-                
-                if (!recommendationsResponse.data.recommendations || 
-                    recommendationsResponse.data.recommendations.length === 0) {
-                    throw new Error("No recommended questions available. Please take more tests first.");
-                }
-                
-                // Create questions directly from the recommendations since we can't filter by topic
-                // Map the recommendation data to match the Question structure as closely as possible
-                const mappedQuestions: Question[] = recommendationsResponse.data.recommendations.map((rec: RecommendedQuestion, index: number) => ({
-                    _id: rec._id || `rec-${index}`,
-                    question: rec.questionText,
-                    options: generatePlausibleOptions(rec.correctAnswer, rec.topic),
-                    answer: rec.correctAnswer,
-                    explanation: `This question covers ${rec.topic}.`,
-                    subject: "Recommended",
-                    subsection: rec.topic,
-                    system: "General",
-                    topic: rec.topic,
-                    subtopics: [],
-                    exam_type: "USMLE_STEP1",
-                    year: new Date().getFullYear(),
-                    difficulty: "medium",
-                    specialty: "General",
-                    clinical_setting: "General",
-                    question_type: "single_best_answer"
-                }));
-                
-                setQuestions(mappedQuestions);
-                setCombinedQuestions(mappedQuestions);
-                
-                console.log("Using mapped recommendations:", mappedQuestions);
-            } else {
-                // Original fetch logic for regular test
-                const response = await axios.get("https://medical-backend-loj4.onrender.com/api/test/take-test/questions", {
-                    params: {
-                        subjects: subjectsParam,
-                        subsections: subsectionsParam,
-                        count: totalQuestions,
-                    },
-                });
-                setQuestions(response.data);
-                setCombinedQuestions(response.data);
-            }
-            
-            setStartTime(Date.now());
-            if (mode === "timer") {
-                // For recommended test, use actual questions length
-                const questionCount = questions.length > 0 ? questions.length : totalQuestions;
-                setTimeLeft(questionCount * 60); // 60 seconds per question
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to fetch questions. Please try again.");
-            console.error("Error fetching questions:", err);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [subjectsParam, subsectionsParam, totalQuestions, mode, isRecommendedTest, questions.length]);
+    const [userAnswers, setUserAnswers] = useState<string[]>([])
+    const [isSubmitted, setIsSubmitted] = useState(false)
+    const [score, setScore] = useState(0)
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState("")
+    const router = useRouter()
 
     useEffect(() => {
-        fetchQuestions()
-    }, [fetchQuestions])
+        setQuestions(initialQuestions)
+        setUserAnswers(Array(initialQuestions.length).fill(""))
+        setCurrentQuestionIndex(0)
+        setIsSubmitted(false)
+        setScore(0)
+    }, [initialQuestions])
 
-    const handleAnswerSelect = (answer: string) => {
-        setSelectedAnswers((prev) => ({
-            ...prev,
-            [currentQuestionIndex]: answer,
-        }))
+    const handleAnswerChange = (answer: string) => {
+        const updatedAnswers = [...userAnswers]
+        updatedAnswers[currentQuestionIndex] = answer
+        setUserAnswers(updatedAnswers)
     }
 
-    const handleFinishTest = useCallback(() => {
-        const currentTime = Date.now()
-        const timeSpent = startTime ? Math.round((currentTime - startTime) / 1000) : 0
-        setQuestionTimes((prev) => ({
-            ...prev,
-            [currentQuestionIndex]: timeSpent,
-        }))
-        setShowResults(true)
-    }, [startTime, currentQuestionIndex])
+    const handleSubmit = async () => {
+        setIsSubmitted(true)
+        let correctAnswers = 0
 
-    const handleAnswerSubmit = useCallback(() => {
-        if (selectedAnswers[currentQuestionIndex]) {
-            const currentTime = Date.now()
-            const timeSpent = startTime ? Math.round((currentTime - startTime) / 1000) : 0
-            setQuestionTimes((prev) => ({
-                ...prev,
-                [currentQuestionIndex]: timeSpent,
-            }))
-            setStartTime(currentTime)
-            setSubmittedAnswers((prev) => ({
-                ...prev,
-                [currentQuestionIndex]: true,
-            }))
+        questions.forEach((question, index) => {
+            if (question.answer === userAnswers[index]) {
+                correctAnswers++
+            }
+        })
+
+        const calculatedScore = (correctAnswers / questions.length) * 100
+        setScore(calculatedScore)
+
+        if (mode === "daily-challenge" && challengeId) {
+            try {
+                setLoading(true)
+                const userId = localStorage.getItem("Medical_User_Id")
+                const response = await axios.post("http://localhost:5000/api/test/submit-daily-challenge", {
+                    challengeId: challengeId,
+                    userId: userId,
+                    score: calculatedScore,
+                })
+
+                if (response.status === 200) {
+                    router.push("/daily-challenge/results")
+                } else {
+                    setError("Failed to submit daily challenge")
+                }
+            } catch (err) {
+                setError("An error occurred while submitting the daily challenge")
+                console.error(err)
+            } finally {
+                setLoading(false)
+            }
         }
-    }, [currentQuestionIndex, selectedAnswers, startTime])
+    }
 
     const handleNextQuestion = () => {
         if (currentQuestionIndex < questions.length - 1) {
-            setCurrentQuestionIndex((prev) => prev + 1)
-            setStartTime(Date.now())
-        } else {
-            handleFinishTest()
+            setCurrentQuestionIndex(currentQuestionIndex + 1)
         }
     }
 
     const handlePreviousQuestion = () => {
         if (currentQuestionIndex > 0) {
-            setCurrentQuestionIndex((prev) => prev - 1)
+            setCurrentQuestionIndex(currentQuestionIndex - 1)
         }
     }
 
-    const calculateScore = () => {
-        return combinedQuestions.reduce((score, question, index) => {
-            return score + (selectedAnswers[index] === question.answer ? 1 : 0)
-        }, 0)
-    }
-
-    if (isLoading) {
-        return <div className="flex justify-center items-center h-screen">Loading questions...</div>
-    }
-
-    if (error) {
-        return (
-            <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-            </Alert>
-        )
-    }
-
-    if (showResults) {
-        return (
-            <TestSummary
-                questions={combinedQuestions}
-                selectedAnswers={selectedAnswers}
-                questionTimes={questionTimes}
-                score={calculateScore()}
-                totalTime={Object.values(questionTimes).reduce((sum, time) => sum + time, 0)}
-            />
-        )
-    }
+    const currentQuestion = questions[currentQuestionIndex]
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            <TestPageWarning
-                selectedAnswers={selectedAnswers}
-                showResults={showResults}
-                // currentQuestion={currentQuestion}
-                totalQuestions={questions.length}
-            />
-
-            <h1 className="text-3xl font-bold mb-8">
-                {isRecommendedTest ? "Recommended Questions Test" : "Medical Test"}
-            </h1>
-
-            {mode === "timer" && (
-                <div className="mb-4 text-xl flex items-center">
-                    <Clock className="mr-2" />
-                    Time left: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
-                </div>
-            )}
-
-            {questions.length > 0 && (
-                <QuestionBox
-                    question={questions[currentQuestionIndex]}
-                    selectedAnswer={selectedAnswers[currentQuestionIndex]}
-                    onAnswerSelect={handleAnswerSelect}
-                    questionNumber={currentQuestionIndex + 1}
-                    totalQuestions={questions.length}
-                    showCorrectAnswer={submittedAnswers[currentQuestionIndex]}
-                    onSubmit={handleAnswerSubmit}
-                />
-            )}
-
-            <div className="flex gap-5 mt-6">
-                <Button onClick={handlePreviousQuestion} disabled={currentQuestionIndex === 0}>
-                    Previous
-                </Button>
-                {!submittedAnswers[currentQuestionIndex] ? (
-                    <Button onClick={handleAnswerSubmit} disabled={!selectedAnswers[currentQuestionIndex]}>
-                        Submit Answer
-                    </Button>
-                ) : (
-                    <Button onClick={currentQuestionIndex === questions.length - 1 ? handleFinishTest : handleNextQuestion}>
-                        {currentQuestionIndex === questions.length - 1 ? "Finish" : "Next"}
-                    </Button>
-                )}
+        <div className="min-h-screen py-6 flex flex-col justify-center sm:py-12">
+            <div className="relative py-3 sm:max-w-xl sm:mx-auto">
+                <Card className="shadow-xl sm:rounded-2xl">
+                    <CardHeader>
+                        <CardTitle>
+                            Question {currentQuestionIndex + 1} / {questions.length}
+                        </CardTitle>
+                        <CardDescription>{currentQuestion.topic}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <p className="text-lg font-semibold">{currentQuestion.question}</p>
+                        <RadioGroup defaultValue={userAnswers[currentQuestionIndex]} onValueChange={handleAnswerChange}>
+                            {currentQuestion.options.map((option, index) => (
+                                <div key={index} className="flex items-center space-x-2">
+                                    <RadioGroupItem
+                                        value={option}
+                                        id={`option-${index}`}
+                                        className="peer h-5 w-5 shrink-0 rounded-full border border-primary ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                                    />
+                                    <label htmlFor={`option-${index}`} className="cursor-pointer peer-checked:font-semibold">
+                                        {option}
+                                    </label>
+                                </div>
+                            ))}
+                        </RadioGroup>
+                        <div className="flex justify-between">
+                            <Button variant="outline" onClick={handlePreviousQuestion} disabled={currentQuestionIndex === 0}>
+                                Previous
+                            </Button>
+                            <Button onClick={handleNextQuestion} disabled={currentQuestionIndex === questions.length - 1}>
+                                Next
+                            </Button>
+                        </div>
+                        {currentQuestionIndex === questions.length - 1 && (
+                            <Button className="w-full" onClick={handleSubmit} disabled={isSubmitted || loading}>
+                                {loading ? "Submitting..." : "Submit"}
+                            </Button>
+                        )}
+                        {isSubmitted && (
+                            <Alert>
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Test Submitted</AlertTitle>
+                                <AlertDescription>Your score: {score.toFixed(2)}%</AlertDescription>
+                            </Alert>
+                        )}
+                        {error && (
+                            <Alert variant="destructive">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Error</AlertTitle>
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
         </div>
     )
 }
 
 export default TakeTest
+

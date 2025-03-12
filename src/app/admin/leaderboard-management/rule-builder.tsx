@@ -28,7 +28,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import axios from "axios"
 import { ArrowRight, Edit, MoreHorizontal, Pause, Play, Plus, Search, Trash2 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import { z } from "zod"
 
@@ -164,10 +164,40 @@ export function RuleBuilder() {
         status: "active",
     })
 
+
+    // Fetch rules based on active tab and filters
+    const fetchRules = useCallback(
+        async (additionalFilters: Record<string, string | number> = {}) => {
+            setIsLoading(true)
+            try {
+                const filters: Record<string, string | number> = { ...additionalFilters }
+                if (activeTab !== "all") {
+                    filters.status = activeTab
+                }
+
+                const params = new URLSearchParams()
+                Object.entries(filters).forEach(([key, value]) => {
+                    params.append(key, String(value))
+                })
+
+                const response = await api.get<ApiResponse<Rule[]>>(
+                    `/rules/getRules?${params.toString()}`
+                )
+                setRules(response.data.data || [])
+            } catch (error) {
+                console.error("Error fetching rules:", error)
+                toast.error("Failed to fetch rules. Please try again.")
+            } finally {
+                setIsLoading(false)
+            }
+        },
+        [activeTab] // dependency because activeTab is used inside fetchRules
+    )
+
     // Fetch rules on component mount and when activeTab changes
     useEffect(() => {
         fetchRules()
-    }, [activeTab])
+    }, [activeTab, fetchRules])
 
     // Fetch rules with search term when it changes (with debounce)
     useEffect(() => {
@@ -178,31 +208,7 @@ export function RuleBuilder() {
         }, 2500)
 
         return () => clearTimeout(timer)
-    }, [searchTerm])
-
-    // Fetch rules based on active tab and filters
-    const fetchRules = async (additionalFilters: Record<string, string | number> = {}) => {
-        setIsLoading(true)
-        try {
-            const filters: Record<string, string | number> = { ...additionalFilters }
-            if (activeTab !== "all") {
-                filters.status = activeTab
-            }
-
-            const params = new URLSearchParams()
-            Object.entries(filters).forEach(([key, value]) => {
-                params.append(key, String(value))
-            })
-
-            const response = await api.get<ApiResponse<Rule[]>>(`/rules/getRules?${params.toString()}`)
-            setRules(response.data.data || [])
-        } catch (error) {
-            console.error("Error fetching rules:", error)
-            toast.error("Failed to fetch rules. Please try again.")
-        } finally {
-            setIsLoading(false)
-        }
-    }
+    }, [searchTerm, fetchRules])
 
     // Validate rule data
     const validateRule = (rule: RuleFormData): boolean => {
