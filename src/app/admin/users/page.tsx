@@ -59,7 +59,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api/auth"
-const STATS_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/user-stats"
+const STATS_API_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api/user-stats"
 
 type UserType = {
     _id: string

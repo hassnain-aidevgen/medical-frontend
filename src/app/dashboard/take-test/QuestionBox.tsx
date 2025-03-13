@@ -46,7 +46,7 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
   const [analyticsError, setAnalyticsError] = useState<string | null>(null)
   const [isExplanationVisible, setIsExplanationVisible] = useState(false)
   const [showPopup, setShowPopup] = useState(false)
-  
+
   // AI Explanation states
   const [aiExplanation, setAiExplanation] = useState<string | null>(null)
   const [isLoadingAiExplanation, setIsLoadingAiExplanation] = useState(false)
@@ -57,7 +57,7 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
       if (showCorrectAnswer) {
         setIsLoadingAnalytics(true)
         setAnalyticsError(null)
-        
+
         // Check if this is a recommended question (starts with 'rec-')
         if (question._id.startsWith('rec-')) {
           // Provide default analytics for recommended questions
@@ -71,7 +71,7 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
           }, 500); // Small delay to simulate loading
           return;
         }
-        
+
         try {
           const response = await axios.get(
             `https://medical-backend-loj4.onrender.com/api/test/take-test/question-analytics/${question._id}`,
@@ -95,11 +95,11 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
       if (showCorrectAnswer) {
         setIsLoadingAiExplanation(true)
         setAiExplanationError(null)
-        
+
         try {
           // Call your backend API that will use OpenAI
           const response = await axios.post(
-            `http://localhost:5000/api/test/ai-explain`,
+            `https://medical-backend-loj4.onrender.com/api/test/ai-explain`,
             {
               question: question.question,
               options: question.options,
@@ -107,7 +107,7 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
               userAnswer: selectedAnswer || "No answer provided"
             }
           )
-          
+
           setAiExplanation(response.data.explanation)
         } catch (error) {
           console.error("Error fetching AI explanation:", error)

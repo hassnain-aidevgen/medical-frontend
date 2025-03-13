@@ -19,7 +19,7 @@ export default function DailyChallengeButton({ variant = "default" }: { variant?
         const checkDailyChallenge = async () => {
             try {
                 const userId = localStorage.getItem("Medical_User_Id")
-                const response = await axios.get(`http://localhost:5000/api/test/daily-challenge?userId=${userId}`)
+                const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/daily-challenge?userId=${userId}`)
                 const data = response.data
 
                 if (response.status === 200) {

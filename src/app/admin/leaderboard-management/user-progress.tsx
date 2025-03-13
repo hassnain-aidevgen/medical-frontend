@@ -124,7 +124,7 @@ interface BadgeAssignmentFormData {
 }
 
 // API services
-const API_BASE_URL = "http://localhost:5000/api"
+const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api"
 
 // Badge API service
 const badgeApi = {

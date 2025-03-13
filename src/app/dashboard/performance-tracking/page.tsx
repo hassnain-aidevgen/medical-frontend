@@ -382,14 +382,14 @@ export default function AnalyticsDashboard() {
 
       try {
         // Fetch performance data
-        const performanceResponse = await axios.get<TestResult[]>("http://localhost:5000/api/test/performance", {
+        const performanceResponse = await axios.get<TestResult[]>("https://medical-backend-loj4.onrender.com/api/test/performance", {
           params: { userId },
         })
         setPerformanceData(performanceResponse.data)
         setLoading((prev) => ({ ...prev, performance: false }))
 
         // Fetch stats data
-        const statsResponse = await axios.get<StatsData>(`http://localhost:5000/api/test/user/${userId}/stats`)
+        const statsResponse = await axios.get<StatsData>(`https://medical-backend-loj4.onrender.com/api/test/user/${userId}/stats`)
         setStatsData(statsResponse.data)
         console.log(statsResponse.data)
         setLoading((prev) => ({ ...prev, stats: false }))
@@ -397,7 +397,7 @@ export default function AnalyticsDashboard() {
         // Fetch comparative analytics
         try {
           const comparativeResponse = await axios.get<ComparativeAnalytics>(
-            `http://localhost:5000/api/test/comparative/${userId}`,
+            `https://medical-backend-loj4.onrender.com/api/test/comparative/${userId}`,
           )
           setComparativeData(comparativeResponse.data)
         } catch (err) {
@@ -410,7 +410,7 @@ export default function AnalyticsDashboard() {
         // Fetch topic mastery data
         try {
           const topicMasteryResponse = await axios.get<TopicMasteryMetrics>(
-            `http://localhost:5000/api/test/topic-mastery/${userId}`,
+            `https://medical-backend-loj4.onrender.com/api/test/topic-mastery/${userId}`,
           )
           setTopicMasteryData(topicMasteryResponse.data)
         } catch (err) {

@@ -82,7 +82,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ questions, selectedAnswers, q
 
         // Call the new AI feedback endpoint
         const response = await axios.post(
-          "http://localhost:5000/api/test/ai-report-feedback",
+          "https://medical-backend-loj4.onrender.com/api/test/ai-report-feedback",
           feedbackData
         )
 

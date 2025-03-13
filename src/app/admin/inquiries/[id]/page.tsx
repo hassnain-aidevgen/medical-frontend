@@ -207,7 +207,7 @@ export default function AdminInquiryDetailPage() {
                                                 <div className="flex flex-wrap gap-2">
                                                     {inquiry.attachments.map((attachment, index) => (
                                                         <a
-                                                            href={`http://localhost:5000/uploads/${attachment.filename}`}
+                                                            href={`https://medical-backend-loj4.onrender.com/uploads/${attachment.filename}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             key={index}
@@ -257,7 +257,7 @@ export default function AdminInquiryDetailPage() {
                                                     <div className="flex flex-wrap gap-2">
                                                         {response.attachments.map((attachment, idx) => (
                                                             <a
-                                                                href={`http://localhost:5000/uploads/${attachment.filename}`}
+                                                                href={`https://medical-backend-loj4.onrender.com/uploads/${attachment.filename}`}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 key={idx}

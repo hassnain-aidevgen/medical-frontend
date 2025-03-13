@@ -7,24 +7,58 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { badgeApi } from "@/lib/badge-api"
 import { userApi } from "@/lib/user-api"
 import { userBadgeApi } from "@/lib/user-badge-api"
-import type { Badge, BadgeStats, DashboardStats, User, UserBadge } from "@/types"
+import type { Badge, BadgeStats, User, UserBadge } from "@/types"
 import { Award, BadgeCheck, Star, TrendingUp, Users } from "lucide-react"
 import { useEffect, useState } from "react"
 
 type TimeRange = "week" | "month" | "year"
+
+// Define a local interface that matches what we're actually using in this component
+interface LocalDashboardStats {
+    totalUsers: number
+    activeBadges: number
+    badgesAwarded: number
+    engagementRate: number
+    recentActivity: RecentActivity[]
+    topBadges: TopBadge[]
+    topUsers: TopUser[]
+}
+
+interface RecentActivity {
+    id: string
+    user: string
+    userId: string
+    profilePicture?: string
+    action: string
+    time: string
+    badgeId?: string
+    badgeName?: string
+}
+
+interface TopBadge {
+    id: string
+    name: string
+    awarded: number
+    icon: string
+    representation: string
+}
+
+interface TopUser {
+    id: string
+    name: string
+    username: string
+    profilePicture?: string
+    badges: number
+    score: number
+}
 
 export function DashboardOverview() {
     const [timeRange, setTimeRange] = useState<TimeRange>("week")
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    // State for dashboard data
-    //   const [users, setUsers] = useState<UserWithBadges[]>([])
-    //   const [badges, setBadges] = useState<Badge[]>([])
-    //   const [badgeStats, setBadgeStats] = useState<BadgeStats | null>(null)
-
-    // Stats derived from data
-    const [stats, setStats] = useState<DashboardStats>({
+    // Stats derived from data - using our local interface
+    const [stats, setStats] = useState<LocalDashboardStats>({
         totalUsers: 0,
         activeBadges: 0,
         badgesAwarded: 0,
@@ -112,10 +146,6 @@ export function DashboardOverview() {
                 const allUsers = (usersResponse.data as User[]) || []
                 const allBadges = (badgesResponse.data as Badge[]) || []
                 const badgeStatsData = (badgeStatsResponse.data as BadgeStats) || {}
-
-                // setUsers(allUsers as UserWithBadges[])
-                // setBadges(allBadges)
-                // setBadgeStats(badgeStatsData)
 
                 // Calculate current stats
                 const totalUsers = allUsers.length
@@ -524,4 +554,3 @@ export function DashboardOverview() {
         </div>
     )
 }
-
