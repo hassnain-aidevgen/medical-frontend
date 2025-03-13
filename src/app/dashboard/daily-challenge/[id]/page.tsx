@@ -6,7 +6,7 @@ import { AlertCircle } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useParams, useRouter } from "next/navigation"
 import { Suspense, useEffect, useState } from "react"
-import TakeTest from "../../take-test/TakeTest"
+import DailyChallenge from "./DailyChallenge"
 
 // Define the Challenge interface
 interface Challenge {
@@ -14,7 +14,7 @@ interface Challenge {
     questions: { questionText: string; options: string[]; correctAnswer: string }[]
 }
 
-// Define the Question interface expected by TakeTest
+// Define the Question interface expected by DailyChallenge
 interface Question {
     _id: string
     question: string
@@ -52,7 +52,7 @@ export default function DailyChallengePage() {
                 const userId = localStorage.getItem("Medical_User_Id")
                 const response = await axios.get(`http://localhost:5000/api/test/daily-challenge?userId=${userId}`)
 
-                if (response.status == 200) {
+                if (response.status === 200) {
                     // Verify this is today's challenge
                     if (response.data.challenge._id !== id) {
                         setError("This challenge is no longer available")
@@ -67,26 +67,28 @@ export default function DailyChallengePage() {
 
                     setChallenge(response.data.challenge)
 
-                    // Adapt the challenge questions to the format expected by TakeTest
+                    // Adapt the challenge questions to the format expected by DailyChallenge
                     if (response.data.challenge.questions) {
-                        const adapted = response.data.challenge.questions.map((q: { questionText: string; options: string[]; correctAnswer: string }, index: number) => ({
-                            _id: `daily-${index}`,
-                            question: q.questionText,
-                            options: q.options,
-                            answer: q.correctAnswer,
-                            explanation: "Explanation will be provided after submission.",
-                            subject: "Daily Challenge",
-                            subsection: "General",
-                            system: "Mixed",
-                            topic: "Daily Challenge",
-                            subtopics: ["Daily Challenge"],
-                            exam_type: "USMLE_STEP1",
-                            year: new Date().getFullYear(),
-                            difficulty: "medium",
-                            specialty: "General",
-                            clinical_setting: "Mixed",
-                            question_type: "single_best_answer",
-                        }))
+                        const adapted = response.data.challenge.questions.map(
+                            (q: { question: string; options: string[]; answer: string }, index: number) => ({
+                                _id: `daily-${index}`,
+                                question: q.question,
+                                options: q.options,
+                                answer: q.answer,
+                                explanation: "Explanation will be provided after submission.",
+                                subject: "Daily Challenge",
+                                subsection: "General",
+                                system: "Mixed",
+                                topic: "Daily Challenge",
+                                subtopics: ["Daily Challenge"],
+                                exam_type: "USMLE_STEP1",
+                                year: new Date().getFullYear(),
+                                difficulty: "medium",
+                                specialty: "General",
+                                clinical_setting: "Mixed",
+                                question_type: "single_best_answer",
+                            }),
+                        )
                         setAdaptedQuestions(adapted)
                     }
                 } else {
@@ -124,10 +126,10 @@ export default function DailyChallengePage() {
     }
 
     return (
-        <div className="container mx-auto">
-            {/* Pass the adapted questions to the TakeTest component */}
+        <div className="w-full h-screen">
+            {/* Pass the adapted questions to the DailyChallenge component */}
             <Suspense fallback={<div>Loading...</div>}>
-                <TakeTest initialQuestions={adaptedQuestions} mode="daily-challenge" challengeId={challenge._id} />
+                <DailyChallenge initialQuestions={adaptedQuestions} challengeId={challenge._id} />
             </Suspense>
         </div>
     )

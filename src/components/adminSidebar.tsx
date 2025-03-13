@@ -11,6 +11,7 @@ const sidebarItems = [
     { name: "Flash Cards", href: "/admin/flash-cards", icon: Users },
     { name: "Users", href: "/admin/users", icon: Users },
     { name: "Leaderboard", href: "/admin/leaderboard-management", icon: Users },
+    { name: "Inquiries", href: "/admin/inquiries", icon: Users },
     // { name: "Leaderboard", href: "/admin/leaderboard", icon: PiRankingDuotone },
     // { name: "Performance Tracking", href: "/admin/performance-tracking", icon: BarChart2 },
     // { name: "Smart Study Calendar", href: "/admin/smart-study", icon: BookOpen },

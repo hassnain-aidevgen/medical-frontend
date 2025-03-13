@@ -16,6 +16,7 @@ const sidebarItems = [
   // { name: "Digital Error Notebook", href: "/dashboard/digital-error-notebook", icon: Users },
   { name: "Pomodoro Timer", href: "/dashboard/pomodoro-timer", icon: Clock },
   { name: "Payments", icon: BookOpen, href: "/dashboard/payments", color: "bg-blue-500" },
+  { name: "Inquiries", icon: BookOpen, href: "/dashboard/inquiries", color: "bg-blue-500" },
 ]
 
 interface SidebarProps {

@@ -1,13 +1,16 @@
 "use client"
 
+import TestPageWarning from "@/components/pageTestWarning"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import axios from "axios"
-import { AlertCircle } from "lucide-react"
-import { Suspense, useEffect, useState } from "react"
-import TakeTest from "./TakeTest"
+import { AlertCircle, Clock } from "lucide-react"
+import { useSearchParams } from "next/navigation"
+import { useCallback, useEffect, useState } from "react"
+import QuestionBox from "./QuestionBox"
+import TestSummary from "./TestSummary"
 
-// Define the Question interface
-interface Question {
+type Question = {
   _id: string
   question: string
   options: string[]
@@ -27,35 +30,113 @@ interface Question {
   question_type: "case_based" | "single_best_answer" | "extended_matching"
 }
 
-export default function TakeTestPage() {
+const TakeTest = () => {
+  // const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const mode = searchParams.get("mode") || "tutor"
+  const subjectsParam = searchParams.get("subjects") || ""
+  const subsectionsParam = searchParams.get("subsections") || ""
+  const countParam = searchParams.get("count") || "10"
+
   const [questions, setQuestions] = useState<Question[]>([])
-  const [loading, setLoading] = useState(true)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({})
+  const [submittedAnswers, setSubmittedAnswers] = useState<Record<number, boolean>>({})
+  const [questionTimes, setQuestionTimes] = useState<Record<number, number>>({})
+  const [startTime, setStartTime] = useState<number | null>(null)
+  const [timeLeft, setTimeLeft] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showResults, setShowResults] = useState(false)
+
+  const totalQuestions = Math.max(1, Number.parseInt(countParam, 10))
+
+  const fetchQuestions = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const response = await axios.get("http://localhost:5000/api/test/take-test/questions", {
+        params: {
+          subjects: subjectsParam,
+          subsections: subsectionsParam,
+          count: totalQuestions,
+        },
+      })
+      setQuestions(response.data)
+      setStartTime(Date.now())
+      if (mode === "timer") {
+        setTimeLeft(totalQuestions * 60) // 60 seconds per question
+      }
+    } catch (err) {
+      setError("Failed to fetch questions. Please try again.")
+      console.error("Error fetching questions:", err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [subjectsParam, subsectionsParam, totalQuestions, mode])
 
   useEffect(() => {
-    const fetchQuestions = async () => {
-      try {
-        setLoading(true)
-        // Fetch questions from your API
-        const response = await axios.get("http://localhost:5000/api/test/questions")
-
-        if (response.status === 200 && response.data) {
-          setQuestions(response.data)
-        } else {
-          setError("Failed to fetch questions")
-        }
-      } catch (err) {
-        console.error("Error fetching questions:", err)
-        setError("An error occurred while fetching questions")
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchQuestions()
-  }, [])
+  }, [fetchQuestions])
 
-  if (loading) {
+
+  const handleAnswerSelect = (answer: string) => {
+    setSelectedAnswers((prev) => ({
+      ...prev,
+      [currentQuestionIndex]: answer,
+    }))
+  }
+  const handleFinishTest = useCallback(() => {
+    const currentTime = Date.now()
+    const timeSpent = startTime ? Math.round((currentTime - startTime) / 1000) : 0
+    setQuestionTimes((prev) => ({
+      ...prev,
+      [currentQuestionIndex]: timeSpent,
+    }))
+    setShowResults(true)
+  }, [startTime, currentQuestionIndex])
+
+  const handleAnswerSubmit = useCallback(() => {
+    if (selectedAnswers[currentQuestionIndex]) {
+      const currentTime = Date.now()
+      const timeSpent = startTime ? Math.round((currentTime - startTime) / 1000) : 0
+      setQuestionTimes((prev) => ({
+        ...prev,
+        [currentQuestionIndex]: timeSpent,
+      }))
+      setStartTime(currentTime)
+      setSubmittedAnswers((prev) => ({
+        ...prev,
+        [currentQuestionIndex]: true,
+      }))
+    }
+  }, [currentQuestionIndex, selectedAnswers, startTime])
+
+
+  const handleNextQuestion = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex((prev) => prev + 1)
+      setStartTime(Date.now())
+    } else {
+      handleFinishTest()
+    }
+  }
+
+  const handlePreviousQuestion = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex((prev) => prev - 1)
+    }
+  }
+
+
+  const calculateScore = () => {
+    return questions.reduce((score, question, index) => {
+      return score + (selectedAnswers[index] === question.answer ? 1 : 0)
+    }, 0)
+  }
+
+  if (isLoading) {
     return <div className="flex justify-center items-center h-screen">Loading questions...</div>
   }
 
@@ -69,68 +150,62 @@ export default function TakeTestPage() {
     )
   }
 
-  // If no questions were fetched, provide some sample questions
-  if (questions.length === 0) {
-    const sampleQuestions: Question[] = [
-      {
-        _id: "sample1",
-        question: "What is the most common cause of community-acquired pneumonia?",
-        options: [
-          "Streptococcus pneumoniae",
-          "Haemophilus influenzae",
-          "Klebsiella pneumoniae",
-          "Staphylococcus aureus",
-        ],
-        answer: "Streptococcus pneumoniae",
-        explanation: "Streptococcus pneumoniae is the most common cause of community-acquired pneumonia in adults.",
-        subject: "Infectious Disease",
-        subsection: "Respiratory Infections",
-        system: "Respiratory",
-        topic: "Pneumonia",
-        subtopics: ["Bacterial Infections", "Respiratory Infections"],
-        exam_type: "USMLE_STEP1",
-        year: 2023,
-        difficulty: "medium",
-        specialty: "Internal Medicine",
-        clinical_setting: "Outpatient",
-        question_type: "single_best_answer",
-      },
-      {
-        _id: "sample2",
-        question: "Which of the following is a risk factor for osteoporosis?",
-        options: [
-          "High body mass index",
-          "African American ethnicity",
-          "Early menopause",
-          "Regular weight-bearing exercise",
-        ],
-        answer: "Early menopause",
-        explanation: "Early menopause leads to decreased estrogen levels, which is a risk factor for osteoporosis.",
-        subject: "Endocrinology",
-        subsection: "Bone Metabolism",
-        system: "Musculoskeletal",
-        topic: "Osteoporosis",
-        subtopics: ["Risk Factors", "Bone Diseases"],
-        exam_type: "USMLE_STEP2",
-        year: 2023,
-        difficulty: "easy",
-        specialty: "Endocrinology",
-        clinical_setting: "Outpatient",
-        question_type: "single_best_answer",
-      },
-    ]
-
+  if (showResults) {
     return (
-      <Suspense fallback={"Loading Tests..."}>
-        <TakeTest initialQuestions={sampleQuestions} mode="practice" />
-      </Suspense>
+      <TestSummary
+        questions={questions}
+        selectedAnswers={selectedAnswers}
+        questionTimes={questionTimes}
+        score={calculateScore()}
+        totalTime={Object.values(questionTimes).reduce((sum, time) => sum + time, 0)}
+      />
     )
   }
 
   return (
-    <Suspense fallback={"Loading Tests..."}>
-      <TakeTest initialQuestions={questions} mode="practice" />
-    </Suspense>
+    <div className="container mx-auto px-4 py-8">
+      <TestPageWarning
+        selectedAnswers={selectedAnswers}
+        showResults={showResults}
+        // currentQuestion={currentQuestion}
+        totalQuestions={questions.length}
+      />
+
+      <h1 className="text-3xl font-bold mb-8">Medical Test</h1>
+
+      {mode === "timer" && (
+        <div className="mb-4 text-xl flex items-center">
+          <Clock className="mr-2" />
+          Time left: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")}
+        </div>
+      )}
+
+      <QuestionBox
+        question={questions[currentQuestionIndex]}
+        selectedAnswer={selectedAnswers[currentQuestionIndex]}
+        onAnswerSelect={handleAnswerSelect}
+        questionNumber={currentQuestionIndex + 1}
+        totalQuestions={questions.length}
+        showCorrectAnswer={submittedAnswers[currentQuestionIndex]}
+        onSubmit={handleAnswerSubmit}
+      />
+
+      <div className="flex gap-5 mt-6">
+        <Button onClick={handlePreviousQuestion} disabled={currentQuestionIndex === 0}>
+          Previous
+        </Button>
+        {!submittedAnswers[currentQuestionIndex] ? (
+          <Button onClick={handleAnswerSubmit} disabled={!selectedAnswers[currentQuestionIndex]}>
+            Submit Answer
+          </Button>
+        ) : (
+          <Button onClick={currentQuestionIndex === questions.length - 1 ? handleFinishTest : handleNextQuestion}>
+            {currentQuestionIndex === questions.length - 1 ? "Finish" : "Next"}
+          </Button>
+        )}
+      </div>
+    </div>
   )
 }
 
+export default TakeTest
