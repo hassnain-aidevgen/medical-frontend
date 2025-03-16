@@ -9,6 +9,7 @@ import toast, { Toaster } from "react-hot-toast"
 // import WeeklyStreak from "../components/weekly-streak"
 // import WeeklyStreak from "@/components/weekly-streak"
 import WeeklyStreak from "@/components/weekly-streak"
+import ExamInterface from "./examInterface"
 
 const SmartStudyCalendar = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -444,6 +445,10 @@ const SmartStudyCalendar = () => {
             )}
           </div>
         </div>
+      </div>
+
+      <div>
+        <ExamInterface tests={tests}/>
       </div>
     </div>
   )
