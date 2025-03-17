@@ -1,20 +1,23 @@
 "use client"
-
 import type React from "react"
-
 import axios from "axios"
 import { ChevronLeft, ChevronRight, Plus, Trash2, Calendar, BookOpen, TrendingUp, BarChart3 } from "lucide-react"
 import { useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
-// import WeeklyStreak from "../components/weekly-streak"
-// import WeeklyStreak from "@/components/weekly-streak"
-import WeeklyStreak from "@/components/weekly-streak"
-// import ExamSimulation from "@/components/exam-simulation";
 import ExamSimulation from "@/components/exam-simulation"
 // import TopicDistributionAnalysis from "@/components/topic-distribution-analysis";
 import TopicDistributionAnalysis from "@/components/topic-distribution-analysis"
+// import StudyPatternAnalyzer from "@/components/study-pattern-analyzer";
+import StudyPatternAnalyzer from "@/components/study-pattern-analyzer"
+// import CustomStudyScheduleGenerator from "@/components/custom-study-schedule-generator";
+import CustomStudyScheduleGenerator from "@/components/custom-study-schedule-generator"
+import ExamReadinessDashboard from "@/components/exam-readiness-dashboard";
+// import AdaptiveStudyTracker from "@/components/adaptive-study-tracker";
+import AdaptiveStudyTracker from "@/components/adaptive-study-tracker"
+// import SubjectPrioritization from "@/components/subject-prioritization"
+import SubjectPrioritization from "@/components/subject-prioritization"
 
-const ExamInterface = ({tests} : {tests: any}) => {
+const ExamInterface = ({ tests }: { tests: any }) => {
     const [userId, setUserId] = useState<string>("")
     // Exam selection state
     const [selectedExam, setSelectedExam] = useState<string>("")
@@ -133,11 +136,6 @@ const ExamInterface = ({tests} : {tests: any}) => {
         if (typeof window !== "undefined") {
             localStorage.setItem("examDate", newDate)
         }
-
-        // Optionally save to backend
-        // if (userId && newDate) {
-        //   saveExamDateToBackend(newDate)
-        // }
     }
 
     // Get exam-specific subjects mapping
@@ -589,6 +587,26 @@ const ExamInterface = ({tests} : {tests: any}) => {
 
             {/* Topic Distribution Analysis */}
             <TopicDistributionAnalysis selectedExam={selectedExam} tests={tests} />
+            <StudyPatternAnalyzer selectedExam={selectedExam} tests={tests} />
+            <ExamReadinessDashboard selectedExam={selectedExam} userId={userId} examDate={examDate} />
+            {/* Add SubjectPrioritization component here */}
+            <SubjectPrioritization
+                selectedExam={selectedExam}
+                userId={userId}
+                examDate={examDate}
+            />
+            <CustomStudyScheduleGenerator
+                selectedExam={selectedExam}
+                examDate={examDate}
+                userId={userId}
+            />
+            {/* Adaptive Study Tracker - Add this component here */}
+            <AdaptiveStudyTracker
+                selectedExam={selectedExam}
+                examDate={examDate}
+                userId={userId}
+            />
+
             <ExamSimulation />
 
         </div>
