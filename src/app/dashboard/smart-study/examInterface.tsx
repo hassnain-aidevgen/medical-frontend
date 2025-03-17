@@ -1,17 +1,17 @@
 "use client"
-import type React from "react"
+import ExamSimulation from "@/components/exam-simulation"
 import axios from "axios"
-import { ChevronLeft, ChevronRight, Plus, Trash2, Calendar, BookOpen, TrendingUp, BarChart3 } from "lucide-react"
+import { BarChart3, BookOpen, Calendar, TrendingUp } from "lucide-react"
+import type React from "react"
 import { useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
-import ExamSimulation from "@/components/exam-simulation"
 // import TopicDistributionAnalysis from "@/components/topic-distribution-analysis";
 import TopicDistributionAnalysis from "@/components/topic-distribution-analysis"
 // import StudyPatternAnalyzer from "@/components/study-pattern-analyzer";
 import StudyPatternAnalyzer from "@/components/study-pattern-analyzer"
 // import CustomStudyScheduleGenerator from "@/components/custom-study-schedule-generator";
 import CustomStudyScheduleGenerator from "@/components/custom-study-schedule-generator"
-import ExamReadinessDashboard from "@/components/exam-readiness-dashboard";
+import ExamReadinessDashboard from "@/components/exam-readiness-dashboard"
 // import AdaptiveStudyTracker from "@/components/adaptive-study-tracker";
 import AdaptiveStudyTracker from "@/components/adaptive-study-tracker"
 // import SubjectPrioritization from "@/components/subject-prioritization"
@@ -199,7 +199,7 @@ const ExamInterface = ({ tests }: { tests: any }) => {
                 // First try with the API
                 // Fetch exam-specific questions (80%)
                 const examSpecificResponse = await axios.get(
-                    "http://localhost:5000/api/test/take-test/questions-fixed",
+                    "https://medical-backend-loj4.onrender.com/api/test/take-test/questions-fixed",
                     {
                         params: {
                             subjects: examSubjects.join(","),
@@ -210,7 +210,7 @@ const ExamInterface = ({ tests }: { tests: any }) => {
 
                 // Fetch related subjects questions (20%)
                 const relatedSubjectsResponse = await axios.get(
-                    "http://localhost:5000/api/test/take-test/questions-fixed",
+                    "https://medical-backend-loj4.onrender.com/api/test/take-test/questions-fixed",
                     {
                         params: {
                             subjects: relatedSubjects.join(","),
@@ -260,7 +260,7 @@ const ExamInterface = ({ tests }: { tests: any }) => {
             // Try to fetch from the backend
             try {
                 const response = await axios.get(
-                    `http://localhost:5000/api/test/questions/high-yield`,
+                    `https://medical-backend-loj4.onrender.com/api/test/questions/high-yield`,
                     {
                         params: {
                             exam: selectedExam,

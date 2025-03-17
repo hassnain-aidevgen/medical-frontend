@@ -1,21 +1,21 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-  Star, 
-  AlertTriangle, 
-  Clock, 
-  Target, 
-  PieChart,
+import {
+  AlertTriangle,
   ArrowUp,
   BookOpen,
   ChevronDown,
   ChevronUp,
+  Clock,
   Info,
+  PieChart,
+  Star,
+  Target,
   TrendingUp,
   Zap
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
 interface SubjectPrioritizationProps {
@@ -50,10 +50,10 @@ interface SubjectPriority {
   recommendation: string;
 }
 
-const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({ 
-  selectedExam, 
-  userId, 
-  examDate 
+const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
+  selectedExam,
+  userId,
+  examDate
 }) => {
   const [examBlueprint, setExamBlueprint] = useState<ExamBlueprint[]>([]);
   const [tests, setTests] = useState<Test[]>([]);
@@ -67,23 +67,23 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
   // Fetch exam blueprint and user tests
   useEffect(() => {
     if (!selectedExam || !userId) return;
-    
+
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-      
+
       try {
         // Calculate days to exam if exam date is provided
         if (examDate) {
           const days = getDaysToExam(examDate);
           setDaysToExam(days);
         }
-        
+
         // Fetch exam blueprint
         let blueprintData: ExamBlueprint[] = [];
         try {
-          const blueprintResponse = await axios.get(`http://localhost:5000/api/test/exams/blueprint/${selectedExam}`);
-          
+          const blueprintResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/exams/blueprint/${selectedExam}`);
+
           if (blueprintResponse.data && Array.isArray(blueprintResponse.data)) {
             blueprintData = blueprintResponse.data;
           } else {
@@ -92,26 +92,26 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
         } catch (blueprintError) {
           console.error("Error fetching blueprint:", blueprintError);
           toast.error("Failed to fetch exam blueprint data");
-          
+
           // Fallback blueprint data
           blueprintData = getFallbackBlueprintData(selectedExam);
         }
-        
+
         // Mark high-yield subjects (subjects with higher than average percentage)
         const averagePercentage = blueprintData.reduce((sum, item) => sum + item.percentage, 0) / blueprintData.length;
         const highYieldThreshold = Math.max(averagePercentage * 1.2, 20); // 20% minimum or 20% above average
-        
+
         const enhancedBlueprint = blueprintData.map(subject => ({
           ...subject,
           isHighYield: subject.percentage >= highYieldThreshold
         }));
-        
+
         setExamBlueprint(enhancedBlueprint);
-        
+
         // Fetch user tests
         try {
           const testsResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`);
-          
+
           if (Array.isArray(testsResponse.data)) {
             setTests(testsResponse.data);
           } else {
@@ -122,7 +122,7 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
           toast.error("Failed to fetch user test data");
           setTests([]);
         }
-        
+
       } catch (error) {
         console.error("Error in data fetching:", error);
         setError(typeof error === 'object' && error !== null && 'message' in error
@@ -133,14 +133,14 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, [selectedExam, userId, examDate]);
 
   // Calculate subject priorities once data is loaded
   useEffect(() => {
     if (!examBlueprint.length) return;
-    
+
     calculateSubjectPriorities();
   }, [examBlueprint, tests, daysToExam]);
 
@@ -148,10 +148,10 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
   const getDaysToExam = (date: string): number => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const examDay = new Date(date);
     examDay.setHours(0, 0, 0, 0);
-    
+
     const timeDiff = examDay.getTime() - today.getTime();
     return Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
   };
@@ -203,7 +203,7 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
         { topic: "Behavioral Science", percentage: 15 }
       ]
     };
-    
+
     return fallbackData[exam] || [
       { topic: "Subject 1", percentage: 30 },
       { topic: "Subject 2", percentage: 30 },
@@ -217,37 +217,37 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
     try {
       // Group tests by subject
       const subjectGroups: Record<string, Test[]> = {};
-      
+
       tests.forEach(test => {
         const subject = test.subjectName;
-        
+
         if (!subjectGroups[subject]) {
           subjectGroups[subject] = [];
         }
-        
+
         subjectGroups[subject].push(test);
       });
-      
+
       // Calculate priority for each subject in the blueprint
       const priorityData: SubjectPriority[] = examBlueprint.map(blueprint => {
         // Find tests for this subject (case insensitive matching)
         const matchingTests = Object.entries(subjectGroups)
           .filter(([subject]) => subject.toLowerCase() === blueprint.topic.toLowerCase())
           .flatMap(([, tests]) => tests);
-        
+
         // Calculate proficiency
         const testsTotal = matchingTests.length;
         const testsCompleted = matchingTests.filter(test => test.completed).length;
-        
+
         // Proficiency score: percentage of completed tests, with a minimum of 10%
-        const proficiencyScore = testsTotal > 0 
+        const proficiencyScore = testsTotal > 0
           ? Math.max(10, Math.round((testsCompleted / testsTotal) * 100))
           : 10;
-        
+
         // Calculate urgency multiplier based on days to exam
         let urgencyMultiplier = 1;
         let urgency: 'low' | 'medium' | 'high' = 'medium';
-        
+
         if (daysToExam > 0) {
           if (daysToExam <= 7) {
             urgencyMultiplier = 2;
@@ -260,30 +260,30 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
             urgency = 'low';
           }
         }
-        
+
         // Calculate priority score using the formula
-        const priorityScore = (blueprint.percentage * (1 - proficiencyScore/100) * urgencyMultiplier);
-        
+        const priorityScore = (blueprint.percentage * (1 - proficiencyScore / 100) * urgencyMultiplier);
+
         // Determine suggested difficulty based on proficiency and time to exam
         let suggestedDifficulty: 'foundation' | 'moderate' | 'advanced';
-        
+
         if (daysToExam <= 14) {
           // Close to exam: focus on strengths and foundation
-          suggestedDifficulty = proficiencyScore >= 70 ? 'advanced' : 
-                               proficiencyScore >= 40 ? 'moderate' : 'foundation';
+          suggestedDifficulty = proficiencyScore >= 70 ? 'advanced' :
+            proficiencyScore >= 40 ? 'moderate' : 'foundation';
         } else if (daysToExam <= 30) {
           // Medium-term: push to higher difficulty if doing well
-          suggestedDifficulty = proficiencyScore >= 80 ? 'advanced' : 
-                               proficiencyScore >= 50 ? 'moderate' : 'foundation';
+          suggestedDifficulty = proficiencyScore >= 80 ? 'advanced' :
+            proficiencyScore >= 50 ? 'moderate' : 'foundation';
         } else {
           // Long-term: challenge appropriately for growth
-          suggestedDifficulty = proficiencyScore >= 90 ? 'advanced' : 
-                               proficiencyScore >= 60 ? 'moderate' : 'foundation';
+          suggestedDifficulty = proficiencyScore >= 90 ? 'advanced' :
+            proficiencyScore >= 60 ? 'moderate' : 'foundation';
         }
-        
+
         // Generate recommendation based on all factors
         let recommendation = "";
-        
+
         if (proficiencyScore < 30) {
           recommendation = `Focus on building ${blueprint.topic} fundamentals. Aim for at least 2-3 practice sessions.`;
         } else if (proficiencyScore < 70) {
@@ -291,17 +291,17 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
         } else {
           recommendation = `Maintain your strong performance in ${blueprint.topic}. Focus on advanced concepts.`;
         }
-        
+
         // If high-yield subject with low proficiency, add urgency to recommendation
         if (blueprint.isHighYield && proficiencyScore < 50) {
           recommendation = `PRIORITY: ${recommendation} This is a high-yield topic (${blueprint.percentage}% of exam).`;
         }
-        
+
         // If close to exam with low proficiency, add time-based recommendation
         if (daysToExam <= 14 && proficiencyScore < 50) {
           recommendation += ` With only ${daysToExam} days remaining, prioritize this subject.`;
         }
-        
+
         return {
           subject: blueprint.topic,
           blueprintPercentage: blueprint.percentage,
@@ -313,10 +313,10 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
           recommendation
         };
       });
-      
+
       // Sort subjects by priority score (highest first)
       priorityData.sort((a, b) => b.priorityScore - a.priorityScore);
-      
+
       setSubjectPriorities(priorityData);
     } catch (error) {
       console.error("Error calculating subject priorities:", error);
@@ -347,9 +347,9 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
   // Format date as a readable string
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
       weekday: 'short'
     });
   };
@@ -357,12 +357,12 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
   // Get days text for recommendation
   const getDaysText = (): string => {
     if (!examDate) return "";
-    
+
     if (daysToExam <= 0) return "Exam day is today!";
     if (daysToExam === 1) return "Only 1 day left";
     if (daysToExam <= 7) return `Only ${daysToExam} days left`;
     if (daysToExam <= 30) return `${daysToExam} days remaining`;
-    
+
     return `${daysToExam} days until exam`;
   };
 
@@ -397,7 +397,7 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
           {isExpanded ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
         </button>
       </div>
-      
+
       {!isExpanded ? (
         <div className="text-center py-4 text-gray-500">
           Click to expand and view subject prioritization for {selectedExam}.
@@ -430,10 +430,10 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
               {/* Summary Overview */}
               <div className="mb-6">
                 <p className="text-sm text-gray-600 mb-4">
-                  Based on the {selectedExam} exam blueprint, your current proficiency, and 
+                  Based on the {selectedExam} exam blueprint, your current proficiency, and
                   {examDate ? ` ${getDaysText()}` : " exam proximity"}, we&apos;ve prioritized your study subjects:
                 </p>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                   {/* Top priority subject card */}
                   <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-lg p-4 border border-red-200">
@@ -466,7 +466,7 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
                       Immediate attention required
                     </div>
                   </div>
-                  
+
                   {/* Second priority subject card */}
                   {subjectPriorities.length > 1 && (
                     <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-lg p-4 border border-orange-200">
@@ -500,7 +500,7 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
                       </div>
                     </div>
                   )}
-                  
+
                   {/* High-yield stats card */}
                   <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
                     <div className="text-sm text-blue-600 mb-1 flex items-center">
@@ -513,18 +513,18 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
                       <span className="font-medium">High-yield subjects mastered</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                      <div className="bg-blue-600 h-2 rounded-full" style={{ 
-                        width: `${subjectPriorities.filter(s => s.isHighYield).length > 0 
-                          ? (subjectPriorities.filter(s => s.isHighYield && s.proficiencyScore >= 70).length / 
-                            subjectPriorities.filter(s => s.isHighYield).length) * 100 
-                          : 0}%` 
+                      <div className="bg-blue-600 h-2 rounded-full" style={{
+                        width: `${subjectPriorities.filter(s => s.isHighYield).length > 0
+                          ? (subjectPriorities.filter(s => s.isHighYield && s.proficiencyScore >= 70).length /
+                            subjectPriorities.filter(s => s.isHighYield).length) * 100
+                          : 0}%`
                       }}></div>
                     </div>
                     <div className="text-xs text-blue-600 mt-1">
                       Focus on high-yield subjects first
                     </div>
                   </div>
-                  
+
                   {/* Time remaining card */}
                   {examDate && (
                     <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
@@ -541,33 +541,32 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
                         {formatDate(examDate)}
                       </div>
                       <div className="text-xs text-purple-600 mt-1">
-                        {daysToExam <= 7 ? 'Focus on high-yield review' : 
-                         daysToExam <= 30 ? 'Balanced study approach' : 
-                         'Build foundations first'}
+                        {daysToExam <= 7 ? 'Focus on high-yield review' :
+                          daysToExam <= 30 ? 'Balanced study approach' :
+                            'Build foundations first'}
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-              
+
               {/* Subject Priority List */}
               <div>
                 <h3 className="text-md font-medium mb-3 flex items-center">
                   <TrendingUp className="mr-1 h-5 w-5" /> Subject Priority Ranking
                 </h3>
-                
+
                 <div className="space-y-3">
                   {subjectPriorities
                     .slice(0, showAll ? undefined : 5)
                     .map((subject, index) => (
-                      <div 
+                      <div
                         key={subject.subject}
-                        className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
-                          index === 0 ? 'border-red-300 bg-red-50' : 
-                          index === 1 ? 'border-orange-300 bg-orange-50' : 
-                          index === 2 ? 'border-yellow-300 bg-yellow-50' : 
-                          'border-gray-200'
-                        }`}
+                        className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${index === 0 ? 'border-red-300 bg-red-50' :
+                            index === 1 ? 'border-orange-300 bg-orange-50' :
+                              index === 2 ? 'border-yellow-300 bg-yellow-50' :
+                                'border-gray-200'
+                          }`}
                       >
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-3">
                           <div className="flex items-center">
@@ -583,65 +582,63 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
                               )}
                             </h4>
                           </div>
-                          
+
                           <div className="flex space-x-3 mt-2 md:mt-0">
                             <span className={`px-2 py-1 rounded-full text-xs ${getDifficultyBgColor(subject.suggestedDifficulty)}`}>
                               {subject.suggestedDifficulty.charAt(0).toUpperCase() + subject.suggestedDifficulty.slice(1)}
                             </span>
                             <span className={`flex items-center ${getUrgencyColor(subject.urgency)}`}>
                               <span
-                                className={`inline-block w-2 h-2 rounded-full ${
-                                  subject.urgency === 'high'
+                                className={`inline-block w-2 h-2 rounded-full ${subject.urgency === 'high'
                                     ? 'bg-red-500'
                                     : subject.urgency === 'medium'
-                                    ? 'bg-yellow-500'
-                                    : 'bg-green-500'
-                                } mr-1`}
+                                      ? 'bg-yellow-500'
+                                      : 'bg-green-500'
+                                  } mr-1`}
                               ></span>
                               {subject.urgency.charAt(0).toUpperCase() + subject.urgency.slice(1)} Priority
                             </span>
                           </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                           <div>
                             <div className="text-xs text-gray-500 mb-1">Blueprint Weight</div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div 
-                                className="bg-blue-600 h-2 rounded-full" 
+                              <div
+                                className="bg-blue-600 h-2 rounded-full"
                                 style={{ width: `${subject.blueprintPercentage}%` }}
                               ></div>
                             </div>
                             <div className="text-xs mt-1">{subject.blueprintPercentage}% of exam</div>
                           </div>
-                          
+
                           <div>
                             <div className="text-xs text-gray-500 mb-1">Your Proficiency</div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div 
-                                className={`h-2 rounded-full ${
-                                  subject.proficiencyScore >= 70 ? 'bg-green-500' :
-                                  subject.proficiencyScore >= 40 ? 'bg-yellow-500' :
-                                  'bg-red-500'
-                                }`}
+                              <div
+                                className={`h-2 rounded-full ${subject.proficiencyScore >= 70 ? 'bg-green-500' :
+                                    subject.proficiencyScore >= 40 ? 'bg-yellow-500' :
+                                      'bg-red-500'
+                                  }`}
                                 style={{ width: `${subject.proficiencyScore}%` }}
                               ></div>
                             </div>
                             <div className="text-xs mt-1">{subject.proficiencyScore}% mastery</div>
                           </div>
-                          
+
                           <div>
                             <div className="text-xs text-gray-500 mb-1">Priority Score</div>
                             <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div 
-                                className="bg-purple-600 h-2 rounded-full" 
+                              <div
+                                className="bg-purple-600 h-2 rounded-full"
                                 style={{ width: `${Math.min(100, (subject.priorityScore / subjectPriorities[0].priorityScore) * 100)}%` }}
                               ></div>
                             </div>
                             <div className="text-xs mt-1">{subject.priorityScore.toFixed(1)} points</div>
                           </div>
                         </div>
-                        
+
                         <div className="bg-gray-50 p-2 rounded text-sm">
                           <div className="flex items-start">
                             <Info className="h-4 w-4 text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
@@ -651,7 +648,7 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
                       </div>
                     ))}
                 </div>
-                
+
                 {subjectPriorities.length > 5 && (
                   <button
                     onClick={() => setShowAll(!showAll)}
@@ -669,7 +666,7 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
                   </button>
                 )}
               </div>
-              
+
               {/* Study Recommendations */}
               <div className="mt-6 bg-blue-50 p-4 rounded-lg">
                 <h3 className="font-medium text-blue-800 mb-2 flex items-center">
@@ -681,27 +678,27 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
                     <li className="text-sm flex items-start">
                       <Clock className="h-4 w-4 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
                       <span>
-                        {daysToExam <= 7 
-                          ? `With only ${daysToExam} days remaining, focus on rapid review of high-yield topics and practice questions.` 
-                          : daysToExam <= 30 
-                          ? `With ${daysToExam} days remaining, balance content review with practice questions.`
-                          : `With ${daysToExam} days remaining, focus on building strong foundations in all subjects.`}
+                        {daysToExam <= 7
+                          ? `With only ${daysToExam} days remaining, focus on rapid review of high-yield topics and practice questions.`
+                          : daysToExam <= 30
+                            ? `With ${daysToExam} days remaining, balance content review with practice questions.`
+                            : `With ${daysToExam} days remaining, focus on building strong foundations in all subjects.`}
                       </span>
                     </li>
                   )}
-                  
+
                   {/* Top subject recommendation */}
                   {subjectPriorities.length > 0 && (
                     <li className="text-sm flex items-start">
                       <Target className="h-4 w-4 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
                       <span>
-                        Prioritize {subjectPriorities[0].subject} 
-                        {subjectPriorities.length > 1 ? ` and ${subjectPriorities[1].subject}` : ''} 
+                        Prioritize {subjectPriorities[0].subject}
+                        {subjectPriorities.length > 1 ? ` and ${subjectPriorities[1].subject}` : ''}
                         in your next study sessions.
                       </span>
                     </li>
                   )}
-                  
+
                   {/* High-yield coverage recommendation */}
                   {subjectPriorities.filter(s => s.isHighYield).length > 0 && (
                     <li className="text-sm flex items-start">
@@ -709,15 +706,15 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
                       <span>
                         {subjectPriorities.filter(s => s.isHighYield && s.proficiencyScore < 70).length > 0
                           ? `Focus on the high-yield subjects that need improvement: ${subjectPriorities
-                              .filter(s => s.isHighYield && s.proficiencyScore < 70)
-                              .map(s => s.subject)
-                              .slice(0, 2)
-                              .join(' and ')}${subjectPriorities.filter(s => s.isHighYield && s.proficiencyScore < 70).length > 2 ? ' and others.' : '.'}`
+                            .filter(s => s.isHighYield && s.proficiencyScore < 70)
+                            .map(s => s.subject)
+                            .slice(0, 2)
+                            .join(' and ')}${subjectPriorities.filter(s => s.isHighYield && s.proficiencyScore < 70).length > 2 ? ' and others.' : '.'}`
                           : 'Great job! You have good proficiency in all high-yield subjects. Maintain your knowledge with regular review.'}
                       </span>
                     </li>
                   )}
-                  
+
                   {/* Lowest proficiency recommendation */}
                   {subjectPriorities.filter(s => s.proficiencyScore < 40).length > 0 && (
                     <li className="text-sm flex items-start">
@@ -731,7 +728,7 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
                       </span>
                     </li>
                   )}
-                  
+
                   {/* Study strategy recommendation */}
                   <li className="text-sm flex items-start">
                     <Zap className="h-4 w-4 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />

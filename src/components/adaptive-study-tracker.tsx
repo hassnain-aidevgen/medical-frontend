@@ -1,16 +1,16 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-  Zap, 
-  AlertTriangle, 
-  ChevronDown, 
-  ChevronUp, 
-  Clock, 
-  BookCheck, 
-  Target
+import {
+  AlertTriangle,
+  BookCheck,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Target,
+  Zap
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
 interface AdaptiveStudyTrackerProps {
@@ -54,33 +54,33 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
   // Fetch test data and exam blueprint
   useEffect(() => {
     if (!userId || !selectedExam || !examDate) return;
-    
+
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-      
+
       try {
         // Calculate days to exam
         const days = getDaysToExam(examDate);
         setDaysToExam(days);
-        
+
         if (days <= 0) {
           throw new Error("Exam date must be in the future");
         }
-        
+
         // Fetch test data
         const testsResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`);
-        
+
         if (Array.isArray(testsResponse.data)) {
           setTests(testsResponse.data);
         } else {
           throw new Error("Invalid test data format");
         }
-        
+
         // Fetch exam blueprint
         try {
-          const blueprintResponse = await axios.get(`http://localhost:5000/api/test/exams/blueprint/${selectedExam}`);
-          
+          const blueprintResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/exams/blueprint/${selectedExam}`);
+
           if (blueprintResponse.data && Array.isArray(blueprintResponse.data)) {
             setExamBlueprint(blueprintResponse.data);
           } else {
@@ -89,7 +89,7 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
         } catch (blueprintError) {
           console.error("Error fetching blueprint:", blueprintError);
           toast.error("Failed to fetch exam blueprint data");
-          
+
           // Fallback blueprint data in case API fails
           setExamBlueprint([
             { topic: "Biology", percentage: 35 },
@@ -98,7 +98,7 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
             { topic: "Psychology", percentage: 15 }
           ]);
         }
-        
+
       } catch (error) {
         console.error("Error fetching data:", error);
         setError(typeof error === 'object' && error !== null && 'message' in error
@@ -109,7 +109,7 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, [userId, selectedExam, examDate]);
 
@@ -123,10 +123,10 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
   const getDaysToExam = (date: string): number => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const examDay = new Date(date);
     examDay.setHours(0, 0, 0, 0);
-    
+
     const timeDiff = examDay.getTime() - today.getTime();
     return Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
   };
@@ -136,55 +136,55 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
     try {
       // Group tests by subject
       const subjectGroups: Record<string, Test[]> = {};
-      
+
       tests.forEach(test => {
         const subject = test.subjectName;
-        
+
         if (!subjectGroups[subject]) {
           subjectGroups[subject] = [];
         }
-        
+
         subjectGroups[subject].push(test);
       });
-      
+
       // Calculate proficiency for each subject in the blueprint
       const proficiencyData: SubjectProficiency[] = examBlueprint.map(blueprint => {
         // Find tests for this subject (case insensitive matching)
         const matchingTests = Object.entries(subjectGroups)
           .filter(([subject]) => subject.toLowerCase() === blueprint.topic.toLowerCase())
           .flatMap(([, tests]) => tests);
-        
+
         // Calculate metrics
         const testsTotal = matchingTests.length;
         const testsCompleted = matchingTests.filter(test => test.completed).length;
-        
+
         // Simple proficiency score: percentage of completed tests, with a minimum of 10%
-        const proficiencyScore = testsTotal > 0 
+        const proficiencyScore = testsTotal > 0
           ? Math.max(10, Math.round((testsCompleted / testsTotal) * 100))
           : 10;
-        
+
         // Determine difficulty based on proficiency and time to exam
         let difficulty: 'foundation' | 'moderate' | 'advanced';
-        
+
         if (daysToExam < 14) {
           // Close to exam: focus on strengths and maintain current level
-          difficulty = proficiencyScore >= 70 ? 'advanced' : 
-                      proficiencyScore >= 40 ? 'moderate' : 'foundation';
+          difficulty = proficiencyScore >= 70 ? 'advanced' :
+            proficiencyScore >= 40 ? 'moderate' : 'foundation';
         } else if (daysToExam < 30) {
           // Medium-term: push to higher difficulty if doing well
-          difficulty = proficiencyScore >= 80 ? 'advanced' : 
-                      proficiencyScore >= 50 ? 'moderate' : 'foundation';
+          difficulty = proficiencyScore >= 80 ? 'advanced' :
+            proficiencyScore >= 50 ? 'moderate' : 'foundation';
         } else {
           // Long-term: challenge appropriately for growth
-          difficulty = proficiencyScore >= 90 ? 'advanced' : 
-                      proficiencyScore >= 60 ? 'moderate' : 'foundation';
+          difficulty = proficiencyScore >= 90 ? 'advanced' :
+            proficiencyScore >= 60 ? 'moderate' : 'foundation';
         }
-        
+
         // Calculate urgency based on blueprint percentage and proficiency
         // Higher blueprint percentage + lower proficiency = higher urgency
         const urgencyScore = (blueprint.percentage * (100 - proficiencyScore)) / 100;
         let urgency: 'low' | 'medium' | 'high';
-        
+
         if (urgencyScore > 15) {
           urgency = 'high';
         } else if (urgencyScore > 7) {
@@ -192,7 +192,7 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
         } else {
           urgency = 'low';
         }
-        
+
         return {
           subject: blueprint.topic,
           testsTotal,
@@ -202,13 +202,13 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
           urgency
         };
       });
-      
+
       // Sort by urgency (highest first), then blueprint percentage
       proficiencyData.sort((a, b) => {
         const urgencyOrder = { high: 3, medium: 2, low: 1 };
         return urgencyOrder[b.urgency] - urgencyOrder[a.urgency];
       });
-      
+
       setSubjectProficiency(proficiencyData);
     } catch (error) {
       console.error("Error calculating subject proficiency:", error);
@@ -219,17 +219,17 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
   // Format date as a readable string
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
       weekday: 'short'
     });
   };
-  
+
   // Get the priority subject (first high urgency or first in list)
   const getPrioritySubject = (): SubjectProficiency | null => {
     if (subjectProficiency.length === 0) return null;
-    
+
     const highUrgencySubject = subjectProficiency.find(s => s.urgency === 'high');
     return highUrgencySubject || subjectProficiency[0];
   };
@@ -265,7 +265,7 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
           {isExpanded ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
         </button>
       </div>
-      
+
       {!isExpanded ? (
         <div className="text-center py-4 text-gray-500">
           Click to expand and view adaptive study recommendations.
@@ -321,13 +321,12 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
                         {getPrioritySubject()?.subject}
                       </div>
                       <div className="text-xs text-purple-700 flex items-center">
-                        <span className={`inline-block w-2 h-2 rounded-full ${
-                          getPrioritySubject()?.urgency === 'high'
+                        <span className={`inline-block w-2 h-2 rounded-full ${getPrioritySubject()?.urgency === 'high'
                             ? 'bg-red-500'
                             : getPrioritySubject()?.urgency === 'medium'
-                            ? 'bg-yellow-500'
-                            : 'bg-green-500'
-                        } mr-1`}></span>
+                              ? 'bg-yellow-500'
+                              : 'bg-green-500'
+                          } mr-1`}></span>
                         {getPrioritySubject()?.proficiencyScore}% proficiency • {getPrioritySubject()?.urgency} priority
                       </div>
                     </>

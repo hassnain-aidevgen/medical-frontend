@@ -98,7 +98,7 @@ export default function EditCoursePage() {
                     return
                 }
 
-                const response = await axios.get(`http://localhost:5000/api/courses/${params.id}`, {
+                const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/courses/${params.id}`, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
@@ -216,7 +216,7 @@ export default function EditCoursePage() {
                 console.log("Sending update with new thumbnail...")
 
                 // Send the update with the new file
-                const response = await axios.put(`http://localhost:5000/api/courses/${course._id}`, formData, {
+                const response = await axios.put(`https://medical-backend-loj4.onrender.com/api/courses/${course._id}`, formData, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         // Don't set Content-Type when using FormData - axios will set it with the boundary
@@ -238,7 +238,7 @@ export default function EditCoursePage() {
                 // If no new file, use regular JSON for the update
                 console.log("Sending update without changing thumbnail...")
 
-                const response = await axios.put(`http://localhost:5000/api/courses/${course._id}`, updateData, {
+                const response = await axios.put(`https://medical-backend-loj4.onrender.com/api/courses/${course._id}`, updateData, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         "Content-Type": "application/json",

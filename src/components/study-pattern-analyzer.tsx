@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useEffect, useState } from 'react';
-import { PieChart, Pie, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
-import toast from 'react-hot-toast';
-import { PieChartIcon, BarChart3, AlertTriangle, RefreshCw } from 'lucide-react';
 import axios from 'axios';
+import { AlertTriangle, BarChart3, PieChartIcon, RefreshCw } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 interface Test {
   _id?: string;
@@ -91,7 +91,7 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
       fetchExamBlueprint();
     }
   }, [selectedExam]);
-  
+
   useEffect(() => {
     if (showAnalysis && selectedExam && tests.length > 0 && examBlueprint.length > 0) {
       analyzeStudyPattern();
@@ -100,7 +100,7 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
 
   const fetchExamBlueprint = async () => {
     setIsLoadingBlueprint(true);
-    
+
     try {
       // Start with standard blueprint (reliable fallback)
       const standardBlueprint = standardBlueprints[selectedExam] || [];
@@ -108,13 +108,13 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
         setExamBlueprint(standardBlueprint);
         setUsingDynamicBlueprint(false);
       }
-      
+
       // Try to fetch dynamic blueprint
       try {
         const response = await axios.get(
-          `http://localhost:5000/api/test/exams/blueprint/${selectedExam}`
+          `https://medical-backend-loj4.onrender.com/api/test/exams/blueprint/${selectedExam}`
         );
-        
+
         if (response.data && Array.isArray(response.data) && response.data.length > 0) {
           setExamBlueprint(response.data);
           setUsingDynamicBlueprint(true);
@@ -135,14 +135,14 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
 
   const analyzeStudyPattern = () => {
     setIsLoading(true);
-    
+
     try {
       // Get completed tests only
       // const completedTests = tests.filter(test => test.completed);
       // For testing: use all tests instead of just completed ones
       const completedTests = tests;
       setCompletedTestCount(completedTests.length);
-      
+
       if (completedTests.length === 0) {
         // Clear previous data
         setUserDistribution([]);
@@ -151,60 +151,60 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
         setIsLoading(false);
         return;
       }
-      
+
       // Calculate user's distribution
       const subjectCount: Record<string, number> = {};
       let totalTests = 0;
-      
+
       // Count tests by subject
       completedTests.forEach(test => {
         // Normalize subject names to match blueprint names (case insensitive matching)
         const normalizedSubject = test.subjectName.trim();
-        
+
         // Find a matching blueprint topic (case insensitive)
         const matchingBlueprintTopic = examBlueprint.find(
           item => item.topic.toLowerCase() === normalizedSubject.toLowerCase()
         );
-        
+
         // Use matched topic name or original name if no match
         const subjectKey = matchingBlueprintTopic ? matchingBlueprintTopic.topic : normalizedSubject;
-        
+
         if (!subjectCount[subjectKey]) {
           subjectCount[subjectKey] = 0;
         }
-        
+
         subjectCount[subjectKey]++;
         totalTests++;
       });
-      
+
       // Convert to percentage distribution
       const userDistData: TopicDistribution[] = Object.keys(subjectCount).map(subject => ({
         topic: subject,
         percentage: Math.round((subjectCount[subject] / totalTests) * 100)
       }));
-      
+
       // Prepare comparison data for bar chart
       const comparisonResult: { topic: string; blueprint: number; user: number; difference: number }[] = [];
-      
+
       // Create a map of the user's distribution for quick lookup
       const userDistMap = new Map(userDistData.map(item => [item.topic.toLowerCase(), item]));
-      
+
       // Process the blueprint topics to create comparison data
       examBlueprint.forEach(item => {
         const userTopic = userDistMap.get(item.topic.toLowerCase());
         const userPercentage = userTopic ? userTopic.percentage : 0;
-        
+
         comparisonResult.push({
           topic: item.topic,
           blueprint: item.percentage,
           user: userPercentage,
           difference: userPercentage - item.percentage
         });
-        
+
         // Remove the topic from the map as it's been processed
         userDistMap.delete(item.topic.toLowerCase());
       });
-      
+
       // Add any remaining user topics that weren't in the blueprint
       userDistMap.forEach((value) => {
         comparisonResult.push({
@@ -214,10 +214,10 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
           difference: value.percentage
         });
       });
-      
+
       // Generate feedback
       const feedbackMessages = generateFeedback(comparisonResult);
-      
+
       setUserDistribution(userDistData);
       setComparisonData(comparisonResult);
       setFeedback(feedbackMessages);
@@ -232,15 +232,15 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
 
   const generateFeedback = (comparison: { topic: string; blueprint: number; user: number; difference: number }[]): string[] => {
     const messages: string[] = [];
-    
+
     // Add overall message
     messages.push(`Analysis based on ${selectedExam} blueprint and your ${completedTestCount} completed tests.`);
-    
+
     // Sort by absolute difference to highlight the most significant gaps
-    const sortedByDifference = [...comparison].sort((a, b) => 
+    const sortedByDifference = [...comparison].sort((a, b) =>
       Math.abs(b.difference) - Math.abs(a.difference)
     );
-    
+
     // Generate specific feedback for topics with significant differences
     sortedByDifference.slice(0, 3).forEach(item => {
       if (item.difference < -5) {
@@ -249,12 +249,12 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
         messages.push(`You're studying ${item.topic} ${item.difference}% more than needed for the exam.`);
       }
     });
-    
+
     // Add a strategic message if applicable
     if (sortedByDifference.some(item => item.difference < -10)) {
       messages.push("Consider reallocating your study time to better match the exam distribution.");
     }
-    
+
     return messages;
   };
 
@@ -287,26 +287,26 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
           </button>
         </div>
       </div>
-      
+
       {/* Description */}
       {selectedExam && (
         <div className="text-sm text-gray-600 mb-4">
           <p>
             Compare your completed test pattern with the {selectedExam} blueprint.
-            {usingDynamicBlueprint 
+            {usingDynamicBlueprint
               ? " Blueprint data is based on actual question distribution in our database."
               : " Using standard exam distribution guidelines."}
           </p>
         </div>
       )}
-      
+
       {!selectedExam && (
         <div className="flex items-center justify-center p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
           <AlertTriangle className="text-yellow-500 mr-2" />
           <p>Please select an exam to see your study pattern analysis.</p>
         </div>
       )}
-      
+
       {showAnalysis && selectedExam && (
         <div>
           {isLoadingBlueprint ? (
@@ -347,7 +347,7 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
                   ))}
                 </ul>
               </div>
-              
+
               {/* Charts Section */}
               {comparisonData.length > 0 && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -371,7 +371,7 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
                       </ResponsiveContainer>
                     </div>
                   </div>
-                  
+
                   {/* Pie Charts */}
                   <div className="bg-white p-4 rounded-lg border">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -401,7 +401,7 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
                           </ResponsiveContainer>
                         </div>
                       </div>
-                      
+
                       {/* User Distribution Pie Chart */}
                       <div>
                         <h3 className="font-medium text-gray-800 mb-2 text-center">Your Study Focus</h3>
@@ -436,7 +436,7 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
           )}
         </div>
       )}
-      
+
       {!showAnalysis && selectedExam && (
         <div className="text-gray-600 text-center py-4">
           Click &quot;Show Analysis&quot; to compare your study pattern with the {selectedExam} blueprint.

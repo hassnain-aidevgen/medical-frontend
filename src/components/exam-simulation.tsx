@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { ChevronLeft, ChevronRight, Timer, AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Timer, XCircle } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 // Types definitions
@@ -44,7 +44,7 @@ const examConfigs: Record<string, SimulationConfig> = {
 // const generateMockQuestions = (exam: string, count: number): SimulationQuestion[] => {
 //   const subjects = ["Anatomy", "Physiology", "Biochemistry", "Pharmacology", "Pathology", "Microbiology"];
 //   const mockQuestions: SimulationQuestion[] = [];
-  
+
 //   for (let i = 0; i < count; i++) {
 //     const subject = subjects[Math.floor(Math.random() * subjects.length)];
 //     mockQuestions.push({
@@ -62,7 +62,7 @@ const examConfigs: Record<string, SimulationConfig> = {
 //       difficulty: ["Easy", "Medium", "Hard"][Math.floor(Math.random() * 3)]
 //     });
 //   }
-  
+
 //   return mockQuestions;
 // };
 
@@ -95,34 +95,34 @@ const ExamSimulation: React.FC = () => {
 
   const [simulationHistory, setSimulationHistory] = useState<SimulationHistoryEntry[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  
+
   // Timer ref for cleanup
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Format time for display (MM:SS)
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-  
+
   // Load user data from localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedUserId = localStorage.getItem("Medical_User_Id");
       const storedExam = localStorage.getItem("selectedExam");
-      
+
       setUserId(storedUserId || "");
-      
+
       if (storedExam) {
         setSelectedExam(storedExam);
         setExamConfig(examConfigs[storedExam] || examConfigs["DEFAULT"]);
       }
     }
-    
+
     // Optionally fetch simulation history if you implement that feature
     // fetchSimulationHistory();
-    
+
     return () => {
       // Cleanup timer on component unmount
       if (timerRef.current) {
@@ -130,37 +130,37 @@ const ExamSimulation: React.FC = () => {
       }
     };
   }, []);
-  
+
   // Start simulation function
   const startSimulation = async () => {
     if (!selectedExam) {
       toast.error("Please select an exam in the calendar settings first");
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
       // Initialize timer based on selected exam
       const config = examConfigs[selectedExam] || examConfigs["DEFAULT"];
       setExamConfig(config);
       setTimeRemaining(config.duration * 60); // Convert minutes to seconds
-      
+
       // Get subjects relevant to the selected exam
       const examSubjects = getExamSubjects(selectedExam);
       const relatedSubjects = getRelatedSubjects(selectedExam);
-      
+
       // Calculate question distribution (80% core subjects, 20% related)
       const totalQuestions = config.totalQuestions;
       const examSpecificCount = Math.floor(totalQuestions * 0.8);
       const relatedSubjectsCount = totalQuestions - examSpecificCount;
-      
+
       let simulationQs: SimulationQuestion[] = [];
-      
+
       try {
         // Fetch main subject questions (80%)
         const examSpecificResponse = await axios.get(
-          "http://localhost:5000/api/test/take-test/questions-fixed",
+          "https://medical-backend-loj4.onrender.com/api/test/take-test/questions-fixed",
           {
             params: {
               subjects: examSubjects.join(","),
@@ -169,10 +169,10 @@ const ExamSimulation: React.FC = () => {
             }
           }
         );
-        
+
         // Fetch related subject questions (20%)
         const relatedSubjectsResponse = await axios.get(
-          "http://localhost:5000/api/test/take-test/questions-fixed",
+          "https://medical-backend-loj4.onrender.com/api/test/take-test/questions-fixed",
           {
             params: {
               subjects: relatedSubjects.join(","),
@@ -181,21 +181,21 @@ const ExamSimulation: React.FC = () => {
             }
           }
         );
-        
+
         // Combine and shuffle questions
         simulationQs = [
           ...examSpecificResponse.data,
           ...relatedSubjectsResponse.data
         ].sort(() => Math.random() - 0.5);
-        
+
       } catch (error) {
         console.error("Error fetching questions from API:", error);
         toast("Using sample questions due to API connectivity issues");
-        
+
         // Fallback to mock data
         // simulationQs = generateMockQuestions(selectedExam, totalQuestions);
       }
-      
+
       // Initialize simulation state
       setSimulationQuestions(simulationQs);
       setCurrentQuestionIndex(0);
@@ -203,38 +203,38 @@ const ExamSimulation: React.FC = () => {
       setIsSimulationActive(true);
       setIsSimulationComplete(false);
       setSimulationResults(null);
-      
+
       // Start the countdown timer
       startTimer();
-      
+
     } catch (error) {
       console.error("Error starting simulation:", error);
       toast.error("Failed to start simulation. Please try again.");
-      
-    //   // Fallback to mock data
-    //   const mockQuestions = generateMockQuestions(selectedExam, 
-    //     examConfigs[selectedExam]?.totalQuestions || 30);
-      
-    //   setSimulationQuestions(mockQuestions);
+
+      //   // Fallback to mock data
+      //   const mockQuestions = generateMockQuestions(selectedExam, 
+      //     examConfigs[selectedExam]?.totalQuestions || 30);
+
+      //   setSimulationQuestions(mockQuestions);
       setCurrentQuestionIndex(0);
-    //   setUserAnswers(mockQuestions.map(q => ({ questionId: q._id, selectedAnswer: null })));
+      //   setUserAnswers(mockQuestions.map(q => ({ questionId: q._id, selectedAnswer: null })));
       setIsSimulationActive(true);
       setIsSimulationComplete(false);
       setSimulationResults(null);
-      
+
       // Start the countdown timer
       startTimer();
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   // Start the countdown timer
   const startTimer = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
-    
+
     timerRef.current = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1) {
@@ -247,45 +247,45 @@ const ExamSimulation: React.FC = () => {
       });
     }, 1000);
   };
-  
+
   // Navigation functions
   const goToNextQuestion = () => {
     if (currentQuestionIndex < simulationQuestions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     }
   };
-  
+
   const goToPreviousQuestion = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
     }
   };
-  
+
   // Handle answer selection
   const handleAnswerSelection = (answer: string) => {
     setUserAnswers(prev => {
       const newAnswers = [...prev];
       const currentQuestion = simulationQuestions[currentQuestionIndex];
       const answerIndex = newAnswers.findIndex(a => a.questionId === currentQuestion._id);
-      
+
       if (answerIndex !== -1) {
         newAnswers[answerIndex] = {
           ...newAnswers[answerIndex],
           selectedAnswer: answer
         };
       }
-      
+
       return newAnswers;
     });
   };
-  
+
   // Calculate results and end simulation
   const submitSimulation = () => {
     // Stop the timer
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
-    
+
     // Calculate score
     let correctCount = 0;
     userAnswers.forEach(answer => {
@@ -293,7 +293,7 @@ const ExamSimulation: React.FC = () => {
       if (question && answer.selectedAnswer) {
         const selectedAnswerText = answer.selectedAnswer;
         const correctAnswerParts = question.correctAnswer.split(': ');
-        
+
         // Check if the selected answer matches the correct answer
         if (
           selectedAnswerText.startsWith(correctAnswerParts[0]) ||
@@ -303,9 +303,9 @@ const ExamSimulation: React.FC = () => {
         }
       }
     });
-    
+
     const timeSpent = (examConfig.duration * 60) - timeRemaining;
-    
+
     // Set results
     const results = {
       score: correctCount,
@@ -313,10 +313,10 @@ const ExamSimulation: React.FC = () => {
       percentage: Math.round((correctCount / simulationQuestions.length) * 100),
       timeSpent: timeSpent // in seconds
     };
-    
+
     setSimulationResults(results);
     setIsSimulationComplete(true);
-    
+
     // Save to history (this would normally be sent to a backend)
     const historyEntry = {
       id: Date.now(),
@@ -326,15 +326,15 @@ const ExamSimulation: React.FC = () => {
       questionsAnswered: simulationQuestions.length,
       duration: formatTime(timeSpent)
     };
-    
+
     setSimulationHistory(prev => [historyEntry, ...prev]);
-    
+
     // Optionally, you could save this to the backend or localStorage
     // saveSimulationResult(userId, historyEntry);
-    
+
     toast.success("Simulation completed!");
   };
-  
+
   // Reset simulation state
   const resetSimulation = () => {
     setIsSimulationActive(false);
@@ -344,12 +344,12 @@ const ExamSimulation: React.FC = () => {
     setUserAnswers([]);
     setTimeRemaining(0);
     setSimulationResults(null);
-    
+
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
   };
-  
+
   // Get exam-specific subjects mapping
   const getExamSubjects = (exam: string) => {
     // This mapping would ideally come from your backend
@@ -362,10 +362,10 @@ const ExamSimulation: React.FC = () => {
       "NCLEX": ["Fundamentals", "Medical-Surgical", "Pharmacology", "Maternal Newborn", "Pediatrics"],
       "COMLEX": ["Osteopathic Principles", "Anatomy", "Microbiology", "Pathology", "Pharmacology"]
     };
-    
+
     return examSubjectsMap[exam] || [];
   };
-  
+
   // Get related subjects for an exam
   const getRelatedSubjects = (exam: string) => {
     // This would also ideally come from your backend
@@ -378,15 +378,15 @@ const ExamSimulation: React.FC = () => {
       "NCLEX": ["Critical Care", "Community Health", "Leadership", "Mental Health"],
       "COMLEX": ["OMT", "Clinical Applications", "Ethics", "Biostatistics"]
     };
-    
+
     return relatedSubjectsMap[exam] || [];
   };
-  
+
   // Calculate the number of answered questions
   const getAnsweredCount = () => {
     return userAnswers.filter(answer => answer.selectedAnswer !== null).length;
   };
-  
+
   // Render different views based on simulation state
   if (!isSimulationActive) {
     // Start screen
@@ -401,7 +401,7 @@ const ExamSimulation: React.FC = () => {
             {showHistory ? "Hide History" : "View History"}
           </button>
         </div>
-        
+
         {showHistory && (
           <div className="mb-6">
             <h3 className="text-lg font-medium mb-3">Simulation History</h3>
@@ -437,7 +437,7 @@ const ExamSimulation: React.FC = () => {
             )}
           </div>
         )}
-        
+
         <div className="text-center py-8">
           <div className="mb-6">
             {selectedExam ? (
@@ -460,13 +460,13 @@ const ExamSimulation: React.FC = () => {
               </div>
             )}
           </div>
-          
+
           <button
             onClick={startSimulation}
             disabled={isLoading || !selectedExam}
             className={`px-6 py-3 rounded-lg text-white font-medium flex items-center justify-center mx-auto 
-              ${selectedExam 
-                ? "bg-blue-600 hover:bg-blue-700" 
+              ${selectedExam
+                ? "bg-blue-600 hover:bg-blue-700"
                 : "bg-gray-400 cursor-not-allowed"}`}
           >
             {isLoading ? (
@@ -482,13 +482,13 @@ const ExamSimulation: React.FC = () => {
       </div>
     );
   }
-  
+
   if (isSimulationComplete) {
     // Results screen
     return (
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 className="text-xl font-semibold mb-6">Simulation Results</h2>
-        
+
         {simulationResults && (
           <div className="text-center py-4">
             <div className="mb-6">
@@ -502,7 +502,7 @@ const ExamSimulation: React.FC = () => {
                 Time spent: {formatTime(simulationResults.timeSpent)}
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h3 className="font-medium mb-2">Strengths</h3>
@@ -517,7 +517,7 @@ const ExamSimulation: React.FC = () => {
                 </p>
               </div>
             </div>
-            
+
             <div className="mb-8">
               <h3 className="font-medium mb-4">Question Review</h3>
               <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -527,15 +527,14 @@ const ExamSimulation: React.FC = () => {
                     userAnswer.selectedAnswer.startsWith(question.correctAnswer.split(': ')[0]) ||
                     userAnswer.selectedAnswer.includes(question.correctAnswer.split(': ')[1])
                   );
-                  
+
                   return (
-                    <div 
-                      key={question._id} 
-                      className={`p-4 rounded-lg border ${
-                        userAnswer?.selectedAnswer 
-                          ? (isCorrect ? "border-green-300 bg-green-50" : "border-red-300 bg-red-50") 
+                    <div
+                      key={question._id}
+                      className={`p-4 rounded-lg border ${userAnswer?.selectedAnswer
+                          ? (isCorrect ? "border-green-300 bg-green-50" : "border-red-300 bg-red-50")
                           : "border-gray-300"
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between">
                         <span className="font-medium">Question {index + 1}</span>
@@ -567,7 +566,7 @@ const ExamSimulation: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         <div className="flex justify-center">
           <button
             onClick={resetSimulation}
@@ -579,7 +578,7 @@ const ExamSimulation: React.FC = () => {
       </div>
     );
   }
-  
+
   // Active simulation screen
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -595,7 +594,7 @@ const ExamSimulation: React.FC = () => {
           </div>
         </div>
       </div>
-      
+
       {simulationQuestions.length > 0 && (
         <div>
           <div className="mb-6">
@@ -605,28 +604,28 @@ const ExamSimulation: React.FC = () => {
               <span>{simulationQuestions[currentQuestionIndex].subject} • {simulationQuestions[currentQuestionIndex].difficulty}</span>
             </div>
             <div className="h-2 w-full bg-gray-200 rounded-full">
-              <div 
-                className="h-2 bg-blue-600 rounded-full" 
+              <div
+                className="h-2 bg-blue-600 rounded-full"
                 style={{ width: `${((currentQuestionIndex + 1) / simulationQuestions.length) * 100}%` }}
               ></div>
             </div>
           </div>
-          
+
           <div className="mb-8">
             <h3 className="text-lg font-medium mb-4">
-            {simulationQuestions[currentQuestionIndex].question || 
-             simulationQuestions[currentQuestionIndex].questionText}
-          </h3>
-            
+              {simulationQuestions[currentQuestionIndex].question ||
+                simulationQuestions[currentQuestionIndex].questionText}
+            </h3>
+
             <div className="space-y-3">
               {simulationQuestions[currentQuestionIndex].options.map((option) => {
                 const currentQuestion = simulationQuestions[currentQuestionIndex];
                 const userAnswer = userAnswers.find(a => a.questionId === currentQuestion._id);
                 const isSelected = userAnswer?.selectedAnswer === option;
-                
+
                 return (
-                  <div 
-                    key={option} 
+                  <div
+                    key={option}
                     className={`p-3 border rounded-lg cursor-pointer transition-colors 
                       ${isSelected ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:bg-gray-50"}`}
                     onClick={() => handleAnswerSelection(option)}
@@ -637,20 +636,20 @@ const ExamSimulation: React.FC = () => {
               })}
             </div>
           </div>
-          
+
           <div className="flex justify-between">
             <button
               onClick={goToPreviousQuestion}
               disabled={currentQuestionIndex === 0}
               className={`flex items-center py-2 px-4 rounded 
-                ${currentQuestionIndex === 0 
-                  ? "text-gray-400 cursor-not-allowed" 
+                ${currentQuestionIndex === 0
+                  ? "text-gray-400 cursor-not-allowed"
                   : "text-blue-600 hover:bg-blue-50"}`}
             >
               <ChevronLeft size={20} className="mr-1" />
               Previous
             </button>
-            
+
             <div>
               {currentQuestionIndex === simulationQuestions.length - 1 ? (
                 <button

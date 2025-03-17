@@ -74,7 +74,7 @@ export default function MentorDetailPage() {
     const fetchMentor = async (mentorId: string) => {
         try {
             setLoading(true)
-            const response = await axios.get(`http://localhost:5000/api/mentor/${mentorId}`)
+            const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/mentor/${mentorId}`)
             const mentorData = response.data.data
 
             // Check if mentor is active

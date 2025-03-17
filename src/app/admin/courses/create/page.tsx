@@ -80,7 +80,7 @@ export default function CreateCoursePage() {
     //     // Test API connection on component mount
     //     const testApiConnection = async () => {
     //         try {
-    //             await axios.options("http://localhost:5000/api/courses")
+    //             await axios.options("https://medical-backend-loj4.onrender.com/api/courses")
     //             console.log("✅ API connection successful")
     //         } catch (error) {
     //             console.error("❌ API connection failed:", error)
@@ -198,7 +198,7 @@ export default function CreateCoursePage() {
             let response
             if (formData) {
                 // If we have a file, use FormData
-                response = await axios.post("http://localhost:5000/api/courses", formData, {
+                response = await axios.post("https://medical-backend-loj4.onrender.com/api/courses", formData, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         // Don't set Content-Type when using FormData - axios will set it with the boundary
@@ -211,7 +211,7 @@ export default function CreateCoursePage() {
                 })
             } else {
                 // If no file, use regular JSON
-                response = await axios.post("http://localhost:5000/api/courses", courseData, {
+                response = await axios.post("https://medical-backend-loj4.onrender.com/api/courses", courseData, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         "Content-Type": "application/json",

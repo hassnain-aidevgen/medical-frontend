@@ -75,7 +75,7 @@ export default function MentorsPage() {
     const fetchMentors = async () => {
         try {
             setLoading(true)
-            const response = await axios.get("http://localhost:5000/api/mentor")
+            const response = await axios.get("https://medical-backend-loj4.onrender.com/api/mentor")
             const mentorsData = response.data.data
 
             // Only show active mentors to users
