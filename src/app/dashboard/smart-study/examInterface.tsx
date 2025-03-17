@@ -1,23 +1,29 @@
 "use client"
+import AdaptiveStudyTracker from "@/components/adaptive-study-tracker"
+import CustomStudyScheduleGenerator from "@/components/custom-study-schedule-generator"
+import ExamReadinessDashboard from "@/components/exam-readiness-dashboard"
 import ExamSimulation from "@/components/exam-simulation"
+import StudyPatternAnalyzer from "@/components/study-pattern-analyzer"
+import SubjectPrioritization from "@/components/subject-prioritization"
+import TopicDistributionAnalysis from "@/components/topic-distribution-analysis"
 import axios from "axios"
 import { BarChart3, BookOpen, Calendar, TrendingUp } from "lucide-react"
 import type React from "react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
-// import TopicDistributionAnalysis from "@/components/topic-distribution-analysis";
-import TopicDistributionAnalysis from "@/components/topic-distribution-analysis"
-// import StudyPatternAnalyzer from "@/components/study-pattern-analyzer";
-import StudyPatternAnalyzer from "@/components/study-pattern-analyzer"
-// import CustomStudyScheduleGenerator from "@/components/custom-study-schedule-generator";
-import CustomStudyScheduleGenerator from "@/components/custom-study-schedule-generator"
-import ExamReadinessDashboard from "@/components/exam-readiness-dashboard"
-// import AdaptiveStudyTracker from "@/components/adaptive-study-tracker";
-import AdaptiveStudyTracker from "@/components/adaptive-study-tracker"
-// import SubjectPrioritization from "@/components/subject-prioritization"
-import SubjectPrioritization from "@/components/subject-prioritization"
 
-const ExamInterface = ({ tests }: { tests: any }) => {
+// Define proper type for tests
+interface Test {
+    id: string;
+    name: string;
+    score: number;
+    date: string;
+    subjectName: string;
+    testTopic: string;
+    color: string;
+}
+
+const ExamInterface = ({ tests }: { tests: Test[] }) => {
     const [userId, setUserId] = useState<string>("")
     // Exam selection state
     const [selectedExam, setSelectedExam] = useState<string>("")
@@ -54,8 +60,8 @@ const ExamInterface = ({ tests }: { tests: any }) => {
     const [showHighYieldData, setShowHighYieldData] = useState(false);
 
 
-    // Calculate days remaining until exam
-    const calculateDaysRemaining = () => {
+    // Calculate days remaining until exam - using useCallback to memoize
+    const calculateDaysRemaining = useCallback(() => {
         if (!examDate) return null
 
         const today = new Date()
@@ -68,7 +74,7 @@ const ExamInterface = ({ tests }: { tests: any }) => {
         const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24))
 
         return daysDiff >= 0 ? daysDiff : null
-    }
+    }, [examDate]) // Include examDate in the dependency array
 
     // Effect for countdown timer
     useEffect(() => {
@@ -81,7 +87,7 @@ const ExamInterface = ({ tests }: { tests: any }) => {
         }, 60000) // Update every minute
 
         return () => clearInterval(intervalId)
-    }, [examDate])
+    }, [calculateDaysRemaining]) // Added calculateDaysRemaining to the dependency array
 
 
     useEffect(() => {
@@ -103,43 +109,8 @@ const ExamInterface = ({ tests }: { tests: any }) => {
         }
     }, [])
 
-    // Effect to fetch recommended questions when exam changes
-    useEffect(() => {
-        if (selectedExam) {
-            fetchRecommendedQuestions();
-            fetchHighYieldData();
-        }
-    }, [selectedExam]);
-
-    // Handle exam selection change
-    const handleExamChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newExam = e.target.value
-        setSelectedExam(newExam)
-
-        // Save to localStorage
-        if (typeof window !== "undefined") {
-            localStorage.setItem("selectedExam", newExam)
-        }
-
-        // Optionally save to backend
-        // if (userId && newExam) {
-        //   saveExamToBackend(newExam)
-        // }
-    }
-
-    // Handle exam date change
-    const handleExamDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newDate = e.target.value
-        setExamDate(newDate)
-
-        // Save to localStorage
-        if (typeof window !== "undefined") {
-            localStorage.setItem("examDate", newDate)
-        }
-    }
-
     // Get exam-specific subjects mapping
-    const getExamSubjects = (exam: string) => {
+    const getExamSubjects = useCallback((exam: string) => {
         // This mapping would ideally come from your backend
         // For now, we'll use a simple mapping for demonstration
         const examSubjectsMap: Record<string, string[]> = {
@@ -152,10 +123,10 @@ const ExamInterface = ({ tests }: { tests: any }) => {
         };
 
         return examSubjectsMap[exam] || [];
-    };
+    }, []);
 
     // Get related subjects for an exam
-    const getRelatedSubjects = (exam: string) => {
+    const getRelatedSubjects = useCallback((exam: string) => {
         // This would also ideally come from your backend
         // For demonstration, we'll use a simple mapping
         const relatedSubjectsMap: Record<string, string[]> = {
@@ -168,11 +139,82 @@ const ExamInterface = ({ tests }: { tests: any }) => {
         };
 
         return relatedSubjectsMap[exam] || [];
-    };
+    }, []);
 
+    // Function to generate mock questions for fallback
+    const generateMockQuestions = useCallback((exam: string, count: number): Question[] => {
+        const examSubjects = getExamSubjects(exam);
+        const relatedSubjects = getRelatedSubjects(exam);
+        // const allSubjects = [...examSubjects, ...relatedSubjects];
+
+        const mockQuestions: Question[] = [];
+
+        for (let i = 0; i < count; i++) {
+            const isExamSpecific = i < Math.floor(count * 0.8);
+            const subjects = isExamSpecific ? examSubjects : relatedSubjects;
+            const subject = subjects[Math.floor(Math.random() * subjects.length)] || "General";
+
+            mockQuestions.push({
+                _id: `mock-${exam}-${i}`,
+                questionText: `Sample ${isExamSpecific ? "exam-specific" : "related subject"} question about ${subject} for ${exam} preparation.`,
+                options: [
+                    "Sample answer option A",
+                    "Sample answer option B",
+                    "Sample answer option C",
+                    "Sample answer option D"
+                ],
+                correctAnswer: "Sample answer option A",
+                subject: subject,
+                subsection: `${subject} Fundamentals`,
+                difficulty: ["Easy", "Medium", "Hard"][Math.floor(Math.random() * 3)]
+            });
+        }
+
+        return mockQuestions;
+    }, [getExamSubjects, getRelatedSubjects]);
+
+    // Function to generate mock high-yield data
+    const generateMockHighYieldData = useCallback((exam: string): HighYieldData => {
+        const examSpecificSubjects = getExamSubjects(exam);
+        const topics: HighYieldTopic[] = [];
+
+        // Create weightage distribution that adds up to 100
+        let remainingWeight = 100;
+        for (let i = 0; i < examSpecificSubjects.length; i++) {
+            const subject = examSpecificSubjects[i];
+
+            // For the last subject, use the remaining weight
+            const isLastSubject = i === examSpecificSubjects.length - 1;
+
+            // Generate a random weightage between 10 and 30, or the remaining weight for the last subject
+            const weightage = isLastSubject
+                ? remainingWeight
+                : Math.min(Math.floor(Math.random() * 20) + 10, remainingWeight - 5);
+
+            remainingWeight -= weightage;
+
+            // Generate 1-3 sample questions for this topic
+            const questionCount = Math.floor(Math.random() * 3) + 1;
+            const questions = generateMockQuestions(exam, questionCount).map(q => ({
+                ...q,
+                subject: subject
+            }));
+
+            topics.push({
+                topicName: subject,
+                weightage: weightage,
+                questions: questions
+            });
+        }
+
+        // Sort topics by weightage (descending)
+        topics.sort((a, b) => b.weightage - a.weightage);
+
+        return { topics };
+    }, [getExamSubjects, generateMockQuestions]);
 
     // Function to fetch recommended questions using the 80/20 rule
-    const fetchRecommendedQuestions = async () => {
+    const fetchRecommendedQuestions = useCallback(async () => {
         if (!selectedExam || !userId) {
             return;
         }
@@ -246,10 +288,10 @@ const ExamInterface = ({ tests }: { tests: any }) => {
         } finally {
             setIsLoadingQuestions(false);
         }
-    };
+    }, [selectedExam, userId, getExamSubjects, getRelatedSubjects, generateMockQuestions]);
 
     // Function to fetch high-yield data
-    const fetchHighYieldData = async () => {
+    const fetchHighYieldData = useCallback(async () => {
         if (!selectedExam || !userId) {
             return;
         }
@@ -287,80 +329,42 @@ const ExamInterface = ({ tests }: { tests: any }) => {
         } finally {
             setIsLoadingHighYieldData(false);
         }
-    };
+    }, [selectedExam, userId, generateMockHighYieldData]);
 
-    // Function to generate mock questions for fallback
-    const generateMockQuestions = (exam: string, count: number): Question[] => {
-        const examSubjects = getExamSubjects(exam);
-        const relatedSubjects = getRelatedSubjects(exam);
-        // const allSubjects = [...examSubjects, ...relatedSubjects];
+    // Effect to fetch recommended questions when exam changes
+    useEffect(() => {
+        if (selectedExam) {
+            fetchRecommendedQuestions();
+            fetchHighYieldData();
+        }
+    }, [selectedExam, fetchRecommendedQuestions, fetchHighYieldData]); // Added missing dependencies
 
-        const mockQuestions: Question[] = [];
+    // Handle exam selection change
+    const handleExamChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newExam = e.target.value
+        setSelectedExam(newExam)
 
-        for (let i = 0; i < count; i++) {
-            const isExamSpecific = i < Math.floor(count * 0.8);
-            const subjects = isExamSpecific ? examSubjects : relatedSubjects;
-            const subject = subjects[Math.floor(Math.random() * subjects.length)] || "General";
-
-            mockQuestions.push({
-                _id: `mock-${exam}-${i}`,
-                questionText: `Sample ${isExamSpecific ? "exam-specific" : "related subject"} question about ${subject} for ${exam} preparation.`,
-                options: [
-                    "Sample answer option A",
-                    "Sample answer option B",
-                    "Sample answer option C",
-                    "Sample answer option D"
-                ],
-                correctAnswer: "Sample answer option A",
-                subject: subject,
-                subsection: `${subject} Fundamentals`,
-                difficulty: ["Easy", "Medium", "Hard"][Math.floor(Math.random() * 3)]
-            });
+        // Save to localStorage
+        if (typeof window !== "undefined") {
+            localStorage.setItem("selectedExam", newExam)
         }
 
-        return mockQuestions;
-    };
+        // Optionally save to backend
+        // if (userId && newExam) {
+        //   saveExamToBackend(newExam)
+        // }
+    }
 
-    // Function to generate mock high-yield data
-    const generateMockHighYieldData = (exam: string): HighYieldData => {
-        const examSpecificSubjects = getExamSubjects(exam);
-        const topics: HighYieldTopic[] = [];
+    // Handle exam date change
+    const handleExamDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newDate = e.target.value
+        setExamDate(newDate)
 
-        // Create weightage distribution that adds up to 100
-        let remainingWeight = 100;
-        for (let i = 0; i < examSpecificSubjects.length; i++) {
-            const subject = examSpecificSubjects[i];
-
-            // For the last subject, use the remaining weight
-            const isLastSubject = i === examSpecificSubjects.length - 1;
-
-            // Generate a random weightage between 10 and 30, or the remaining weight for the last subject
-            const weightage = isLastSubject
-                ? remainingWeight
-                : Math.min(Math.floor(Math.random() * 20) + 10, remainingWeight - 5);
-
-            remainingWeight -= weightage;
-
-            // Generate 1-3 sample questions for this topic
-            const questionCount = Math.floor(Math.random() * 3) + 1;
-            const questions = generateMockQuestions(exam, questionCount).map(q => ({
-                ...q,
-                subject: subject
-            }));
-
-            topics.push({
-                topicName: subject,
-                weightage: weightage,
-                questions: questions
-            });
+        // Save to localStorage
+        if (typeof window !== "undefined") {
+            localStorage.setItem("examDate", newDate)
         }
-
-        // Sort topics by weightage (descending)
-        topics.sort((a, b) => b.weightage - a.weightage);
-
-        return { topics };
-    };
-
+    }
 
     return (
         <div className="container mx-auto py-4">

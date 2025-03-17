@@ -10,7 +10,7 @@ import axios from "axios"
 import { Briefcase, Building, CalendarIcon, ChevronLeft, Star } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import toast from "react-hot-toast"
 
 // Update the Mentor interface to match the updated schema
@@ -64,14 +64,8 @@ export default function MentorDetailPage() {
     const [availableSlots, setAvailableSlots] = useState<string[]>([])
     const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
 
-    useEffect(() => {
-        if (params.id) {
-            fetchMentor(params.id as string)
-        }
-    }, [params.id])
-
-    // Update the fetchMentor function to handle the case where a mentor is inactive
-    const fetchMentor = async (mentorId: string) => {
+    // Using useCallback to memoize the fetchMentor function
+    const fetchMentor = useCallback(async (mentorId: string) => {
         try {
             setLoading(true)
             const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/mentor/${mentorId}`)
@@ -95,7 +89,13 @@ export default function MentorDetailPage() {
             toast.error("Failed to load mentor details")
             setLoading(false)
         }
-    }
+    }, [router]) // Add router to the dependency array since it's used inside the callback
+
+    useEffect(() => {
+        if (params.id) {
+            fetchMentor(params.id as string)
+        }
+    }, [params.id, fetchMentor]) // Added fetchMentor to the dependency array
 
     // Update available slots when date is selected
     useEffect(() => {
@@ -113,19 +113,21 @@ export default function MentorDetailPage() {
         setSelectedSlot(null)
     }, [selectedDate, mentor])
 
-    const handleBookSession = (mentorId: string, mentorshipIndex: number) => {
+    const handleBookSession = useCallback((mentorId: string, mentorshipIndex: number) => {
         if (!selectedDate || !selectedSlot) {
             toast.error("Please select a date and time slot")
             return
         }
-        console.log(mentorships);
+
         setSelectedDate(undefined)
+
         // Navigate to booking page with selected mentor, mentorship index, date and time
         router.push(
             `/booking?mentor=${mentorId}&mentorship=${mentorshipIndex}&date=${selectedDate.toISOString().split("T")[0]}&time=${selectedSlot}`,
         )
-    }
+    }, [router, selectedDate, selectedSlot]) // Add dependencies used inside the callback
 
+    console.log(mentorships)
     if (loading) {
         return (
             <div className="container py-8">
@@ -398,4 +400,3 @@ export default function MentorDetailPage() {
         </div>
     )
 }
-

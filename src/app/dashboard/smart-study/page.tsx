@@ -2,30 +2,40 @@
 
 import type React from "react"
 
+import WeeklyStreak from "@/components/weekly-streak"
 import axios from "axios"
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
-// import WeeklyStreak from "../components/weekly-streak"
-// import WeeklyStreak from "@/components/weekly-streak"
-import WeeklyStreak from "@/components/weekly-streak"
 import ExamInterface from "./examInterface"
+
+// Define the interface for your calendar tests
+interface CalendarTest {
+  _id?: string
+  subjectName: string
+  testTopic: string
+  date: string
+  color: string
+  completed?: boolean
+}
+
+// Define the interface that matches ExamInterface's expected Test type
+interface ExamTest {
+  id: string;
+  name: string;
+  score: number;
+  date: string;
+  subjectName: string;
+  testTopic: string;
+  color: string;
+}
 
 const SmartStudyCalendar = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [userId, setUserId] = useState<string>("")
-  interface Test {
-    _id?: string
-    subjectName: string
-    testTopic: string
-    date: string
-    color: string
-    completed?: boolean
-  }
-
-  const [tests, setTests] = useState<Test[]>([])
-  const [newTest, setNewTest] = useState<Test>({
+  const [tests, setTests] = useState<CalendarTest[]>([])
+  const [newTest, setNewTest] = useState<CalendarTest>({
     subjectName: "",
     testTopic: "",
     date: "",
@@ -67,6 +77,19 @@ const SmartStudyCalendar = () => {
     }
   }, [userId])
 
+  // Convert your calendar tests to ExamInterface's expected format
+  const getExamTests = (): ExamTest[] => {
+    return tests.map(test => ({
+      id: test._id || `temp-${Date.now()}`,
+      name: test.subjectName,
+      subjectName: test.subjectName,
+      testTopic: test.testTopic,
+      color: test.color,
+      date: test.date,
+      score: 0, // Default score value, replace with actual value if available
+    }))
+  }
+
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate()
   const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay()
 
@@ -82,7 +105,7 @@ const SmartStudyCalendar = () => {
     setNewTest({ ...newTest, [e.target.name]: e.target.value })
   }
 
-  const validateNewTest = (test: Test): boolean => {
+  const validateNewTest = (test: CalendarTest): boolean => {
     if (test.subjectName.trim() === "") {
       toast.error("Subject name cannot be empty")
       return false
@@ -448,11 +471,10 @@ const SmartStudyCalendar = () => {
       </div>
 
       <div>
-        <ExamInterface tests={tests}/>
+        <ExamInterface tests={getExamTests()} />
       </div>
     </div>
   )
 }
 
 export default SmartStudyCalendar
-

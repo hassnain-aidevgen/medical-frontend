@@ -2,7 +2,7 @@
 
 import axios from 'axios';
 import { ActivitySquare, AlertTriangle, Award, BookCheck, BookOpen, ChevronDown, ChevronUp, Clock, LineChart } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
@@ -60,59 +60,84 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
   const [showAllSubjects, setShowAllSubjects] = useState<boolean>(false);
 
-  // Fetch test data
-  useEffect(() => {
-    if (!userId || !selectedExam) return;
+  // Helper to get days until exam
+  const getDaysToExam = useCallback((date: string): number => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    const fetchTestData = async () => {
-      setLoading(true);
-      setError(null);
+    const examDay = new Date(date);
+    examDay.setHours(0, 0, 0, 0);
 
-      try {
-        // Fetch test data
-        const testsResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`);
+    const timeDiff = examDay.getTime() - today.getTime();
+    return Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
+  }, []);
 
-        if (Array.isArray(testsResponse.data)) {
-          setTests(testsResponse.data);
-        } else {
-          throw new Error("Invalid test data format");
-        }
+  // Calculate overall readiness score
+  const calculateOverallReadiness = useCallback((subjects: SubjectReadiness[]) => {
+    // Count total and completed tests
+    const totalTests = tests.length;
+    const completedTests = tests.filter(test => test.completed).length;
+    const completionRate = totalTests > 0 ? (completedTests / totalTests) * 100 : 0;
 
-        // Fetch exam blueprint
-        try {
-          const blueprintResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/exams/blueprint/${selectedExam}`);
+    // Count subjects covered (has at least one completed test)
+    const subjectsWithCompletedTests = subjects.filter(s => s.testsCompleted > 0);
+    const subjectsCovered = subjectsWithCompletedTests.length;
 
-          if (blueprintResponse.data && Array.isArray(blueprintResponse.data)) {
-            setExamBlueprint(blueprintResponse.data);
-          } else {
-            throw new Error("Invalid blueprint data format");
-          }
-        } catch (blueprintError) {
-          console.error("Error fetching blueprint:", blueprintError);
-          toast.error("Failed to fetch exam blueprint. Readiness analysis may be limited.");
-        }
+    // Calculate weighted average of subject readiness scores
+    let weightedReadinessSum = 0;
+    let totalWeight = 0;
 
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setError("Failed to fetch your test data. Please try again later.");
-        toast.error("Failed to load your test data");
-      } finally {
-        setLoading(false);
+    subjects.forEach(subject => {
+      // Only include blueprint subjects in this calculation
+      if (subject.blueprintPercentage > 0) {
+        weightedReadinessSum += subject.readinessScore * subject.blueprintPercentage;
+        totalWeight += subject.blueprintPercentage;
       }
-    };
+    });
 
-    fetchTestData();
-  }, [userId, selectedExam]);
+    // Readiness score (based on subject coverage and completion, weighted by blueprint)
+    let overallScore = totalWeight > 0 ? weightedReadinessSum / totalWeight : 0;
 
-  // Calculate readiness metrics once data is loaded
-  useEffect(() => {
-    if (!tests.length || !examBlueprint.length) return;
+    // Adjust score based on time left until exam if exam date is provided
+    if (examDate) {
+      const today = new Date();
+      const examDay = new Date(examDate);
+      const daysToExam = Math.max(0, Math.floor((examDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
 
-    calculateReadiness();
-  }, [tests, examBlueprint, examDate]);
+      // Time pressure factor: the closer to exam, the more penalized for low readiness
+      // Assumes a typical study period of 90 days
+      const timePressureFactor = Math.max(0, Math.min(1, daysToExam / 90));
+
+      // Adjust score based on time pressure
+      // As exam approaches, time pressure increases importance
+      const timeAdjustedScore = overallScore * (0.7 + 0.3 * timePressureFactor);
+
+      overallScore = timeAdjustedScore;
+    }
+
+    // Cap score at 100
+    overallScore = Math.min(100, overallScore);
+
+    // Determine readiness status
+    let status: 'low' | 'moderate' | 'high' = 'low';
+    if (overallScore >= 75) {
+      status = 'high';
+    } else if (overallScore >= 50) {
+      status = 'moderate';
+    }
+
+    setOverallReadiness({
+      score: Math.round(overallScore),
+      status,
+      completionRate,
+      subjectsCovered,
+      totalSubjects: examBlueprint.length,
+      daysToExam: examDate ? getDaysToExam(examDate) : undefined
+    });
+  }, [tests, examBlueprint, examDate, getDaysToExam]);
 
   // Calculate readiness metrics
-  const calculateReadiness = () => {
+  const calculateReadiness = useCallback(() => {
     try {
       // Group tests by subject
       const subjectGroups: Record<string, Test[]> = {};
@@ -205,83 +230,57 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
       console.error("Error calculating readiness:", error);
       toast.error("An error occurred while calculating your exam readiness");
     }
-  };
+  }, [tests, examBlueprint, calculateOverallReadiness]);
 
-  // Calculate overall readiness score
-  const calculateOverallReadiness = (subjects: SubjectReadiness[]) => {
-    // Count total and completed tests
-    const totalTests = tests.length;
-    const completedTests = tests.filter(test => test.completed).length;
-    const completionRate = totalTests > 0 ? (completedTests / totalTests) * 100 : 0;
+  // Fetch test data
+  useEffect(() => {
+    if (!userId || !selectedExam) return;
 
-    // Count subjects covered (has at least one completed test)
-    const subjectsWithCompletedTests = subjects.filter(s => s.testsCompleted > 0);
-    const subjectsCovered = subjectsWithCompletedTests.length;
+    const fetchTestData = async () => {
+      setLoading(true);
+      setError(null);
 
-    // Calculate weighted average of subject readiness scores
-    let weightedReadinessSum = 0;
-    let totalWeight = 0;
+      try {
+        // Fetch test data
+        const testsResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`);
 
-    subjects.forEach(subject => {
-      // Only include blueprint subjects in this calculation
-      if (subject.blueprintPercentage > 0) {
-        weightedReadinessSum += subject.readinessScore * subject.blueprintPercentage;
-        totalWeight += subject.blueprintPercentage;
+        if (Array.isArray(testsResponse.data)) {
+          setTests(testsResponse.data);
+        } else {
+          throw new Error("Invalid test data format");
+        }
+
+        // Fetch exam blueprint
+        try {
+          const blueprintResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/exams/blueprint/${selectedExam}`);
+
+          if (blueprintResponse.data && Array.isArray(blueprintResponse.data)) {
+            setExamBlueprint(blueprintResponse.data);
+          } else {
+            throw new Error("Invalid blueprint data format");
+          }
+        } catch (blueprintError) {
+          console.error("Error fetching blueprint:", blueprintError);
+          toast.error("Failed to fetch exam blueprint. Readiness analysis may be limited.");
+        }
+
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setError("Failed to fetch your test data. Please try again later.");
+        toast.error("Failed to load your test data");
+      } finally {
+        setLoading(false);
       }
-    });
+    };
 
-    // Readiness score (based on subject coverage and completion, weighted by blueprint)
-    let overallScore = totalWeight > 0 ? weightedReadinessSum / totalWeight : 0;
+    fetchTestData();
+  }, [userId, selectedExam]);
 
-    // Adjust score based on time left until exam if exam date is provided
-    if (examDate) {
-      const today = new Date();
-      const examDay = new Date(examDate);
-      const daysToExam = Math.max(0, Math.floor((examDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
-
-      // Time pressure factor: the closer to exam, the more penalized for low readiness
-      // Assumes a typical study period of 90 days
-      const timePressureFactor = Math.max(0, Math.min(1, daysToExam / 90));
-
-      // Adjust score based on time pressure
-      // As exam approaches, time pressure increases importance
-      const timeAdjustedScore = overallScore * (0.7 + 0.3 * timePressureFactor);
-
-      overallScore = timeAdjustedScore;
-    }
-
-    // Cap score at 100
-    overallScore = Math.min(100, overallScore);
-
-    // Determine readiness status
-    let status: 'low' | 'moderate' | 'high' = 'low';
-    if (overallScore >= 75) {
-      status = 'high';
-    } else if (overallScore >= 50) {
-      status = 'moderate';
-    }
-
-    setOverallReadiness({
-      score: Math.round(overallScore),
-      status,
-      completionRate,
-      subjectsCovered,
-      totalSubjects: examBlueprint.length,
-      daysToExam: examDate ? getDaysToExam(examDate) : undefined
-    });
-  };
-
-  // Helper to get days until exam
-  const getDaysToExam = (date: string): number => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const examDay = new Date(date);
-    examDay.setHours(0, 0, 0, 0);
-
-    const timeDiff = examDay.getTime() - today.getTime();
-    return Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
-  };
+  // Calculate readiness metrics once data is loaded
+  useEffect(() => {
+    if (!tests.length || !examBlueprint.length) return;
+    calculateReadiness();
+  }, [tests, examBlueprint, examDate, calculateReadiness]); // Added calculateReadiness to the dependency array
 
   // Create chart data for subject readiness vs blueprint
   const getSubjectChartData = () => {
@@ -334,16 +333,6 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
 
     return recommendations;
   };
-
-  //   // Get status color
-  //   const getStatusColor = (status: 'low' | 'moderate' | 'high'): string => {
-  //     switch (status) {
-  //       case 'high': return 'bg-green-500';
-  //       case 'moderate': return 'bg-yellow-500';
-  //       case 'low': return 'bg-red-500';
-  //       default: return 'bg-gray-500';
-  //     }
-  //   };
 
   // Get text status color
   const getTextStatusColor = (status: 'low' | 'moderate' | 'high'): string => {

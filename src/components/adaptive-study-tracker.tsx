@@ -10,7 +10,7 @@ import {
   Target,
   Zap
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
 interface AdaptiveStudyTrackerProps {
@@ -51,76 +51,8 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
   const [daysToExam, setDaysToExam] = useState<number>(0);
 
-  // Fetch test data and exam blueprint
-  useEffect(() => {
-    if (!userId || !selectedExam || !examDate) return;
-
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        // Calculate days to exam
-        const days = getDaysToExam(examDate);
-        setDaysToExam(days);
-
-        if (days <= 0) {
-          throw new Error("Exam date must be in the future");
-        }
-
-        // Fetch test data
-        const testsResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`);
-
-        if (Array.isArray(testsResponse.data)) {
-          setTests(testsResponse.data);
-        } else {
-          throw new Error("Invalid test data format");
-        }
-
-        // Fetch exam blueprint
-        try {
-          const blueprintResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/exams/blueprint/${selectedExam}`);
-
-          if (blueprintResponse.data && Array.isArray(blueprintResponse.data)) {
-            setExamBlueprint(blueprintResponse.data);
-          } else {
-            throw new Error("Invalid blueprint data format");
-          }
-        } catch (blueprintError) {
-          console.error("Error fetching blueprint:", blueprintError);
-          toast.error("Failed to fetch exam blueprint data");
-
-          // Fallback blueprint data in case API fails
-          setExamBlueprint([
-            { topic: "Biology", percentage: 35 },
-            { topic: "Chemistry", percentage: 25 },
-            { topic: "Physics", percentage: 25 },
-            { topic: "Psychology", percentage: 15 }
-          ]);
-        }
-
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setError(typeof error === 'object' && error !== null && 'message' in error
-          ? String(error.message)
-          : "Failed to fetch data");
-        toast.error("Failed to load data for adaptive study tracker");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [userId, selectedExam, examDate]);
-
-  // Calculate subject proficiency once data is loaded
-  useEffect(() => {
-    if (!examBlueprint.length || daysToExam <= 0) return;
-    calculateSubjectProficiency();
-  }, [tests, examBlueprint, daysToExam]);
-
   // Helper to get days until exam
-  const getDaysToExam = (date: string): number => {
+  const getDaysToExam = useCallback((date: string): number => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -129,10 +61,10 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
 
     const timeDiff = examDay.getTime() - today.getTime();
     return Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
-  };
+  }, []);
 
   // Calculate subject proficiency and recommended difficulty
-  const calculateSubjectProficiency = () => {
+  const calculateSubjectProficiency = useCallback(() => {
     try {
       // Group tests by subject
       const subjectGroups: Record<string, Test[]> = {};
@@ -214,7 +146,75 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
       console.error("Error calculating subject proficiency:", error);
       toast.error("Failed to calculate study difficulty levels");
     }
-  };
+  }, [tests, examBlueprint, daysToExam]); // Added dependencies here
+
+  // Fetch test data and exam blueprint
+  useEffect(() => {
+    if (!userId || !selectedExam || !examDate) return;
+
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Calculate days to exam
+        const days = getDaysToExam(examDate);
+        setDaysToExam(days);
+
+        if (days <= 0) {
+          throw new Error("Exam date must be in the future");
+        }
+
+        // Fetch test data
+        const testsResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`);
+
+        if (Array.isArray(testsResponse.data)) {
+          setTests(testsResponse.data);
+        } else {
+          throw new Error("Invalid test data format");
+        }
+
+        // Fetch exam blueprint
+        try {
+          const blueprintResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/exams/blueprint/${selectedExam}`);
+
+          if (blueprintResponse.data && Array.isArray(blueprintResponse.data)) {
+            setExamBlueprint(blueprintResponse.data);
+          } else {
+            throw new Error("Invalid blueprint data format");
+          }
+        } catch (blueprintError) {
+          console.error("Error fetching blueprint:", blueprintError);
+          toast.error("Failed to fetch exam blueprint data");
+
+          // Fallback blueprint data in case API fails
+          setExamBlueprint([
+            { topic: "Biology", percentage: 35 },
+            { topic: "Chemistry", percentage: 25 },
+            { topic: "Physics", percentage: 25 },
+            { topic: "Psychology", percentage: 15 }
+          ]);
+        }
+
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setError(typeof error === 'object' && error !== null && 'message' in error
+          ? String(error.message)
+          : "Failed to fetch data");
+        toast.error("Failed to load data for adaptive study tracker");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [userId, selectedExam, examDate, getDaysToExam]);
+
+  // Calculate subject proficiency once data is loaded
+  useEffect(() => {
+    if (!examBlueprint.length || daysToExam <= 0) return;
+    calculateSubjectProficiency();
+  }, [tests, examBlueprint, daysToExam, calculateSubjectProficiency]); // Added calculateSubjectProficiency to dependency array
 
   // Format date as a readable string
   const formatDate = (dateString: string): string => {
@@ -322,10 +322,10 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
                       </div>
                       <div className="text-xs text-purple-700 flex items-center">
                         <span className={`inline-block w-2 h-2 rounded-full ${getPrioritySubject()?.urgency === 'high'
-                            ? 'bg-red-500'
-                            : getPrioritySubject()?.urgency === 'medium'
-                              ? 'bg-yellow-500'
-                              : 'bg-green-500'
+                          ? 'bg-red-500'
+                          : getPrioritySubject()?.urgency === 'medium'
+                            ? 'bg-yellow-500'
+                            : 'bg-green-500'
                           } mr-1`}></span>
                         {getPrioritySubject()?.proficiencyScore}% proficiency • {getPrioritySubject()?.urgency} priority
                       </div>

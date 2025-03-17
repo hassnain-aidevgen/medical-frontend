@@ -2,7 +2,7 @@
 
 import axios from 'axios';
 import { AlertTriangle, BarChart3, PieChartIcon, RefreshCw } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
@@ -85,20 +85,8 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
   const [usingDynamicBlueprint, setUsingDynamicBlueprint] = useState<boolean>(false);
   const [completedTestCount, setCompletedTestCount] = useState<number>(0);
 
-  // Fetch exam blueprint dynamically
-  useEffect(() => {
-    if (selectedExam) {
-      fetchExamBlueprint();
-    }
-  }, [selectedExam]);
-
-  useEffect(() => {
-    if (showAnalysis && selectedExam && tests.length > 0 && examBlueprint.length > 0) {
-      analyzeStudyPattern();
-    }
-  }, [showAnalysis, selectedExam, tests, examBlueprint]);
-
-  const fetchExamBlueprint = async () => {
+  // Fetch exam blueprint dynamically - wrapped in useCallback
+  const fetchExamBlueprint = useCallback(async () => {
     setIsLoadingBlueprint(true);
 
     try {
@@ -131,9 +119,39 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
     } finally {
       setIsLoadingBlueprint(false);
     }
-  };
+  }, [selectedExam]); // Added selectedExam as a dependency
 
-  const analyzeStudyPattern = () => {
+  // Generate feedback function
+  const generateFeedback = useCallback((comparison: { topic: string; blueprint: number; user: number; difference: number }[]): string[] => {
+    const messages: string[] = [];
+
+    // Add overall message
+    messages.push(`Analysis based on ${selectedExam} blueprint and your ${completedTestCount} completed tests.`);
+
+    // Sort by absolute difference to highlight the most significant gaps
+    const sortedByDifference = [...comparison].sort((a, b) =>
+      Math.abs(b.difference) - Math.abs(a.difference)
+    );
+
+    // Generate specific feedback for topics with significant differences
+    sortedByDifference.slice(0, 3).forEach(item => {
+      if (item.difference < -5) {
+        messages.push(`Increase your focus on ${item.topic} by ${Math.abs(item.difference)}%.`);
+      } else if (item.difference > 5) {
+        messages.push(`You're studying ${item.topic} ${item.difference}% more than needed for the exam.`);
+      }
+    });
+
+    // Add a strategic message if applicable
+    if (sortedByDifference.some(item => item.difference < -10)) {
+      messages.push("Consider reallocating your study time to better match the exam distribution.");
+    }
+
+    return messages;
+  }, [selectedExam, completedTestCount]);
+
+  // Analyze study pattern function - wrapped in useCallback
+  const analyzeStudyPattern = useCallback(() => {
     setIsLoading(true);
 
     try {
@@ -228,35 +246,21 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [tests, examBlueprint, generateFeedback]);
 
-  const generateFeedback = (comparison: { topic: string; blueprint: number; user: number; difference: number }[]): string[] => {
-    const messages: string[] = [];
-
-    // Add overall message
-    messages.push(`Analysis based on ${selectedExam} blueprint and your ${completedTestCount} completed tests.`);
-
-    // Sort by absolute difference to highlight the most significant gaps
-    const sortedByDifference = [...comparison].sort((a, b) =>
-      Math.abs(b.difference) - Math.abs(a.difference)
-    );
-
-    // Generate specific feedback for topics with significant differences
-    sortedByDifference.slice(0, 3).forEach(item => {
-      if (item.difference < -5) {
-        messages.push(`Increase your focus on ${item.topic} by ${Math.abs(item.difference)}%.`);
-      } else if (item.difference > 5) {
-        messages.push(`You're studying ${item.topic} ${item.difference}% more than needed for the exam.`);
-      }
-    });
-
-    // Add a strategic message if applicable
-    if (sortedByDifference.some(item => item.difference < -10)) {
-      messages.push("Consider reallocating your study time to better match the exam distribution.");
+  // Fetch exam blueprint when the selected exam changes
+  useEffect(() => {
+    if (selectedExam) {
+      fetchExamBlueprint();
     }
+  }, [selectedExam, fetchExamBlueprint]); // Added fetchExamBlueprint to the dependency array
 
-    return messages;
-  };
+  // Trigger analysis when show is toggled or dependencies change
+  useEffect(() => {
+    if (showAnalysis && selectedExam && tests.length > 0 && examBlueprint.length > 0) {
+      analyzeStudyPattern();
+    }
+  }, [showAnalysis, selectedExam, tests, examBlueprint, analyzeStudyPattern]); // Added analyzeStudyPattern to the dependency array
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
