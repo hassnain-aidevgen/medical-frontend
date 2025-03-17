@@ -98,7 +98,7 @@ export default function CourseDetailPage() {
                     <div className="container">
                         <div className="mb-8">
                             <Link
-                                href="/courses"
+                                href="/dashboard/courses"
                                 className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
                             >
                                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -177,7 +177,7 @@ export default function CourseDetailPage() {
                 <div className="container">
                     <div className="mb-8">
                         <Link
-                            href="/courses"
+                            href="/dashboard/courses"
                             className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
                         >
                             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -224,9 +224,9 @@ export default function CourseDetailPage() {
                             </div>
 
                             <Tabs defaultValue="overview">
-                                <TabsList className="grid w-full grid-cols-3">
+                                <TabsList className="grid w-full grid-cols-2">
                                     <TabsTrigger value="overview">Overview</TabsTrigger>
-                                    <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
+                                    {/* <TabsTrigger value="curriculum">Curriculum</TabsTrigger> */}
                                     <TabsTrigger value="instructor">Instructor</TabsTrigger>
                                 </TabsList>
                                 <TabsContent value="overview" className="space-y-4 pt-4">
@@ -311,19 +311,24 @@ export default function CourseDetailPage() {
                                     <CardDescription>One-time purchase, lifetime access</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    <Button className="w-full gap-2" size="lg" onClick={handleBuyNow} disabled={addingToCart}>
-                                        {addingToCart ? "Processing..." : "Buy Now"}
+                                    <Button className="w-full gap-2" size="lg">
+                                        Purchase Comming Soon
                                     </Button>
-                                    <Button
-                                        variant="outline"
-                                        className="w-full gap-2"
-                                        size="lg"
-                                        onClick={handleAddToCart}
-                                        disabled={addingToCart}
-                                    >
-                                        <ShoppingCart className="h-4 w-4" />
-                                        Add to Cart
-                                    </Button>
+                                    <div className="hidden">
+                                        <Button className="w-full gap-2" size="lg" onClick={handleBuyNow} disabled={addingToCart}>
+                                            {addingToCart ? "Processing..." : "Buy Now"}
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            className="w-full gap-2"
+                                            size="lg"
+                                            onClick={handleAddToCart}
+                                            disabled={addingToCart}
+                                        >
+                                            <ShoppingCart className="h-4 w-4" />
+                                            Add to Cart
+                                        </Button>
+                                    </div>
                                     <Separator />
                                     <div className="space-y-2">
                                         <h3 className="font-medium">This course includes:</h3>

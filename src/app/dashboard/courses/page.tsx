@@ -28,7 +28,7 @@ export default function CoursesPage() {
     const [searchQuery, setSearchQuery] = useState("")
     const [categoryFilter, setCategoryFilter] = useState("all")
     const [levelFilter, setLevelFilter] = useState("all")
-    const [priceRange, setPriceRange] = useState([0, 200])
+    const [priceRange, setPriceRange] = useState([0, 1000])
     const [sourceFilter, setSourceFilter] = useState<string[]>([])
 
     useEffect(() => {
@@ -50,38 +50,38 @@ export default function CoursesPage() {
         fetchCourses()
     }, [])
 
-    // useEffect(() => {
-    //     let filtered = [...courses]
+    useEffect(() => {
+        let filtered = [...courses]
 
-    //     // Apply search filter
-    //     if (searchQuery) {
-    //         filtered = filtered.filter(
-    //             (course) =>
-    //                 course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    //                 course.description.toLowerCase().includes(searchQuery.toLowerCase()),
-    //         )
-    //     }
+        // Apply search filter
+        if (searchQuery) {
+            filtered = filtered.filter(
+                (course) =>
+                    course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    course.description.toLowerCase().includes(searchQuery.toLowerCase()),
+            )
+        }
 
-    //     // Apply category filter
-    //     if (categoryFilter !== "all") {
-    //         filtered = filtered.filter((course) => course.category === categoryFilter)
-    //     }
+        // Apply category filter
+        if (categoryFilter !== "all") {
+            filtered = filtered.filter((course) => course.category === categoryFilter)
+        }
 
-    //     // Apply level filter
-    //     if (levelFilter !== "all") {
-    //         filtered = filtered.filter((course) => course.level === levelFilter)
-    //     }
+        // Apply level filter
+        if (levelFilter !== "all") {
+            filtered = filtered.filter((course) => course.level === levelFilter)
+        }
 
-    //     // Apply price range filter
-    //     filtered = filtered.filter((course) => course.price >= priceRange[0] && course.price <= priceRange[1])
+        // Apply price range filter
+        filtered = filtered.filter((course) => course.price >= priceRange[0] && course.price <= priceRange[1])
 
-    //     // Apply source filter
-    //     if (sourceFilter.length > 0) {
-    //         filtered = filtered.filter((course) => sourceFilter.includes(course.source))
-    //     }
+        // Apply source filter
+        if (sourceFilter.length > 0) {
+            filtered = filtered.filter((course) => sourceFilter.includes(course.source))
+        }
 
-    //     setFilteredCourses(filtered)
-    // }, [searchQuery, categoryFilter, levelFilter, priceRange, sourceFilter, courses])
+        setFilteredCourses(filtered)
+    }, [searchQuery, categoryFilter, levelFilter, priceRange, sourceFilter, courses])
 
     const categories = ["Development", "Design", "Data Science", "Business", "Marketing"]
     const levels: Array<Course["level"]> = ["Beginner", "Intermediate", "Advanced"]
@@ -95,7 +95,6 @@ export default function CoursesPage() {
                 return [...prev, source]
             }
         })
-        console.log(filteredCourses)
     }
 
     return (
@@ -166,9 +165,9 @@ export default function CoursesPage() {
                                         <div className="space-y-4">
                                             <h3 className="text-sm font-medium">Price Range</h3>
                                             <Slider
-                                                defaultValue={[0, 200]}
-                                                max={200}
-                                                step={5}
+                                                defaultValue={[0, 1000]}
+                                                max={1000}
+                                                step={10}
                                                 value={priceRange}
                                                 onValueChange={setPriceRange}
                                             />
@@ -201,7 +200,7 @@ export default function CoursesPage() {
                                             onClick={() => {
                                                 setCategoryFilter("all")
                                                 setLevelFilter("all")
-                                                setPriceRange([0, 200])
+                                                setPriceRange([0, 1000])
                                                 setSourceFilter([])
                                             }}
                                         >
@@ -244,7 +243,7 @@ export default function CoursesPage() {
                                         </CardFooter>
                                     </Card>
                                 ))
-                        ) : courses.length === 0 ? (
+                        ) : filteredCourses.length === 0 ? (
                             <div className="col-span-full flex flex-col items-center justify-center py-12">
                                 <h3 className="text-xl font-semibold mb-2">No courses found</h3>
                                 <p className="text-muted-foreground text-center mb-6">
@@ -256,7 +255,7 @@ export default function CoursesPage() {
                                         setSearchQuery("")
                                         setCategoryFilter("all")
                                         setLevelFilter("all")
-                                        setPriceRange([0, 200])
+                                        setPriceRange([0, 1000])
                                         setSourceFilter([])
                                     }}
                                 >
@@ -264,7 +263,7 @@ export default function CoursesPage() {
                                 </Button>
                             </div>
                         ) : (
-                            courses.map((course) => (
+                            filteredCourses.map((course) => (
                                 <Card key={course._id} className="overflow-hidden flex flex-col">
                                     <CardHeader className="p-0">
                                         <Image

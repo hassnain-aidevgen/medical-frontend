@@ -80,7 +80,7 @@ export default function CreateCoursePage() {
     //     // Test API connection on component mount
     //     const testApiConnection = async () => {
     //         try {
-    //             await axios.options("https://medical-backend-loj4.onrender.com/api/courses")
+    //             await axios.options("http://localhost:5000/api/courses")
     //             console.log("✅ API connection successful")
     //         } catch (error) {
     //             console.error("❌ API connection failed:", error)
@@ -168,21 +168,28 @@ export default function CreateCoursePage() {
             }
 
             // Handle file upload if there is a thumbnail
-            let formData = null
+            let formData: FormData | null = null
             if (values.thumbnail && values.thumbnail.length > 0) {
                 formData = new FormData()
+
+                // Add the file to FormData
                 formData.append("thumbnail", values.thumbnail[0])
 
                 // Also add all other fields to FormData
                 Object.entries(courseData).forEach(([key, value]) => {
-                    if (typeof value === "object") {
-                        formData!.append(key, JSON.stringify(value))
+                    if (Array.isArray(value)) {
+                        // Handle arrays by stringifying them
+                        if (formData) {
+                            formData.append(key, JSON.stringify(value))
+                        }
                     } else {
-                        formData!.append(key, String(value))
+                        if (formData) {
+                            formData.append(key, String(value))
+                        }
                     }
                 })
 
-                console.log("Using FormData with file upload")
+                console.log("Using FormData with file upload", values.thumbnail[0].name)
             }
 
             console.log("Sending request to API...")
@@ -191,7 +198,7 @@ export default function CreateCoursePage() {
             let response
             if (formData) {
                 // If we have a file, use FormData
-                response = await axios.post("https://medical-backend-loj4.onrender.com/api/courses", formData, {
+                response = await axios.post("http://localhost:5000/api/courses", formData, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         // Don't set Content-Type when using FormData - axios will set it with the boundary
@@ -204,7 +211,7 @@ export default function CreateCoursePage() {
                 })
             } else {
                 // If no file, use regular JSON
-                response = await axios.post("https://medical-backend-loj4.onrender.com/api/courses", courseData, {
+                response = await axios.post("http://localhost:5000/api/courses", courseData, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         "Content-Type": "application/json",
@@ -463,7 +470,18 @@ export default function CreateCoursePage() {
                                     <FormItem>
                                         <FormLabel>Thumbnail</FormLabel>
                                         <FormControl>
-                                            <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files)} {...field} />
+                                            <Input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) => {
+                                                    const files = e.target.files
+                                                    if (files?.length) {
+                                                        onChange(files)
+                                                        console.log("File selected:", files[0].name)
+                                                    }
+                                                }}
+                                                {...field}
+                                            />
                                         </FormControl>
                                         <FormDescription>Upload a thumbnail image for the course.</FormDescription>
                                         <FormMessage />
@@ -619,4 +637,3 @@ export default function CreateCoursePage() {
         </div>
     )
 }
-

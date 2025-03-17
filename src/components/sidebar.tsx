@@ -1,6 +1,6 @@
 "use client"
 
-import { BarChart2, BookOpen, Clock, Dna, Home, Settings, Users, X } from "lucide-react"
+import { Banknote, BarChart2, BookOpen, Clock, Dna, FileQuestion, GraduationCap, Home, Info, LaptopMinimalCheck, Settings, Users, X } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { PiRankingDuotone } from "react-icons/pi"
@@ -15,9 +15,11 @@ const sidebarItems = [
   { name: "Custom Weekly Goals", href: "/dashboard/custom-weekly-goals", icon: Settings },
   // { name: "Digital Error Notebook", href: "/dashboard/digital-error-notebook", icon: Users },
   { name: "Pomodoro Timer", href: "/dashboard/pomodoro-timer", icon: Clock },
-  { name: "Payments", icon: BookOpen, href: "/dashboard/payments", color: "bg-blue-500" },
-  { name: "Inquiries", icon: BookOpen, href: "/dashboard/inquiries", color: "bg-blue-500" },
-  { name: "Courses", icon: BookOpen, href: "/dashboard/courses", color: "bg-blue-500" },
+  { name: "Payments", icon: Banknote, href: "/dashboard/payments", color: "bg-blue-500" },
+  { name: "Inquiries", icon: Info, href: "/dashboard/inquiries", color: "bg-blue-500" },
+  { name: "Courses", icon: LaptopMinimalCheck, href: "/dashboard/courses", color: "bg-blue-500" },
+  { name: "Mentor", icon: GraduationCap, href: "/dashboard/mentor", color: "bg-blue-500" },
+  { name: "FAQs", icon: FileQuestion, href: "/dashboard/faqs", color: "bg-blue-500" },
   // { name: "Booking", icon: BookOpen, href: "/dashboard/booking", color: "bg-blue-500" },
   // { name: "Mentorship", icon: BookOpen, href: "/dashboard/mentorship", color: "bg-blue-500" },
 ]

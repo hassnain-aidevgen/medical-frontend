@@ -1,6 +1,7 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
+import axios from "axios"
 import { ArrowLeft, Loader2, Plus, X } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
@@ -18,7 +19,6 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
-import { apiClient } from "@/lib/api"
 import type { Course } from "@/types"
 import Image from "next/image"
 
@@ -89,24 +89,43 @@ export default function EditCoursePage() {
         const fetchCourse = async () => {
             try {
                 setIsLoading(true)
-                const data = await apiClient.get<Course>(`/courses/${params.id}`)
-                setCourse(data)
 
-                // Reset form with course data
-                reset({
-                    title: data.title,
-                    description: data.description,
-                    category: data.category,
-                    instructor: data.instructor,
-                    instructorBio: data.instructorBio || "",
-                    price: data.price,
-                    duration: data.duration,
-                    level: data.level,
-                    featured: data.featured,
-                    source: data.source,
-                    objectives: data.objectives || [],
-                    prerequisites: data.prerequisites || [],
+                // Get the auth token from localStorage
+                const token = localStorage.getItem("token")
+                if (!token) {
+                    toast.error("Authentication token not found. Please log in again.")
+                    router.push("/login")
+                    return
+                }
+
+                const response = await axios.get(`http://localhost:5000/api/courses/${params.id}`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
                 })
+
+                if (response.data.success) {
+                    const data = response.data.data
+                    setCourse(data)
+
+                    // Reset form with course data
+                    reset({
+                        title: data.title,
+                        description: data.description,
+                        category: data.category,
+                        instructor: data.instructor,
+                        instructorBio: data.instructorBio || "",
+                        price: data.price,
+                        duration: data.duration,
+                        level: data.level,
+                        featured: data.featured,
+                        source: data.source,
+                        objectives: data.objectives || [],
+                        prerequisites: data.prerequisites || [],
+                    })
+                } else {
+                    throw new Error(response.data.error || "Failed to load course")
+                }
             } catch (error) {
                 console.error("Error fetching course:", error)
                 toast.error("Failed to load course details")
@@ -131,7 +150,7 @@ export default function EditCoursePage() {
     const removeObjective = (index: number) => {
         setValue(
             "objectives",
-            objectives?.filter((_, i) => i !== index),
+            objectives.filter((_, i) => i !== index),
         )
     }
 
@@ -145,7 +164,7 @@ export default function EditCoursePage() {
     const removePrerequisite = (index: number) => {
         setValue(
             "prerequisites",
-            prerequisites?.filter((_, i) => i !== index),
+            prerequisites.filter((_, i) => i !== index),
         )
     }
 
@@ -155,31 +174,110 @@ export default function EditCoursePage() {
         try {
             setIsSubmitting(true)
 
-            // Create FormData for file upload
-            const formData = new FormData()
+            // Get the auth token from localStorage
+            const token = localStorage.getItem("token")
+            if (!token) {
+                toast.error("Authentication token not found. Please log in again.")
+                router.push("/login")
+                return
+            }
 
-            // Add all form fields to FormData
+            // Create a regular object for JSON submission
+            const updateData: Record<string, string | number | boolean | string[]> = {}
+
+            // Add all form fields to the object except thumbnail
             Object.entries(values).forEach(([key, value]) => {
-                if (key === "thumbnail" && value && value.length > 0) {
-                    formData.append("thumbnail", value[0])
-                } else if (key === "objectives" || key === "prerequisites") {
-                    // Handle arrays
-                    if (Array.isArray(value)) {
-                        value.forEach((item) => formData.append(`${key}[]`, item))
-                    }
-                } else {
-                    formData.append(key, String(value))
+                if (key !== "thumbnail") {
+                    updateData[key] = value
                 }
             })
 
-            // Submit the form data
-            await apiClient.putFormData<Course>(`/courses/${course._id}`, formData)
+            console.log("Update data prepared:", updateData)
 
-            toast.success("Course updated successfully")
-            router.push("/admin/courses")
+            // Handle file upload if there is a new thumbnail
+            if (values.thumbnail && values.thumbnail.length > 0) {
+                const file = values.thumbnail[0]
+                console.log("Preparing to upload file:", file.name, file.type, file.size)
+
+                // Create FormData for the file upload
+                const formData = new FormData()
+                formData.append("thumbnail", file)
+
+                // Add all other fields to FormData
+                Object.entries(updateData).forEach(([key, value]) => {
+                    if (Array.isArray(value)) {
+                        // Handle arrays by stringifying them
+                        formData.append(key, JSON.stringify(value))
+                    } else {
+                        formData.append(key, String(value))
+                    }
+                })
+
+                console.log("Sending update with new thumbnail...")
+
+                // Send the update with the new file
+                const response = await axios.put(`http://localhost:5000/api/courses/${course._id}`, formData, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        // Don't set Content-Type when using FormData - axios will set it with the boundary
+                    },
+                    timeout: 30000,
+                    onUploadProgress: (progressEvent) => {
+                        const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1))
+                        console.log(`Upload progress: ${percentCompleted}%`)
+                    },
+                })
+
+                if (response.data.success) {
+                    toast.success("Course updated successfully")
+                    router.push("/admin/courses")
+                } else {
+                    throw new Error(response.data.error || "Failed to update course")
+                }
+            } else {
+                // If no new file, use regular JSON for the update
+                console.log("Sending update without changing thumbnail...")
+
+                const response = await axios.put(`http://localhost:5000/api/courses/${course._id}`, updateData, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                    timeout: 30000,
+                })
+
+                if (response.data.success) {
+                    toast.success("Course updated successfully")
+                    router.push("/admin/courses")
+                } else {
+                    throw new Error(response.data.error || "Failed to update course")
+                }
+            }
         } catch (error) {
             console.error("Error updating course:", error)
-            toast.error("Failed to update course")
+
+            // Enhanced error handling with specific error messages
+            if (axios.isAxiosError(error)) {
+                const statusCode = error.response?.status
+                const errorMessage = error.response?.data?.error || error.message
+
+                console.error(`API Error (${statusCode}):`, errorMessage)
+
+                if (statusCode === 401) {
+                    toast.error("Your session has expired. Please log in again.")
+                    router.push("/login")
+                } else if (statusCode === 413) {
+                    toast.error("The file you're uploading is too large.")
+                } else if (statusCode === 400) {
+                    toast.error(`Validation error: ${errorMessage}`)
+                } else if (statusCode === 500) {
+                    toast.error("Server error. Please try again later.")
+                } else {
+                    toast.error(`Error: ${errorMessage}`)
+                }
+            } else {
+                toast.error("Failed to update course")
+            }
         } finally {
             setIsSubmitting(false)
         }
@@ -416,13 +514,22 @@ export default function EditCoursePage() {
                                                             alt={course.title}
                                                             layout="fill"
                                                             objectFit="cover"
-                                                            width={40}
-                                                            height={40}
                                                         />
                                                         <p className="text-xs text-muted-foreground mt-1">Current thumbnail</p>
                                                     </div>
                                                 )}
-                                                <Input type="file" accept="image/*" onChange={(e) => onChange(e.target.files)} {...field} />
+                                                <Input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={(e) => {
+                                                        const files = e.target.files
+                                                        if (files?.length) {
+                                                            onChange(files)
+                                                            console.log("File selected:", files[0].name)
+                                                        }
+                                                    }}
+                                                    {...field}
+                                                />
                                             </div>
                                         </FormControl>
                                         <FormDescription>Upload a new thumbnail image to replace the current one.</FormDescription>

@@ -1,6 +1,6 @@
 "use client"
 
-import { BookOpen, Dna, Home, LogOut, Settings, Users, X } from "lucide-react";
+import { BookMarked, BookOpen, Dna, GraduationCap, Home, Info, LaptopMinimalCheck, LogOut, Settings, Trophy, Users, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -8,11 +8,12 @@ const sidebarItems = [
     { name: "Dashboard", href: "/admin", icon: Home },
     { name: "Manage Subjects", href: "/admin/manage-subjects", icon: Settings },
     { name: "Create Questions", href: "/admin/create-test", icon: BookOpen },
-    { name: "Flash Cards", href: "/admin/flash-cards", icon: Users },
+    { name: "Flash Cards", href: "/admin/flash-cards", icon: BookMarked },
     { name: "Users", href: "/admin/users", icon: Users },
-    { name: "Leaderboard", href: "/admin/leaderboard-management", icon: Users },
-    { name: "Inquiries", href: "/admin/inquiries", icon: Users },
-    { name: "Courses", href: "/admin/courses", icon: Users }
+    { name: "Leaderboard", href: "/admin/leaderboard-management", icon: Trophy },
+    { name: "Inquiries", href: "/admin/inquiries", icon: Info },
+    { name: "Courses", href: "/admin/courses", icon: LaptopMinimalCheck },
+    { name: "Mentors", href: "/admin/mentor", icon: GraduationCap }
     // { name: "Leaderboard", href: "/admin/leaderboard", icon: PiRankingDuotone },
     // { name: "Performance Tracking", href: "/admin/performance-tracking", icon: BarChart2 },
     // { name: "Smart Study Calendar", href: "/admin/smart-study", icon: BookOpen },

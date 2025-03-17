@@ -132,25 +132,10 @@ export default function AdminDashboardPage() {
 
     return (
         <div className="flex min-h-screen flex-col">
-            <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
-                <div className="container flex h-16 items-center justify-between py-4">
-                    <div className="flex items-center gap-2 font-semibold">
-                        <span className="text-primary text-xl">Admin Dashboard</span>
-                    </div>
-                    <nav className="flex items-center gap-4">
-                        <Link href="/admin/settings">
-                            <Button variant="ghost">Settings</Button>
-                        </Link>
-                        <Link href="/logout">
-                            <Button variant="outline">Logout</Button>
-                        </Link>
-                    </nav>
-                </div>
-            </header>
             <main className="flex-1">
                 <div className="container py-8">
                     <div className="mb-8">
-                        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+                        <h1 className="text-3xl font-bold tracking-tight">Inquiries</h1>
                         <p className="text-muted-foreground mt-1">Manage and respond to student inquiries</p>
                     </div>
 
