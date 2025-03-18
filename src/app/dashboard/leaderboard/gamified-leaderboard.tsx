@@ -23,8 +23,48 @@ interface UserStats {
   nearbyPlayers: LeaderboardEntry[]
 }
 
+interface SpecialtyUser {
+  rank: number
+  userId: string
+  userName: string
+  successRate: number
+  questionsAttempted: number
+  correctAnswers: number
+  averageTimePerQuestion: number
+  totalTimeSpent: number
+  bestTest: {
+    testId: string
+    score: number
+    timeSpent: number
+    date: string
+  }
+}
+
+interface SpecialtyRanking {
+  specialty: string
+  userCount: number
+  users: SpecialtyUser[]
+}
+
+interface SpecialtyRankingResponse {
+  totalSpecialties: number
+  lastUpdated: string
+  rankings: SpecialtyRanking[]
+}
+
+interface UserSpecialtyStats {
+  specialty: string
+  rank: number
+  successRate: number
+  questionsAttempted: number
+  correctAnswers: number
+  averageTimePerQuestion: number
+  bestScore: number
+  nearbyUsers: SpecialtyUser[]
+}
+
 // Base API URL to ensure all calls go to the same address
-const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test"
+const API_BASE_URL = "http://localhost:5000/api/test"
 
 export default function GamifiedLeaderboard() {
   const [leaderboardData, setLeaderboardData] = useState<{
@@ -51,14 +91,20 @@ export default function GamifiedLeaderboard() {
     weekly: boolean
     monthly: boolean
     "all-time": boolean
+    specialty: boolean
   }>({
     weekly: true,
     monthly: true,
     "all-time": true,
+    specialty: true,
   })
 
+  const [specialtyRankings, setSpecialtyRankings] = useState<SpecialtyRankingResponse | null>(null)
+  const [userSpecialtyStats, setUserSpecialtyStats] = useState<UserSpecialtyStats | null>(null)
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null)
+
   const [loggedInUserId, setLoggedInUserId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<"weekly" | "monthly" | "all-time">("all-time")
+  const [activeTab, setActiveTab] = useState<"weekly" | "monthly" | "all-time" | "specialty">("all-time")
   const [initialLoadComplete, setInitialLoadComplete] = useState(false)
 
   const fetchLeaderboardData = useCallback(
@@ -111,9 +157,84 @@ export default function GamifiedLeaderboard() {
     [loggedInUserId],
   )
 
+
+  const extractUserSpecialtyStats = useCallback((data: SpecialtyRankingResponse, userId: string) => {
+    // Find the user in each specialty
+    let userFound = false
+    let bestSpecialty: UserSpecialtyStats | null = null
+
+    for (const specialty of data.rankings) {
+      const userIndex = specialty.users.findIndex((user) => user.userId === userId)
+
+      if (userIndex >= 0) {
+        userFound = true
+        const user = specialty.users[userIndex]
+
+        // Get nearby users (2 above and 2 below)
+        const startIndex = Math.max(0, userIndex - 2)
+        const endIndex = Math.min(specialty.users.length - 1, userIndex + 2)
+        const nearbyUsers = specialty.users.slice(startIndex, endIndex + 1)
+
+        const specialtyStats: UserSpecialtyStats = {
+          specialty: specialty.specialty,
+          rank: user.rank,
+          successRate: user.successRate,
+          questionsAttempted: user.questionsAttempted,
+          correctAnswers: user.correctAnswers,
+          averageTimePerQuestion: user.averageTimePerQuestion,
+          bestScore: user.bestTest.score,
+          nearbyUsers: nearbyUsers,
+        }
+
+        // If this is the first specialty found or has a better rank than previous best
+        if (!bestSpecialty || user.rank < bestSpecialty.rank) {
+          bestSpecialty = specialtyStats
+          setSelectedSpecialty(specialty.specialty)
+        }
+      }
+    }
+
+    if (userFound && bestSpecialty) {
+      setUserSpecialtyStats(bestSpecialty)
+    } else {
+      setUserSpecialtyStats(null)
+    }
+  }, [])
+
+  const fetchSpecialtyRankings = useCallback(async () => {
+    try {
+      setLoading((prev) => ({ ...prev, specialty: true }))
+      const response = await fetch(`${API_BASE_URL}/specialty-ranking`)
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch specialty rankings: ${response.status}`)
+      }
+
+      const data = await response.json()
+      setSpecialtyRankings(data)
+
+      // Extract user's specialty stats if logged in
+      const userId = localStorage.getItem("Medical_User_Id")
+      if (userId) {
+        extractUserSpecialtyStats(data, userId)
+      }
+    } catch (error) {
+      console.error("Error fetching specialty rankings:", error)
+    } finally {
+      setLoading((prev) => ({ ...prev, specialty: false }))
+    }
+  }, [extractUserSpecialtyStats])
+
+
+
   // Initial data load
   useEffect(() => {
     const loadInitialData = async () => {
+      const userId = localStorage.getItem("Medical_User_Id")
+      if (userId) {
+        setLoggedInUserId(userId)
+      }
+
       // Load all-time data first
       await fetchLeaderboardData("all-time")
       setInitialLoadComplete(true)
@@ -125,9 +246,17 @@ export default function GamifiedLeaderboard() {
   // Load data for the active tab when it changes
   useEffect(() => {
     if (initialLoadComplete) {
-      fetchLeaderboardData(activeTab)
+      if (activeTab === "specialty") {
+        if (!specialtyRankings) {
+          fetchSpecialtyRankings()
+        }
+      } else {
+        if (leaderboardData[activeTab].length === 0) {
+          fetchLeaderboardData(activeTab)
+        }
+      }
     }
-  }, [activeTab, fetchLeaderboardData, initialLoadComplete])
+  }, [activeTab, fetchLeaderboardData, fetchSpecialtyRankings, initialLoadComplete, specialtyRankings, leaderboardData])
 
   const formatTime = (totalTime: number) => {
     const minutes = Math.floor(totalTime / 60)
@@ -169,16 +298,25 @@ export default function GamifiedLeaderboard() {
         return "This Month"
       case "all-time":
         return "All Time"
+      case "specialty":
+        return selectedSpecialty ? selectedSpecialty : "By Specialty"
       default:
         return "All Time"
     }
   }
 
   const shareProgress = () => {
-    const currentUserStats = userStatsData[activeTab]
-    const rank = currentUserStats?.rank || "N/A"
-    const score = currentUserStats?.player?.score || 0
-    const text = `I'm currently ranked #${rank} with a score of ${score} in the Medical Quiz ${getTimeFrameLabel()} leaderboard! Can you beat my score?`
+    let text = ""
+
+    if (activeTab === "specialty" && userSpecialtyStats) {
+      text = `I'm ranked #${userSpecialtyStats.rank} in ${userSpecialtyStats.specialty} with a ${userSpecialtyStats.successRate.toFixed(1)}% success rate in the Medical Quiz! Can you beat my score?`
+    } else {
+      const currentUserStats = activeTab !== "specialty" ? userStatsData[activeTab] : null
+      const rank = currentUserStats?.rank || "N/A"
+      const score = currentUserStats?.player?.score || 0
+      text = `I'm currently ranked #${rank} with a score of ${score} in the Medical Quiz ${getTimeFrameLabel()} leaderboard! Can you beat my score?`
+    }
+
     const url = window.location.href
 
     if (navigator.share) {
@@ -195,9 +333,46 @@ export default function GamifiedLeaderboard() {
     }
   }
 
+  // Handle specialty selection
+  const handleSpecialtySelect = useCallback(
+    (specialty: string) => {
+      setSelectedSpecialty(specialty)
+
+      if (specialtyRankings && loggedInUserId) {
+        const specialtyData = specialtyRankings.rankings.find((s) => s.specialty === specialty)
+        if (specialtyData) {
+          const userIndex = specialtyData.users.findIndex((user) => user.userId === loggedInUserId)
+
+          if (userIndex >= 0) {
+            const user = specialtyData.users[userIndex]
+
+            // Get nearby users (2 above and 2 below)
+            const startIndex = Math.max(0, userIndex - 2)
+            const endIndex = Math.min(specialtyData.users.length - 1, userIndex + 2)
+            const nearbyUsers = specialtyData.users.slice(startIndex, endIndex + 1)
+
+            setUserSpecialtyStats({
+              specialty: specialty,
+              rank: user.rank,
+              successRate: user.successRate,
+              questionsAttempted: user.questionsAttempted,
+              correctAnswers: user.correctAnswers,
+              averageTimePerQuestion: user.averageTimePerQuestion,
+              bestScore: user.bestTest.score,
+              nearbyUsers: nearbyUsers,
+            })
+          } else {
+            setUserSpecialtyStats(null)
+          }
+        }
+      }
+    },
+    [specialtyRankings, loggedInUserId],
+  )
+
   // Get current data based on active tab
-  const currentLeaderboard = leaderboardData[activeTab] || []
-  const currentUserStats = userStatsData[activeTab]
+  const currentLeaderboard = activeTab === "specialty" ? [] : leaderboardData[activeTab] || []
+  const currentUserStats = activeTab !== "specialty" ? userStatsData[activeTab] : null
   const isCurrentTabLoading = loading[activeTab]
 
   if (!initialLoadComplete) {
@@ -215,41 +390,197 @@ export default function GamifiedLeaderboard() {
         <div className="space-y-6">
           <div>
             <h3 className="text-xl font-bold">Your Stats</h3>
-            <p className="text-sm text-muted-foreground">Current ranking and nearby players</p>
+            <p className="text-sm text-muted-foreground">
+              {activeTab === "specialty" ? "Your performance by specialty" : "Current ranking and nearby players"}
+            </p>
           </div>
 
-          <div className="p-4 rounded-lg bg-muted/50">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="p-3 rounded-full bg-primary/10">
-                <User className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="font-medium">{currentUserStats?.player?.name || "Not Available"}</p>
-                <p className="text-sm text-muted-foreground">
-                  {currentUserStats ? `Rank #${currentUserStats.rank}` : "Take a test to get ranked!"}
-                </p>
-              </div>
-            </div>
+          {activeTab !== "specialty" ? (
+            // Regular leaderboard stats
+            <>
+              <div className="p-4 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="p-3 rounded-full bg-primary/10">
+                    <User className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{currentUserStats?.player?.name || "Not Available"}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {currentUserStats ? `Rank #${currentUserStats.rank}` : "Take a test to get ranked!"}
+                    </p>
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 rounded-lg bg-background">
-                <p className="text-sm text-muted-foreground mb-1">Score</p>
-                <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-primary" />
-                  <span className="text-lg font-bold">{currentUserStats?.player?.score || 0}</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 rounded-lg bg-background">
+                    <p className="text-sm text-muted-foreground mb-1">Score</p>
+                    <div className="flex items-center gap-2">
+                      <Star className="h-4 w-4 text-primary" />
+                      <span className="text-lg font-bold">{currentUserStats?.player?.score || 0}</span>
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-lg bg-background">
+                    <p className="text-sm text-muted-foreground mb-1">Time</p>
+                    <div className="flex items-center gap-2">
+                      <Timer className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-lg font-bold">
+                        {currentUserStats?.player?.totalTime ? formatTime(currentUserStats.player.totalTime) : "0m 0s"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="p-3 rounded-lg bg-background">
-                <p className="text-sm text-muted-foreground mb-1">Time</p>
-                <div className="flex items-center gap-2">
-                  <Timer className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-lg font-bold">
-                    {currentUserStats?.player?.totalTime ? formatTime(currentUserStats.player.totalTime) : "0m 0s"}
-                  </span>
+
+              {currentUserStats && currentUserStats.nearbyPlayers && currentUserStats.nearbyPlayers.length > 0 ? (
+                <div>
+                  <h4 className="text-sm font-medium mb-3">Nearby Players</h4>
+                  <div className="space-y-2">
+                    {currentUserStats.nearbyPlayers.map((player) => (
+                      <div
+                        key={player._id}
+                        className={`p-2 rounded-lg ${player.userId === loggedInUserId ? "bg-primary/10 dark:bg-primary/20" : "hover:bg-muted/50"
+                          }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">#{player.rank}</span>
+                            <span className="text-sm">{player.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Star className="h-3 w-3 text-primary" />
+                            <span className="text-sm font-medium">{player.score}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
+              ) : (
+                <div className="p-4 rounded-lg bg-muted/30 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    {isCurrentTabLoading
+                      ? "Loading nearby players..."
+                      : "Take a test to see how you compare with other players!"}
+                  </p>
+                </div>
+              )}
+            </>
+          ) : (
+            // Specialty stats
+            <>
+              {userSpecialtyStats ? (
+                <>
+                  <div className="p-4 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="p-3 rounded-full bg-primary/10">
+                        <User className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{selectedSpecialty || userSpecialtyStats.specialty}</p>
+                        <p className="text-sm text-muted-foreground">Rank #{userSpecialtyStats.rank}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-3 rounded-lg bg-background">
+                        <p className="text-sm text-muted-foreground mb-1">Success Rate</p>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-lg font-bold ${userSpecialtyStats.successRate >= 90
+                              ? "text-green-500"
+                              : userSpecialtyStats.successRate >= 70
+                                ? "text-amber-500"
+                                : "text-red-500"
+                              }`}
+                          >
+                            {userSpecialtyStats.successRate.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-lg bg-background">
+                        <p className="text-sm text-muted-foreground mb-1">Best Score</p>
+                        <div className="flex items-center gap-2">
+                          <Star className="h-4 w-4 text-primary" />
+                          <span className="text-lg font-bold">{userSpecialtyStats.bestScore}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div className="p-3 rounded-lg bg-background">
+                        <p className="text-sm text-muted-foreground mb-1">Questions</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-bold">
+                            {userSpecialtyStats.correctAnswers}/{userSpecialtyStats.questionsAttempted}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-lg bg-background">
+                        <p className="text-sm text-muted-foreground mb-1">Avg. Time</p>
+                        <div className="flex items-center gap-2">
+                          <Timer className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-lg font-bold">{userSpecialtyStats.averageTimePerQuestion}s</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {userSpecialtyStats.nearbyUsers && userSpecialtyStats.nearbyUsers.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-3">Nearby Players</h4>
+                      <div className="space-y-2">
+                        {userSpecialtyStats.nearbyUsers.map((user) => (
+                          <div
+                            key={user.userId}
+                            className={`p-2 rounded-lg ${user.userId === loggedInUserId ? "bg-primary/10 dark:bg-primary/20" : "hover:bg-muted/50"
+                              }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">#{user.rank}</span>
+                                <span className="text-sm">{user.userName}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">{user.successRate.toFixed(1)}%</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="p-4 rounded-lg bg-muted/30 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    {loading.specialty
+                      ? "Loading your specialty stats..."
+                      : "No specialty data available for your profile. Take a test to get ranked!"}
+                  </p>
+                </div>
+              )}
+
+              {specialtyRankings && specialtyRankings.rankings.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-3">Select Specialty</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {specialtyRankings.rankings.map((specialty) => (
+                      <button
+                        key={specialty.specialty}
+                        onClick={() => handleSpecialtySelect(specialty.specialty)}
+                        className={`px-3 py-1.5 text-xs rounded-full transition-colors ${selectedSpecialty === specialty.specialty
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted hover:bg-muted/80"
+                          }`}
+                      >
+                        {specialty.specialty}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           {/* Social Sharing Buttons */}
           <div className="flex flex-col gap-3">
@@ -260,12 +591,18 @@ export default function GamifiedLeaderboard() {
             </Button>
             <div className="flex flex-col gap-2 justify-between">
               <button
-                onClick={() =>
+                onClick={() => {
+                  let text = ""
+                  if (activeTab === "specialty" && userSpecialtyStats) {
+                    text = `I'm ranked #${userSpecialtyStats.rank} in ${userSpecialtyStats.specialty} with a ${userSpecialtyStats.successRate.toFixed(1)}% success rate in the Medical Quiz!`
+                  } else {
+                    text = `I scored ${currentUserStats?.player?.score || 0} points on the Medical Quiz!`
+                  }
                   window.open(
-                    `https://twitter.com/intent/tweet?text=${encodeURIComponent(`I scored ${currentUserStats?.player?.score || 0} points on the Medical Quiz! Can you beat my score?`)}&url=${encodeURIComponent(window.location.href)}`,
+                    `https://twitter.com/intent/tweet?text=${encodeURIComponent(text + " Can you beat my score?")}&url=${encodeURIComponent(window.location.href)}`,
                     "_blank",
                   )
-                }
+                }}
                 className="flex-1 flex items-center justify-center gap-2 p-2 rounded-md bg-[#1DA1F2] text-white hover:bg-[#1a91da] transition-colors"
               >
                 <svg
@@ -335,40 +672,6 @@ export default function GamifiedLeaderboard() {
               </button>
             </div>
           </div>
-
-          {currentUserStats && currentUserStats.nearbyPlayers && currentUserStats.nearbyPlayers.length > 0 ? (
-            <div>
-              <h4 className="text-sm font-medium mb-3">Nearby Players</h4>
-              <div className="space-y-2">
-                {currentUserStats.nearbyPlayers.map((player) => (
-                  <div
-                    key={player._id}
-                    className={`p-2 rounded-lg ${player.userId === loggedInUserId ? "bg-primary/10 dark:bg-primary/20" : "hover:bg-muted/50"
-                      }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">#{player.rank}</span>
-                        <span className="text-sm">{player.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Star className="h-3 w-3 text-primary" />
-                        <span className="text-sm font-medium">{player.score}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="p-4 rounded-lg bg-muted/30 text-center">
-              <p className="text-sm text-muted-foreground">
-                {isCurrentTabLoading
-                  ? "Loading nearby players..."
-                  : "Take a test to see how you compare with other players!"}
-              </p>
-            </div>
-          )}
         </div>
       </Card>
 
@@ -384,79 +687,179 @@ export default function GamifiedLeaderboard() {
         <Tabs
           defaultValue="all-time"
           value={activeTab}
-          onValueChange={(value) => setActiveTab(value as "weekly" | "monthly" | "all-time")}
+          onValueChange={(value) => setActiveTab(value as "weekly" | "monthly" | "all-time" | "specialty")}
         >
-          <TabsList className="grid w-full grid-cols-3 mb-4">
+          <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="weekly">Weekly</TabsTrigger>
             <TabsTrigger value="monthly">Monthly</TabsTrigger>
             <TabsTrigger value="all-time">All Time</TabsTrigger>
+            <TabsTrigger value="specialty">Specialty</TabsTrigger>
           </TabsList>
 
-          <div className="relative">
-            {isCurrentTabLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10 rounded-md">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-              </div>
-            )}
+          {activeTab !== "specialty" && (
+            <div className="relative">
+              {isCurrentTabLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10 rounded-md">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                </div>
+              )}
 
-            <ScrollArea className="h-[600px] w-full rounded-md border">
-              <Table>
-                <TableHeader className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                  <TableRow>
-                    <TableHead className="w-20">Rank</TableHead>
-                    <TableHead>Player</TableHead>
-                    <TableHead className="text-right">Score</TableHead>
-                    <TableHead className="text-right">Time</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {currentLeaderboard.length > 0 ? (
-                    currentLeaderboard.map((entry, index) => (
-                      <TableRow
-                        key={entry._id}
-                        className={`${getRowStyle(index + 1)} ${entry.userId === loggedInUserId ? "border-l-2 border-primary" : ""}`}
-                      >
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            {getRankIcon(index + 1)}
-                            {index + 1}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {index < 3 && <Crown className="h-4 w-4 text-primary" />}
-                            {entry.name}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Star className="h-4 w-4 text-primary" />
-                            {entry.score}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Timer className="h-4 w-4 text-muted-foreground" />
-                            {formatTime(entry.totalTime)}
-                          </div>
+              <ScrollArea className="h-[600px] w-full rounded-md border">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                    <TableRow>
+                      <TableHead className="w-20">Rank</TableHead>
+                      <TableHead>Player</TableHead>
+                      <TableHead className="text-right">Score</TableHead>
+                      <TableHead className="text-right">Time</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentLeaderboard.length > 0 ? (
+                      currentLeaderboard.map((entry, index) => (
+                        <TableRow
+                          key={entry._id}
+                          className={`${getRowStyle(index + 1)} ${entry.userId === loggedInUserId ? "border-l-2 border-primary" : ""}`}
+                        >
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              {getRankIcon(index + 1)}
+                              {index + 1}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {index < 3 && <Crown className="h-4 w-4 text-primary" />}
+                              {entry.name}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Star className="h-4 w-4 text-primary" />
+                              {entry.score}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Timer className="h-4 w-4 text-muted-foreground" />
+                              {formatTime(entry.totalTime)}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8">
+                          <p className="text-muted-foreground">
+                            {isCurrentTabLoading
+                              ? "Loading leaderboard data..."
+                              : "No data available for this time period"}
+                          </p>
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8">
-                        <p className="text-muted-foreground">
-                          {isCurrentTabLoading
-                            ? "Loading leaderboard data..."
-                            : "No data available for this time period"}
-                        </p>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </div>
+                    )}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </div>
+          )}
+
+          {activeTab === "specialty" && (
+            <div className="relative">
+              {loading.specialty && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10 rounded-md">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                </div>
+              )}
+
+              <ScrollArea className="h-[600px] w-full rounded-md border">
+                {specialtyRankings && specialtyRankings.rankings.length > 0 ? (
+                  <div className="space-y-6 p-4">
+                    {specialtyRankings.rankings.map((specialtyData) => (
+                      <div key={specialtyData.specialty} className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-bold">{specialtyData.specialty}</h3>
+                          <span className="text-sm text-muted-foreground">{specialtyData.userCount} users</span>
+                        </div>
+
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-16">Rank</TableHead>
+                              <TableHead>Player</TableHead>
+                              <TableHead className="text-right">Success Rate</TableHead>
+                              <TableHead className="text-right">Questions</TableHead>
+                              <TableHead className="text-right">Avg. Time</TableHead>
+                              <TableHead className="text-right">Best Score</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {specialtyData.users.map((user) => (
+                              <TableRow
+                                key={`${specialtyData.specialty}-${user.userId}`}
+                                className={`${user.rank <= 3 ? getRowStyle(user.rank) : ""} ${user.userId === loggedInUserId ? "border-l-2 border-primary" : ""}`}
+                                onClick={() => handleSpecialtySelect(specialtyData.specialty)}
+                              >
+                                <TableCell className="font-medium">
+                                  <div className="flex items-center gap-2">
+                                    {getRankIcon(user.rank)}
+                                    {user.rank}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    {user.rank <= 3 && <Crown className="h-4 w-4 text-primary" />}
+                                    {user.userName}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <span
+                                      className={`font-medium ${user.successRate >= 90 ? "text-green-500" : user.successRate >= 70 ? "text-amber-500" : "text-red-500"}`}
+                                    >
+                                      {user.successRate.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <span>
+                                      {user.correctAnswers}/{user.questionsAttempted}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Timer className="h-4 w-4 text-muted-foreground" />
+                                    <span>{user.averageTimePerQuestion}s</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Star className="h-4 w-4 text-primary" />
+                                    <span className="font-medium">{user.bestTest.score}</span>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ))}
+                    <div className="text-xs text-muted-foreground text-right pt-2">
+                      Last updated: {new Date(specialtyRankings.lastUpdated).toLocaleString()}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-40">
+                    <p className="text-muted-foreground">
+                      {loading.specialty ? "Loading specialty rankings..." : "No specialty ranking data available"}
+                    </p>
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          )}
         </Tabs>
       </Card>
     </div>

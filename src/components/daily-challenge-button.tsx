@@ -149,7 +149,7 @@ export default function DailyChallengeButton({ variant = "default" }: { variant?
             <Button onClick={() => setShowModal(true)} variant="outline" className="relative">
                 <Calendar className="h-5 w-5 mr-2" />
                 Daily Challenge
-                {hasNewChallenge && <span className="absolute -top-1 -right-1 h-3 w-3 bg-primary rounded-full" />}
+                {hasNewChallenge && <span className="animate-ping absolute -top-1 -right-1 h-3 w-3 bg-primary rounded-full" />}
             </Button>
 
             {showModal && <DailyChallengeModal onClose={() => setShowModal(false)} />}

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { PiRankingDuotone } from "react-icons/pi"
 
+import ChallengeButton from "@/components/challenge-button"
 import DailyChallengeButton from "@/components/daily-challenge-button"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -244,7 +245,6 @@ export default function DashboardPage() {
     router.push("/dashboard/custom-weekly-goals")
   }
 
-
   // Calculate weekly goals progress
   const totalQuests = goals.length
   const completedQuests = goals.filter((goal) => goal.isCompleted).length
@@ -254,7 +254,10 @@ export default function DashboardPage() {
     <div className="flex-1 space-y-4 p-4 md:pl-8 md:pr-8">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Welcome back, Student!</h2>
-        <DailyChallengeButton />
+        <div className="flex space-x-2">
+          <ChallengeButton />
+          <DailyChallengeButton />
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">

@@ -935,7 +935,7 @@ export default function FlashcardsPage() {
                               className="border-red-200 text-red-500 hover:bg-red-50"
                             >
                               <XCircle className="h-5 w-5 mr-2" />
-                              Still Learning
+                              Revisit Later
                             </Button>
                             <Button onClick={markCardAsKnown} className="bg-green-500 hover:bg-green-600 text-white">
                               <CheckCircle2 className="h-5 w-5 mr-2" />
