@@ -71,7 +71,7 @@ export default function ReviewSession({ params }: ReviewSessionProps) {
         try {
             setLoading(true)
             // In a real app, you would fetch the actual session data with the items to review
-            const response = await axios.get<Session>(`http://localhost:5000/api/reviews/random`)
+            const response = await axios.get<Session>(`https://medical-backend-loj4.onrender.com/api/reviews/random`)
             // For demo purposes, if the API isn't implemented yet, we'll use mock data
             const mockSession: Session = {
                 _id: "",
@@ -225,7 +225,7 @@ export default function ReviewSession({ params }: ReviewSessionProps) {
 
             // Submit session completion
             const response = await axios.post<CompletionResponse>(
-                `http://localhost:5000/api/reviews/${params}/complete?userId=${userId}`,
+                `https://medical-backend-loj4.onrender.com/api/reviews/${params}/complete?userId=${userId}`,
                 {
                     performance,
                     difficultyRatings,

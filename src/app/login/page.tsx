@@ -36,6 +36,8 @@ const LoginPage = () => {
       if (response.status === 200) {
         setAuthToken(response.data.token)
         localStorage.setItem("authToken", response.data.token)
+        localStorage.setItem("name", response.data?.name)
+        localStorage.setItem("email", response.data?.email)
 
         if (response.data.role === "admin") {
           router.push("/admin")

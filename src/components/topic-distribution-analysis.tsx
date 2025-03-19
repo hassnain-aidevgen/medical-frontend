@@ -1,7 +1,6 @@
-import React, { useMemo } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { PieChart, Pie, Cell } from "recharts";
 import { ChartArea } from "lucide-react";
+import React, { useMemo } from "react";
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 interface Test {
   _id?: string;
@@ -72,7 +71,7 @@ const examBlueprints: Record<string, TopicDistribution[]> = {
 
 // Colors for the chart
 const COLORS = [
-  "#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#0088FE", "#00C49F", 
+  "#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#0088FE", "#00C49F",
   "#FFBB28", "#FF8042", "#a4de6c", "#d0ed57", "#83a6ed", "#8dd1e1"
 ];
 
@@ -123,7 +122,7 @@ const TopicDistributionAnalysis: React.FC<TopicDistributionProps> = ({ selectedE
     return Array.from(allTopics).map(topic => {
       const blueprint = blueprintData.find(item => item.topic === topic);
       const user = userDistribution.find(item => item.topic === topic);
-      
+
       return {
         topic,
         blueprint: blueprint ? blueprint.percentage : 0,
@@ -163,11 +162,11 @@ const TopicDistributionAnalysis: React.FC<TopicDistributionProps> = ({ selectedE
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
       <h2 className="text-xl font-semibold mb-4">Topic Distribution Analysis</h2>
-      
+
       <div className="text-sm text-gray-600 mb-6">
         <p>Compare your study focus with the official {selectedExam} exam blueprint. This visualization helps you identify areas that may need more attention.</p>
       </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Bar Chart Comparison */}
         <div className="h-80">
@@ -187,7 +186,7 @@ const TopicDistributionAnalysis: React.FC<TopicDistributionProps> = ({ selectedE
             </BarChart>
           </ResponsiveContainer>
         </div>
-        
+
         {/* Pie Charts */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Blueprint Pie Chart */}
@@ -216,7 +215,7 @@ const TopicDistributionAnalysis: React.FC<TopicDistributionProps> = ({ selectedE
               </ResponsiveContainer>
             </div>
           </div>
-          
+
           {/* User Distribution Pie Chart */}
           <div>
             <h3 className="font-medium text-gray-800 mb-2 text-center">Your Study Pattern</h3>
@@ -245,7 +244,7 @@ const TopicDistributionAnalysis: React.FC<TopicDistributionProps> = ({ selectedE
           </div>
         </div>
       </div>
-      
+
       {/* Analysis and Recommendations */}
       <div className="mt-6 p-4 bg-blue-50 rounded-lg">
         <h3 className="font-medium text-blue-800 mb-2">Study Focus Analysis</h3>
@@ -253,11 +252,11 @@ const TopicDistributionAnalysis: React.FC<TopicDistributionProps> = ({ selectedE
           {combinedData.map(item => {
             const diff = item.user - item.blueprint;
             if (Math.abs(diff) < 5) return null; // Skip if difference is small
-            
+
             return (
               <p key={item.topic} className="mb-1">
-                <span className="font-medium">{item.topic}:</span> {diff > 0 
-                  ? `You've spent ${diff}% more time than recommended.` 
+                <span className="font-medium">{item.topic}:</span> {diff > 0
+                  ? `You've spent ${diff}% more time than recommended.`
                   : `Needs ${Math.abs(diff)}% more focus based on exam blueprint.`}
               </p>
             );

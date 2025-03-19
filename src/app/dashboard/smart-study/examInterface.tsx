@@ -401,7 +401,7 @@ const ExamInterface = ({ tests }: { tests: Test[] }) => {
                                 value={examDate}
                                 onChange={handleExamDateChange}
                                 className="px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
-                                min={new Date().toISOString().split("T")[0]}
+                                min={new Date(Date.now() + 86400000).toISOString().split("T")[0]} // One day into the future
                             />
                         </div>
                     </div>

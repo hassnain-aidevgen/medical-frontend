@@ -1,6 +1,6 @@
 "use client"
 
-import { Banknote, BarChart2, BookOpen, Clock, Dna, FileQuestion, GraduationCap, Home, Info, LaptopMinimalCheck, ScanSearch, Settings, Users, X } from "lucide-react"
+import { Banknote, BarChart2, BookOpen, BotIcon, Clock, Dna, FileQuestion, GraduationCap, Home, Info, LaptopMinimalCheck, ScanSearch, Settings, Users, X } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { PiRankingDuotone } from "react-icons/pi"
@@ -21,6 +21,7 @@ const sidebarItems = [
   { name: "Courses", icon: LaptopMinimalCheck, href: "/dashboard/courses", color: "bg-blue-500" },
   { name: "Mentor", icon: GraduationCap, href: "/dashboard/mentor", color: "bg-blue-500" },
   { name: "FAQs", icon: FileQuestion, href: "/dashboard/faqs", color: "bg-blue-500" },
+  { name: "AI Study Planner", icon: BotIcon, href: "/dashboard/study-planner", color: "bg-blue-500" },
   // { name: "Booking", icon: BookOpen, href: "/dashboard/booking", color: "bg-blue-500" },
   // { name: "Mentorship", icon: BookOpen, href: "/dashboard/mentorship", color: "bg-blue-500" },
 ]
@@ -35,7 +36,7 @@ export function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
 
   return (
     <div
-      className={`bg-gradient-to-b from-slate-50 via-blue-50 to-indigo-50 w-64 h-screen fixed inset-y-0 left-0 transform ${isOpen ? "translate-x-0" : "-translate-x-full"
+      className={`bg-gradient-to-b from-slate-50 via-blue-50 to-indigo-50 w-72 h-screen fixed inset-y-0 left-0 transform ${isOpen ? "translate-x-0" : "-translate-x-full"
         } md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 flex flex-col`}
     >
       <div className="flex-shrink-0 p-4">

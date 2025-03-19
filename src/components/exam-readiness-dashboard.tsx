@@ -246,6 +246,8 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
 
         if (Array.isArray(testsResponse.data)) {
           setTests(testsResponse.data);
+          console.log(testsResponse.data);
+
         } else {
           throw new Error("Invalid test data format");
         }

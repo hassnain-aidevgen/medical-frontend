@@ -44,7 +44,7 @@ export default function ReviewDashboard() {
         try {
             const userId = localStorage.getItem("Medical_User_Id")
             setLoading(true)
-            const response = await axios.get(`http://localhost:5000/api/reviews/dashboard?userId=${userId}`)
+            const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/reviews/dashboard?userId=${userId}`)
             setStats(response.data)
             setLoading(false)
         } catch (error) {
@@ -57,7 +57,7 @@ export default function ReviewDashboard() {
     const startReviewSession = async () => {
         try {
             const userId = localStorage.getItem("Medical_User_Id")
-            const response = await axios.post(`http://localhost:5000/api/reviews/start-session?userId=${userId}`)
+            const response = await axios.post(`https://medical-backend-loj4.onrender.com/api/reviews/start-session?userId=${userId}`)
             toast.success("Review session started!")
             window.location.href = `/dashboard/review/session/${response.data.sessionId}`
         } catch (error) {

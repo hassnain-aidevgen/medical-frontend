@@ -64,7 +64,7 @@ interface UserSpecialtyStats {
 }
 
 // Base API URL to ensure all calls go to the same address
-const API_BASE_URL = "http://localhost:5000/api/test"
+const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test"
 
 export default function GamifiedLeaderboard() {
   const [leaderboardData, setLeaderboardData] = useState<{

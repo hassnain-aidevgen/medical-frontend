@@ -142,7 +142,7 @@ export default function ChallengePage() {
                 const userId = localStorage.getItem("Medical_User_Id")
 
                 const response = await axios.get<SessionResponse>(
-                    `http://localhost:5000/api/challenge/${sessionId}?userId=${userId}`,
+                    `https://medical-backend-loj4.onrender.com/api/challenge/${sessionId}?userId=${userId}`,
                 )
 
                 if (response.data.success) {
@@ -240,7 +240,7 @@ export default function ChallengePage() {
             const currentQuestion = questions[currentQuestionIndex]
 
             const response = await axios.post<SubmitAnswerResponse>(
-                `http://localhost:5000/api/challenge/${sessionId}/submit?userId=${userId}`,
+                `https://medical-backend-loj4.onrender.com/api/challenge/${sessionId}/submit?userId=${userId}`,
                 {
                     questionId: currentQuestion._id,
                     answer: selectedAnswer,
@@ -275,7 +275,7 @@ export default function ChallengePage() {
 
                     // Fetch updated session to get final results
                     const sessionResponse = await axios.get<SessionResponse>(
-                        `http://localhost:5000/api/challenge/${sessionId}?userId=${userId}`
+                        `https://medical-backend-loj4.onrender.com/api/challenge/${sessionId}?userId=${userId}`
                     )
 
                     if (sessionResponse.data.success) {

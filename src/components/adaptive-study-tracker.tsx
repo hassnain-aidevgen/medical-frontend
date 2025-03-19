@@ -162,7 +162,7 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
         setDaysToExam(days);
 
         if (days <= 0) {
-          throw new Error("Exam date must be in the future");
+          // throw new Error("Exam date must be in the future");
         }
 
         // Fetch test data

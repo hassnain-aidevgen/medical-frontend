@@ -24,7 +24,7 @@ interface ChartRendererProps {
     data: CompletionDataPoint[];
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com";
 
 export function CompletionChart() {
     const [chartData, setChartData] = useState<CompletionStats>({
