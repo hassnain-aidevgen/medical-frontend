@@ -72,6 +72,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
+import HistoryTimeline from "./history-timeline"
+import NextTaskCTA from "./next-task-cta"
+import StreakTracker from "./streak-tracker"
+import FlashcardSuggestions from "./flashcard-suggestions"
+import ExamAlignment from "./exam-alignment"
 
 // Types
 interface TestResult {
@@ -364,8 +369,8 @@ export default function AnalyticsDashboard() {
   const [viewAllTests, setViewAllTests] = useState(false)
   const [viewAllQuestions, setViewAllQuestions] = useState(false)
   const [selectedTestIndex, setSelectedTestIndex] = useState<number | null>(null)
+  const [targetExam] = useState<string | null>(null)
 
-  console.warn(error)
   useEffect(() => {
     const fetchData = async () => {
       const userId = localStorage.getItem("Medical_User_Id")
@@ -382,16 +387,20 @@ export default function AnalyticsDashboard() {
 
       try {
         // Fetch performance data
-        const performanceResponse = await axios.get<TestResult[]>("https://medical-backend-loj4.onrender.com/api/test/performance", {
-          params: { userId },
-        })
+        const performanceResponse = await axios.get<TestResult[]>(
+          "https://medical-backend-loj4.onrender.com/api/test/performance",
+          {
+            params: { userId },
+          },
+        )
         setPerformanceData(performanceResponse.data)
         setLoading((prev) => ({ ...prev, performance: false }))
 
         // Fetch stats data
-        const statsResponse = await axios.get<StatsData>(`https://medical-backend-loj4.onrender.com/api/test/user/${userId}/stats`)
+        const statsResponse = await axios.get<StatsData>(
+          `https://medical-backend-loj4.onrender.com/api/test/user/${userId}/stats`,
+        )
         setStatsData(statsResponse.data)
-        console.log(statsResponse.data)
         setLoading((prev) => ({ ...prev, stats: false }))
 
         // Fetch comparative analytics
@@ -444,10 +453,6 @@ export default function AnalyticsDashboard() {
 
     setIsGeneratingPDF(true)
     const toastId = toast.loading("Please wait while we prepare your report...")
-    // toast({
-    //   title: "Generating PDF",
-    //   description: "Please wait while we prepare your report...",
-    // })
 
     try {
       // Create a new jsPDF instance
@@ -595,19 +600,9 @@ export default function AnalyticsDashboard() {
       pdf.save(`medical-analytics-report-${new Date().toISOString().slice(0, 10)}.pdf`)
 
       toast.success("Your analytics report has been downloaded.", { id: toastId })
-      // toast({
-      //   title: "PDF Generated Successfully",
-      //   description: "Your analytics report has been downloaded.",
-      //   variant: "default",
-      // })
     } catch (err) {
       console.error("Error generating PDF:", err)
       toast.error("There was a problem creating your report. Please try again.")
-      // toast({
-      //   title: "Error Generating PDF",
-      //   description: "There was a problem creating your report. Please try again.",
-      //   variant: "destructive",
-      // })
     } finally {
       setIsGeneratingPDF(false)
     }
@@ -620,21 +615,12 @@ export default function AnalyticsDashboard() {
         case "email":
           if (!shareEmail) {
             toast.error("Please enter an email address to share the report.")
-            // toast({
-            //   title: "Email Required",
-            //   description: "Please enter an email address to share the report.",
-            //   variant: "destructive",
-            // })
             return
           }
 
           // In a real app, you would send this to your backend
           // For demo purposes, we'll just show a success message
-          toast.success("Report has been shared with ${shareEmail}")
-          // toast({
-          //   title: "Report Shared",
-          //   description: `Report has been shared with ${shareEmail}`,
-          // })
+          toast.success(`Report has been shared with ${shareEmail}`)
           setShareEmail("")
           setShareNote("")
           setIsShareDialogOpen(false)
@@ -643,10 +629,6 @@ export default function AnalyticsDashboard() {
         case "copy":
           await navigator.clipboard.writeText(shareUrl)
           toast.success("Report link has been copied to clipboard")
-          // toast({
-          //   title: "Link Copied",
-          //   description: "Report link has been copied to clipboard",
-          // })
           break
 
         case "social":
@@ -660,11 +642,6 @@ export default function AnalyticsDashboard() {
     } catch (err) {
       console.error("Error sharing report:", err)
       toast.error("There was a problem sharing your report. Please try again.")
-      // toast({
-      //   title: "Error Sharing Report",
-      //   description: "There was a problem sharing your report. Please try again.",
-      //   variant: "destructive",
-      // })
     }
   }
 
@@ -705,11 +682,11 @@ export default function AnalyticsDashboard() {
     selectedSystem === "all"
       ? topicMasteryData?.topics || []
       : (topicMasteryData?.topics || []).filter((topic) =>
-        topicMasteryData?.subtopics.some(
-          (subtopic) =>
-            subtopic.parentTopic === topic.name && subtopic.name.toLowerCase().includes(selectedSystem.toLowerCase()),
-        ),
-      )
+          topicMasteryData?.subtopics.some(
+            (subtopic) =>
+              subtopic.parentTopic === topic.name && subtopic.name.toLowerCase().includes(selectedSystem.toLowerCase()),
+          ),
+        )
 
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d", "#ffc658", "#8dd1e1"]
 
@@ -740,9 +717,32 @@ export default function AnalyticsDashboard() {
     )
   }
 
+  // Check if there are any errors to display
+  const hasErrors = Object.values(error).some((err) => err !== null)
+
+  if (hasErrors && !isLoading) {
+    return (
+      <div className="container mx-auto p-4 space-y-4">
+        <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+        <div className="bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-lg">
+          <h2 className="text-lg font-medium text-red-800 dark:text-red-400 mb-2">Error Loading Data</h2>
+          <ul className="space-y-1 text-sm text-red-700 dark:text-red-300">
+            {error.performance && <li>{error.performance}</li>}
+            {error.stats && <li>{error.stats}</li>}
+            {error.comparative && <li>{error.comparative}</li>}
+            {error.topicMastery && <li>{error.topicMastery}</li>}
+          </ul>
+          <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <TooltipProvider>
-      <div className="container mx-auto p-4 bg-background">
+      <div className="container mx-auto p-4 bg-background" ref={dashboardRef}>
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -754,24 +754,6 @@ export default function AnalyticsDashboard() {
             <p className="text-muted-foreground">Track your performance and identify areas for improvement</p>
           </div>
 
-          {/* <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <Share2 className="mr-2 h-4 w-4" />
-                  <span>Share Report</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Download className="mr-2 h-4 w-4" />
-                  <span>Download PDF</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu> */}
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -791,7 +773,6 @@ export default function AnalyticsDashboard() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-          {/* </div> */}
         </motion.div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
@@ -848,12 +829,13 @@ export default function AnalyticsDashboard() {
               <StatCard
                 icon={<TrendingUp className="h-6 w-6 text-white" />}
                 title="Progress Rate"
-                value={`${performanceData.length > 1
-                  ? (performanceData[performanceData.length - 1].percentage - performanceData[0].percentage).toFixed(
-                    3,
-                  )
-                  : "0.0"
-                  }%`}
+                value={`${
+                  performanceData.length > 1
+                    ? (performanceData[performanceData.length - 1].percentage - performanceData[0].percentage).toFixed(
+                        3,
+                      )
+                    : "0.0"
+                }%`}
                 subtitle={`${comparativeData?.userPerformance.overallPercentile || 0}th percentile`}
                 color="purple"
               />
@@ -866,6 +848,20 @@ export default function AnalyticsDashboard() {
                 color="amber"
               />
             </div>
+
+            {/* Streak Tracker Component */}
+            <StreakTracker performanceData={performanceData} isLoading={loading.performance} />
+
+            {/* History Timeline Component */}
+            <HistoryTimeline performanceData={performanceData} isLoading={loading.performance} />
+
+            {/* Exam Alignment Component */}
+            <ExamAlignment
+              topicMasteryData={topicMasteryData}
+              targetExam={targetExam}
+              isLoading={loading.topicMastery}
+              className="mb-6"
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <motion.div
@@ -1157,6 +1153,14 @@ export default function AnalyticsDashboard() {
                 </CardContent>
               </Card>
             </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+            >
+              <FlashcardSuggestions performanceData={performanceData} isLoading={loading.performance} />
+            </motion.div>
           </TabsContent>
 
           {/* Performance Tab */}
@@ -1189,12 +1193,13 @@ export default function AnalyticsDashboard() {
               <StatCard
                 icon={<Target className="h-6 w-6 text-white" />}
                 title="Accuracy"
-                value={`${performanceData.length > 0
-                  ? (
-                    performanceData.reduce((sum, item) => sum + item.percentage, 0) / performanceData.length
-                  ).toFixed(1)
-                  : "0"
-                  }%`}
+                value={`${
+                  performanceData.length > 0
+                    ? (
+                        performanceData.reduce((sum, item) => sum + item.percentage, 0) / performanceData.length
+                      ).toFixed(1)
+                    : "0"
+                }%`}
                 subtitle={`Global avg: ${comparativeData?.globalPerformance.average.percentage || 0}%`}
                 color="red"
               />
@@ -1329,12 +1334,13 @@ export default function AnalyticsDashboard() {
                         </div>
                         <Progress
                           value={subsection.percentage}
-                          className={`h-2 ${subsection.percentage >= 70
-                            ? "bg-green-500"
-                            : subsection.percentage >= 50
-                              ? "bg-yellow-500"
-                              : "bg-red-500"
-                            }`}
+                          className={`h-2 ${
+                            subsection.percentage >= 70
+                              ? "bg-green-500"
+                              : subsection.percentage >= 50
+                                ? "bg-yellow-500"
+                                : "bg-red-500"
+                          }`}
                         />
                         <div className="flex justify-between mt-2 text-xs text-muted-foreground">
                           <span>Correct: {subsection.correct}</span>
@@ -1383,6 +1389,24 @@ export default function AnalyticsDashboard() {
                 color="blue"
               />
             </div>
+
+            {/* Next Task CTA Component */}
+            <NextTaskCTA
+              weakestTopics={topicMasteryData?.weakestTopics || []}
+              className="mb-6"
+              onStartStudy={(topicName) => {
+                toast.success(`Starting study session for: ${topicName}`)
+                // In a real app, this would navigate to the study page for this topic
+              }}
+            />
+
+            {/* Exam Alignment Component */}
+            <ExamAlignment
+              topicMasteryData={topicMasteryData}
+              targetExam={targetExam}
+              isLoading={loading.topicMastery}
+              className="mb-6"
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <motion.div
@@ -1595,14 +1619,15 @@ export default function AnalyticsDashboard() {
                           <div className="flex items-start gap-3">
                             <div
                               className={`p-2 rounded-full 
-                              ${rec.masteryLevel === "Expert"
+                              ${
+                                rec.masteryLevel === "Expert"
                                   ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
                                   : rec.masteryLevel === "Advanced"
                                     ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
                                     : rec.masteryLevel === "Intermediate"
                                       ? "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400"
                                       : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                                }`}
+                              }`}
                             >
                               {getMasteryIcon(rec.masteryLevel)}
                             </div>
@@ -1628,14 +1653,15 @@ export default function AnalyticsDashboard() {
                             </div>
                             <Progress
                               value={rec.masteryScore}
-                              className={`h-2 ${rec.masteryLevel === "Expert"
-                                ? "bg-green-500"
-                                : rec.masteryLevel === "Advanced"
-                                  ? "bg-blue-500"
-                                  : rec.masteryLevel === "Intermediate"
-                                    ? "bg-yellow-500"
-                                    : "bg-red-500"
-                                }`}
+                              className={`h-2 ${
+                                rec.masteryLevel === "Expert"
+                                  ? "bg-green-500"
+                                  : rec.masteryLevel === "Advanced"
+                                    ? "bg-blue-500"
+                                    : rec.masteryLevel === "Intermediate"
+                                      ? "bg-yellow-500"
+                                      : "bg-red-500"
+                              }`}
                             />
                           </div>
                           <Button variant="ghost" size="sm" className="w-full mt-3">
@@ -1648,6 +1674,62 @@ export default function AnalyticsDashboard() {
                 </Card>
               </motion.div>
 
+              {/* Add FlashcardSuggestions component here */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="lg:col-span-3"
+              >
+                <FlashcardSuggestions performanceData={performanceData} isLoading={loading.performance} />
+              </motion.div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 lg:col-span-3">
+                <NextTaskCTA
+                  weakestTopics={topicMasteryData?.weakestTopics || []}
+                  variant="card"
+                  onStartStudy={(topicName) => {
+                    toast.success(`Starting study session for: ${topicName}`)
+                    // In a real app, this would navigate to the study page for this topic
+                  }}
+                />
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+                      <TrendingUp className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-lg">Your Progress</h3>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        You&apos;ve made significant progress in these areas:
+                      </p>
+                      <div className="space-y-2">
+                        {topicMasteryData?.strongestTopics.slice(0, 2).map((topic, index) => (
+                          <div key={index} className="bg-white dark:bg-gray-800 p-3 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                              <span className="font-medium">{topic.name}</span>
+                            </div>
+                            <div className="mt-2">
+                              <div className="flex justify-between text-xs mb-1">
+                                <span>Mastery</span>
+                                <span>{topic.masteryScore}%</span>
+                              </div>
+                              <Progress value={topic.masteryScore} className="bg-green-500" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1659,7 +1741,7 @@ export default function AnalyticsDashboard() {
                       <TrendingUp className="h-5 w-5 text-green-500" />
                       Improvement Areas
                     </CardTitle>
-                    <CardDescription>Topics where you ve shown the most improvement</CardDescription>
+                    <CardDescription>Topics where you&apos;ve shown the most improvement</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {topicMasteryData?.topics
@@ -1756,7 +1838,7 @@ export default function AnalyticsDashboard() {
                   <CardContent>
                     <div className="space-y-6">
                       <div className="bg-muted/30 p-4 rounded-lg">
-                        <h3 className="font-medium text-lg mb-2">This Weeks Focus</h3>
+                        <h3 className="font-medium text-lg mb-2">This Week&apos;s Focus</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           {topicMasteryData?.weakestTopics.slice(0, 3).map((topic, index) => (
                             <motion.div
@@ -1910,3 +1992,4 @@ export default function AnalyticsDashboard() {
     </TooltipProvider>
   )
 }
+

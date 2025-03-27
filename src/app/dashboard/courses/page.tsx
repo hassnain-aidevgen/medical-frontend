@@ -266,13 +266,23 @@ export default function CoursesPage() {
                             filteredCourses.map((course) => (
                                 <Card key={course._id} className="overflow-hidden flex flex-col">
                                     <CardHeader className="p-0">
-                                        <Image
-                                            src={course.thumbnail || `/placeholder.svg`}
-                                            alt={course.title}
-                                            width={384}
-                                            height={192}
-                                            className="h-48 w-full object-cover"
-                                        />
+                                        {typeof course.thumbnail === 'string' && course.thumbnail.startsWith('http') ? (
+                                            <Image
+                                                src={course.thumbnail}
+                                                alt={course.title}
+                                                width={384}
+                                                height={192}
+                                                className="h-48 w-full object-cover"
+                                                onError={(e) => {
+                                                    // Fall back to placeholder if image fails to load
+                                                    e.currentTarget.src = "/placeholder.svg";
+                                                }}
+                                            />
+                                        ) : (
+                                            <div className="h-48 w-full bg-muted flex items-center justify-center">
+                                                <span className="text-muted-foreground">No image available</span>
+                                            </div>
+                                        )}
                                     </CardHeader>
                                     <CardContent className="p-6 flex-1">
                                         <div className="flex items-center justify-between mb-2">
@@ -300,4 +310,3 @@ export default function CoursesPage() {
         </div>
     )
 }
-

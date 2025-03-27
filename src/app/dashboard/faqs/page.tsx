@@ -261,10 +261,17 @@ export default function FAQPage() {
                             to us.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Button className="gap-2">
-                                <Mail className="h-4 w-4" />
-                                Contact Support
-                            </Button>
+                            <a 
+                                href="https://mail.google.com/mail/?view=cm&fs=1&to=info@aidevgen.agency&su=Support%20Request%20-%20Bioverse" 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="inline-block"
+                            >
+                                <Button className="gap-2">
+                                    <Mail className="h-4 w-4" />
+                                    Contact Support
+                                </Button>
+                            </a>
                             <Link href="/dashboard/mentor">
                                 <Button variant="outline" className="gap-2">
                                     Browse Mentors
@@ -295,4 +302,3 @@ export default function FAQPage() {
         </div>
     )
 }
-

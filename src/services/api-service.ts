@@ -22,6 +22,7 @@ export type ApiError = {
   errors?: Record<string, string>
 }
 
+// Update the Flashcard type to include spaced repetition fields
 export type Flashcard = {
   id?: string
   _id?: string
@@ -33,7 +34,10 @@ export type Flashcard = {
   tags: string[]
   mastery: number
   reviewCount: number
-  lastReviewed?: Date
+  lastReviewedDate?: Date | null
+  nextReviewDate?: Date | null
+  reviewStage?: number // 0-5 (0=new, 5=mastered)
+  reviewPriority?: "low" | "medium" | "high" | null
   userId: string
   createdAt?: Date
   updatedAt?: Date
@@ -51,7 +55,10 @@ type RawFlashcardData = {
   tags?: string[]
   mastery?: number
   reviewCount?: number
-  lastReviewed?: string | Date
+  lastReviewedDate?: string | Date
+  nextReviewDate?: string | Date
+  reviewStage?: number
+  reviewPriority?: string
   userId?: string
   createdAt?: string | Date
   updatedAt?: string | Date
@@ -69,11 +76,6 @@ type FlashcardResponse =
       }
     }
   | RawFlashcardData[]
-
-// type ErrorWithMessage = {
-//   message: string
-//   [key: string]: unknown
-// }
 
 // Enhanced axios instance with improved error handling
 const apiClient = axios.create({
@@ -194,10 +196,10 @@ export const apiService = {
         statusText: response.statusText,
       }
 
-      // // Add pagination if available
-      // if (response.data.pagination) {
-      //   result.pagination = response.data.pagination
-      // }
+      // Add pagination if available
+      if (!Array.isArray(response.data) && response.data.pagination) {
+        result.pagination = response.data.pagination
+      }
 
       return result
     } catch (error) {
@@ -206,6 +208,36 @@ export const apiService = {
     }
   },
 
+  // Get due flashcards (for spaced repetition)
+  async getDueFlashcards(): Promise<ApiResponse<Flashcard[]>> {
+    try {
+      const now = new Date().toISOString()
+      const response = await apiClient.get<FlashcardResponse>("/flashcards", {
+        params: {
+          nextReviewDate_lte: now,
+          _sort: "reviewPriority,nextReviewDate",
+          _order: "desc,asc",
+        },
+      })
+
+      // Handle both array and object with data property responses
+      const data = Array.isArray(response.data) ? response.data : response.data.data || []
+
+      // Normalize the response structure
+      const result: ApiResponse<Flashcard[]> = {
+        data: data.map((card: RawFlashcardData) => normalizeFlashcard(card)),
+        status: response.status,
+        statusText: response.statusText,
+      }
+
+      return result
+    } catch (error) {
+      console.error("Error in getDueFlashcards:", error)
+      throw error
+    }
+  },
+
+  // Fix the type error in getFlashcardById
   async getFlashcardById(id: string): Promise<ApiResponse<Flashcard>> {
     try {
       // Validate ID format to fail fast
@@ -213,7 +245,7 @@ export const apiService = {
         throw new Error("Invalid flashcard ID")
       }
 
-      const response = await apiClient.get<Flashcard>(`/flashcards/${id}`)
+      const response = await apiClient.get<RawFlashcardData>(`/flashcards/${id}`)
 
       return {
         data: normalizeFlashcard(response.data),
@@ -226,12 +258,21 @@ export const apiService = {
     }
   },
 
+  // Fix the type error in createFlashcard
   async createFlashcard(flashcardData: Partial<Flashcard>): Promise<ApiResponse<Flashcard>> {
     try {
       // Validate required fields before making the API call
       validateFlashcardData(flashcardData)
 
-      const response = await apiClient.post<Flashcard>("/flashcards", flashcardData)
+      // Initialize spaced repetition fields if not provided
+      const dataWithDefaults = {
+        ...flashcardData,
+        reviewStage: flashcardData.reviewStage ?? 0,
+        reviewPriority: flashcardData.reviewPriority ?? null,
+        nextReviewDate: flashcardData.nextReviewDate ?? new Date(Date.now() + 24 * 60 * 60 * 1000), // Default to tomorrow
+      }
+
+      const response = await apiClient.post<RawFlashcardData>("/flashcards", dataWithDefaults)
 
       return {
         data: normalizeFlashcard(response.data),
@@ -244,6 +285,7 @@ export const apiService = {
     }
   },
 
+  // Fix the type error in updateFlashcard
   async updateFlashcard(id: string, flashcardData: Partial<Flashcard>): Promise<ApiResponse<Flashcard>> {
     try {
       // Validate required fields and ID
@@ -253,7 +295,7 @@ export const apiService = {
 
       validateFlashcardData(flashcardData)
 
-      const response = await apiClient.put<Flashcard>(`/flashcards/${id}`, flashcardData)
+      const response = await apiClient.put<RawFlashcardData>(`/flashcards/${id}`, flashcardData)
 
       return {
         data: normalizeFlashcard(response.data),
@@ -337,7 +379,10 @@ function normalizeFlashcard(flashcard: RawFlashcardData): Flashcard {
     tags: Array.isArray(flashcard.tags) ? flashcard.tags : [],
     mastery: typeof flashcard.mastery === "number" ? flashcard.mastery : 0,
     reviewCount: typeof flashcard.reviewCount === "number" ? flashcard.reviewCount : 0,
-    lastReviewed: flashcard.lastReviewed ? new Date(flashcard.lastReviewed) : undefined,
+    lastReviewedDate: flashcard.lastReviewedDate ? new Date(flashcard.lastReviewedDate) : null,
+    nextReviewDate: flashcard.nextReviewDate ? new Date(flashcard.nextReviewDate) : null,
+    reviewStage: typeof flashcard.reviewStage === "number" ? flashcard.reviewStage : 0,
+    reviewPriority: (flashcard.reviewPriority as "low" | "medium" | "high" | null) || null,
     userId: flashcard.userId || "",
     createdAt: flashcard.createdAt ? new Date(flashcard.createdAt) : undefined,
     updatedAt: flashcard.updatedAt ? new Date(flashcard.updatedAt) : undefined,
@@ -372,3 +417,4 @@ function validateFlashcardData(data: Partial<Flashcard>): void {
 }
 
 export default apiService
+

@@ -4,7 +4,7 @@ import TestPageWarning from "@/components/pageTestWarning"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import axios from "axios"
-import { AlertCircle, Clock } from "lucide-react"
+import { AlertCircle, Brain, Clock } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
 import QuestionBox from "./QuestionBox"
@@ -38,6 +38,11 @@ const TakeTestPage = () => {
     const subjectsParam = searchParams.get("subjects") || ""
     const subsectionsParam = searchParams.get("subsections") || ""
     const countParam = searchParams.get("count") || "10"
+    
+    // Add parameters for AI-generated tests
+    const isAIGenerated = searchParams.get("isAIGenerated") === "true"
+    const aiTopic = searchParams.get("topic") || ""
+    const aiGeneratedQuestionsParam = searchParams.get("aiGeneratedQuestions")
 
     const [questions, setQuestions] = useState<Question[]>([])
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
@@ -55,6 +60,47 @@ const TakeTestPage = () => {
     const fetchQuestions = useCallback(async () => {
         setIsLoading(true)
         setError(null)
+        
+        // Handle AI-generated questions if present
+        if (isAIGenerated && aiGeneratedQuestionsParam) {
+            try {
+                const parsedQuestions = JSON.parse(aiGeneratedQuestionsParam);
+                
+                // Format AI-generated questions to match your Question type
+                const formattedQuestions = parsedQuestions.map((q: { questionText: string; options: string[]; correctAnswer: string; explanation: string; topic?: string; difficulty?: string }, index: number) => ({
+                    _id: `ai-q-${index}`,
+                    question: q.questionText,
+                    options: q.options.map(opt => opt.substring(3).trim()), // Remove "A. ", "B. ", etc.
+                    answer: q.correctAnswer.charAt(0), // Extract just the letter (A, B, C, etc.)
+                    explanation: q.explanation,
+                    subject: aiTopic,
+                    subsection: q.topic || aiTopic,
+                    system: "AI Generated",
+                    topic: q.topic || aiTopic,
+                    subtopics: [q.topic || aiTopic],
+                    exam_type: "USMLE_STEP1", // Default value
+                    year: new Date().getFullYear(),
+                    difficulty: q.difficulty || "medium",
+                    specialty: "General",
+                    clinical_setting: "Various",
+                    question_type: "single_best_answer" // Default value
+                }));
+                
+                setQuestions(formattedQuestions);
+                setStartTime(Date.now());
+                if (mode === "timer") {
+                    setTimeLeft(formattedQuestions.length * 60); // 60 seconds per question
+                }
+                setIsLoading(false);
+            } catch (err) {
+                console.error("Error parsing AI questions:", err);
+                setError("Failed to load AI-generated questions. Please try again.");
+                setIsLoading(false);
+            }
+            return;
+        }
+        
+        // Regular question fetching logic
         try {
             const response = await axios.get("https://medical-backend-loj4.onrender.com/api/test/take-test/questions", {
                 params: {
@@ -74,12 +120,11 @@ const TakeTestPage = () => {
         } finally {
             setIsLoading(false)
         }
-    }, [subjectsParam, subsectionsParam, totalQuestions, mode])
+    }, [subjectsParam, subsectionsParam, totalQuestions, mode, isAIGenerated, aiGeneratedQuestionsParam, aiTopic])
 
     useEffect(() => {
         fetchQuestions()
     }, [fetchQuestions])
-
 
     const handleAnswerSelect = (answer: string) => {
         setSelectedAnswers((prev) => ({
@@ -87,6 +132,7 @@ const TakeTestPage = () => {
             [currentQuestionIndex]: answer,
         }))
     }
+    
     const handleFinishTest = useCallback(() => {
         const currentTime = Date.now()
         const timeSpent = startTime ? Math.round((currentTime - startTime) / 1000) : 0
@@ -96,6 +142,29 @@ const TakeTestPage = () => {
         }))
         setShowResults(true)
     }, [startTime, currentQuestionIndex])
+
+    // Add the timer useEffect AFTER handleFinishTest is defined
+    useEffect(() => {
+        let timerId: NodeJS.Timeout;
+        
+        if (mode === "timer" && timeLeft > 0 && !showResults && !isLoading) {
+            timerId = setInterval(() => {
+                setTimeLeft((prevTime) => {
+                    if (prevTime <= 1) {
+                        // Auto-finish the test when time runs out
+                        handleFinishTest();
+                        return 0;
+                    }
+                    return prevTime - 1;
+                });
+            }, 1000);
+        }
+    
+        // Clear the interval when component unmounts or when test ends
+        return () => {
+            if (timerId) clearInterval(timerId);
+        };
+    }, [mode, timeLeft, showResults, isLoading, handleFinishTest]);
 
     const handleAnswerSubmit = useCallback(() => {
         if (selectedAnswers[currentQuestionIndex]) {
@@ -158,6 +227,8 @@ const TakeTestPage = () => {
                 questionTimes={questionTimes}
                 score={calculateScore()}
                 totalTime={Object.values(questionTimes).reduce((sum, time) => sum + time, 0)}
+                isAIGenerated={isAIGenerated}
+                aiTopic={aiTopic}
             />
         )
     }
@@ -171,7 +242,22 @@ const TakeTestPage = () => {
                 totalQuestions={questions.length}
             />
 
-            <h1 className="text-3xl font-bold mb-8">Medical Test</h1>
+            <h1 className="text-3xl font-bold mb-8">
+                {isAIGenerated ? `AI-Generated Medical Test: ${aiTopic}` : "Medical Test"}
+            </h1>
+            
+            {/* AI Test banner when applicable */}
+            {isAIGenerated && (
+                <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
+                    <h2 className="text-lg font-semibold text-blue-800 flex items-center">
+                        <Brain className="mr-2" size={20} />
+                        Topic: {aiTopic}
+                    </h2>
+                    <p className="text-sm text-blue-600">
+                        This test was custom-generated by AI focusing on key concepts in {aiTopic}.
+                    </p>
+                </div>
+            )}
 
             {mode === "timer" && (
                 <div className="mb-4 text-xl flex items-center">

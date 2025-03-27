@@ -381,6 +381,7 @@ const ExamInterface = ({ tests }: { tests: Test[] }) => {
                                 id="examSelect"
                                 value={selectedExam}
                                 onChange={handleExamChange}
+                            
                                 className="px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
                             >
                                 <option value="">-- Select an Exam --</option>

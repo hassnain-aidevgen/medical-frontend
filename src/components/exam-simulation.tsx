@@ -33,43 +33,15 @@ interface UserAnswer {
 
 // Exam-specific configurations
 const examConfigs: Record<string, SimulationConfig> = {
-  "USMLE Step 1": { duration: 60, totalQuestions: 40, examName: "USMLE Step 1" },
-  NEET: { duration: 120, totalQuestions: 50, examName: "NEET" },
-  PLAB: { duration: 90, totalQuestions: 45, examName: "PLAB" },
-  MCAT: { duration: 90, totalQuestions: 8, examName: "MCAT" },
-  NCLEX: { duration: 75, totalQuestions: 40, examName: "NCLEX" },
-  COMLEX: { duration: 60, totalQuestions: 40, examName: "COMLEX" },
+  "USMLE Step 1": { duration: 10, totalQuestions: 40, examName: "USMLE Step 1" },
+  NEET: { duration: 10, totalQuestions: 50, examName: "NEET" },
+  PLAB: { duration: 10, totalQuestions: 45, examName: "PLAB" },
+  MCAT: { duration: 10, totalQuestions: 8, examName: "MCAT" },
+  NCLEX: { duration: 10, totalQuestions: 40, examName: "NCLEX" },
+  COMLEX: { duration: 10, totalQuestions: 40, examName: "COMLEX" },
   // Default config for fallback
-  DEFAULT: { duration: 60, totalQuestions: 30, examName: "Medical Exam" },
+  DEFAULT: { duration: 10, totalQuestions: 30, examName: "Medical Exam" },
 }
-
-// Mock data generator for fallback scenarios
-// Mock data generator for fallback scenarios
-// const generateMockQuestions = (exam: string, count: number): SimulationQuestion[] => {
-//   const subjects = ["Anatomy", "Physiology", "Biochemistry", "Pharmacology", "Pathology", "Microbiology"];
-//   const mockQuestions: SimulationQuestion[] = [];
-
-//   for (let i = 0; i < count; i++) {
-//     const subject = subjects[Math.floor(Math.random() * subjects.length)];
-//     mockQuestions.push({
-//       _id: `mock-${exam}-${i}`,
-//       questionText: `[${exam}] Sample question ${i+1} about ${subject}. This tests understanding of core concepts.`,
-//       options: [
-//         `Option A: First potential answer for question ${i+1}`,
-//         `Option B: Second potential answer for question ${i+1}`,
-//         `Option C: Third potential answer for question ${i+1}`,
-//         `Option D: Fourth potential answer for question ${i+1}`
-//       ],
-//       correctAnswer: `Option ${["A", "B", "C", "D"][Math.floor(Math.random() * 4)]}: `,
-//       subject: subject,
-//       subsection: `${subject} Fundamentals`,
-//       difficulty: ["Easy", "Medium", "Hard"][Math.floor(Math.random() * 3)]
-//     });
-//   }
-
-//   return mockQuestions;
-// };
-
 const ExamSimulation: React.FC = () => {
   // State for simulation
   const [isSimulationActive, setIsSimulationActive] = useState(false)
@@ -113,14 +85,63 @@ const ExamSimulation: React.FC = () => {
   const fetchSimulationHistory = async () => {
     try {
       const user_id = localStorage.getItem("Medical_User_Id")
-      const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/simulation/getSimulationHistory?userId=${user_id}`)
+      const { data } = await axios.get(
+        `https://medical-backend-loj4.onrender.com/api/simulation/getSimulationHistory?userId=${user_id}`,
+      )
       // console.log(data)
       setSimulationHistory(data.data)
     } catch (error) {
-      console.error(error);
+      console.error(error)
       toast.error("Failed to fetch history")
     }
   }
+
+  // Check for simulation requests from Today Dashboard
+  useEffect(() => {
+    const checkForSimulationRequest = () => {
+      if (typeof window !== "undefined") {
+        const startSimulationFlag = localStorage.getItem("startSimulation")
+
+        if (startSimulationFlag === "true") {
+          // Clear the flag immediately to prevent multiple starts
+          localStorage.removeItem("startSimulation")
+
+          // Get the simulation details
+          const simulationType = localStorage.getItem("simulationType")
+          const simulationSubject = localStorage.getItem("simulationSubject")
+          const simulationTitle = localStorage.getItem("simulationTitle")
+          const storedExam = localStorage.getItem("selectedExam")
+
+          // Log the details for debugging (can be removed later)
+          console.log("Starting simulation:", { simulationType, simulationSubject, simulationTitle, storedExam })
+
+          // Update the selected exam if it's available
+          if (storedExam && storedExam !== selectedExam) {
+            setSelectedExam(storedExam)
+            setExamConfig(examConfigs[storedExam] || examConfigs["DEFAULT"])
+          }
+
+          // Only start if we're not already in a simulation
+          if (!isSimulationActive && !isSimulationComplete) {
+            // Small delay to ensure the component is fully rendered and exam is set
+            setTimeout(() => {
+              startSimulation()
+            }, 800) // Increased delay to ensure state updates
+          }
+        }
+      }
+    }
+
+    // Check when component mounts
+    checkForSimulationRequest()
+
+    // Set up interval to check periodically
+    const intervalId = setInterval(checkForSimulationRequest, 2000)
+
+    return () => {
+      clearInterval(intervalId)
+    }
+  }, [isSimulationActive, isSimulationComplete, selectedExam])
 
   // Load user data from localStorage
   useEffect(() => {
@@ -137,7 +158,7 @@ const ExamSimulation: React.FC = () => {
     }
 
     // Optionally fetch simulation history if you implement that feature
-    fetchSimulationHistory();
+    fetchSimulationHistory()
 
     return () => {
       // Cleanup timer on component unmount
@@ -223,11 +244,6 @@ const ExamSimulation: React.FC = () => {
       console.error("Error starting simulation:", error)
       toast.error("Failed to start simulation. Please try again.")
 
-      //   // Fallback to mock data
-      //   const mockQuestions = generateMockQuestions(selectedExam,
-      //     examConfigs[selectedExam]?.totalQuestions || 30);
-
-      //   setSimulationQuestions(mockQuestions);
       setCurrentQuestionIndex(0)
       //   setUserAnswers(mockQuestions.map(q => ({ questionId: q._id, selectedAnswer: null })));
       setIsSimulationActive(true)
@@ -357,7 +373,7 @@ const ExamSimulation: React.FC = () => {
     try {
       axios.post("https://medical-backend-loj4.onrender.com/api/simulation/saveSimulationHistory", saveToDb)
     } catch (error) {
-      console.error(error);
+      console.error(error)
     }
 
     toast.success("Simulation completed!")
@@ -419,7 +435,7 @@ const ExamSimulation: React.FC = () => {
   if (!isSimulationActive) {
     // Start screen
     return (
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6" id="exam-simulation">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">Exam Simulation</h2>
           <button onClick={() => setShowHistory(!showHistory)} className="text-blue-600 hover:underline">
@@ -509,7 +525,7 @@ const ExamSimulation: React.FC = () => {
   if (isSimulationComplete) {
     // Results screen
     return (
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6" id="exam-simulation">
         <h2 className="text-xl font-semibold mb-6">Simulation Results</h2>
 
         {simulationResults && (
@@ -558,12 +574,13 @@ const ExamSimulation: React.FC = () => {
                   return (
                     <div
                       key={question._id}
-                      className={`p-4 rounded-lg border ${userAnswer?.selectedAnswer
-                        ? isCorrect
-                          ? "border-green-300 bg-green-50"
-                          : "border-red-300 bg-red-50"
-                        : "border-gray-300"
-                        }`}
+                      className={`p-4 rounded-lg border ${
+                        userAnswer?.selectedAnswer
+                          ? isCorrect
+                            ? "border-green-300 bg-green-50"
+                            : "border-red-300 bg-red-50"
+                          : "border-gray-300"
+                      }`}
                     >
                       <div className="flex justify-between">
                         <span className="font-medium">Question {index + 1}</span>
@@ -607,7 +624,7 @@ const ExamSimulation: React.FC = () => {
 
   // Active simulation screen
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+    <div className="bg-white rounded-lg shadow-md p-6 mb-6" id="exam-simulation">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">{selectedExam} Simulation</h2>
         <div className="flex items-center">
@@ -630,8 +647,11 @@ const ExamSimulation: React.FC = () => {
               </span>
               {/* Show only subject and difficulty, NOT the question ID */}
               <span>
-                {simulationQuestions[currentQuestionIndex].subject} •{" "}
-                {simulationQuestions[currentQuestionIndex].difficulty}
+                {typeof simulationQuestions[currentQuestionIndex].subject === "string" &&
+                !simulationQuestions[currentQuestionIndex].subject.includes("67")
+                  ? simulationQuestions[currentQuestionIndex].subject
+                  : "Subject"}{" "}
+                • {simulationQuestions[currentQuestionIndex].difficulty}
               </span>
             </div>
             <div className="h-2 w-full bg-gray-200 rounded-full">

@@ -17,13 +17,13 @@ export function Navbar({ toggleSidebar }: NavbarProps) {
             <span className="font-semibold text-xl">BioVerse</span>
           </div>
           <div className="flex items-center space-x-4">
-            <Link href="/notifications" className="text-gray-600 hover:text-gray-800">
+            <Link href="/dashboard/inquiries" className="text-gray-600 hover:text-gray-800">
               <Bell className="h-6 w-6" />
             </Link>
-            <Link href="/messages" className="text-gray-600 hover:text-gray-800">
+            <Link href="/dashboard/study-planner" className="text-gray-600 hover:text-gray-800">
               <MessageSquare className="h-6 w-6" />
             </Link>
-            <Link href="/profile" className="text-gray-600 hover:text-gray-800">
+            <Link href="/dashboard/payments" className="text-gray-600 hover:text-gray-800">
               <User className="h-6 w-6" />
             </Link>
           </div>
@@ -32,4 +32,3 @@ export function Navbar({ toggleSidebar }: NavbarProps) {
     </nav>
   )
 }
-

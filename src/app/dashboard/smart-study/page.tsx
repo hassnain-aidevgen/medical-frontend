@@ -8,6 +8,11 @@ import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import ExamInterface from "./examInterface"
+import PlannerSyncScheduler from "./planner-sync-scheduler"
+import TestReviewScheduler from "./test-review-scheduler"
+import PerformanceVisualizer from "./performance-visualizer"
+import PriorityIndicator from "./priority-indicator"
+import TodayDashboard from "./today-dashboard"
 
 // Define the interface for your calendar tests
 interface CalendarTest {
@@ -21,13 +26,13 @@ interface CalendarTest {
 
 // Define the interface that matches ExamInterface's expected Test type
 interface ExamTest {
-  id: string;
-  name: string;
-  score: number;
-  date: string;
-  subjectName: string;
-  testTopic: string;
-  color: string;
+  id: string
+  name: string
+  score: number
+  date: string
+  subjectName: string
+  testTopic: string
+  color: string
 }
 
 const SmartStudyCalendar = () => {
@@ -79,7 +84,7 @@ const SmartStudyCalendar = () => {
 
   // Convert your calendar tests to ExamInterface's expected format
   const getExamTests = (): ExamTest[] => {
-    return tests.map(test => ({
+    return tests.map((test) => ({
       id: test._id || `temp-${Date.now()}`,
       name: test.subjectName,
       subjectName: test.subjectName,
@@ -211,8 +216,9 @@ const SmartStudyCalendar = () => {
       days.push(
         <div
           key={day}
-          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${isSelected ? "bg-blue-500 text-white" : ""
-            }`}
+          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${
+            isSelected ? "bg-blue-500 text-white" : ""
+          }`}
           onClick={() => setSelectedDate(date)}
         >
           {day}
@@ -224,11 +230,11 @@ const SmartStudyCalendar = () => {
                   className="w-2 h-2 rounded-full"
                   style={{ backgroundColor: test.color }}
                   title={`${test.subjectName}: ${test.testTopic}`}
-                ></div>
+                />
               ))}
             </div>
           )}
-        </div>,
+        </div>
       )
     }
     return days
@@ -241,8 +247,55 @@ const SmartStudyCalendar = () => {
       <Toaster position="top-right" />
       <h1 className="text-3xl font-bold mb-6">Smart Study Calendar</h1>
 
+      {/* Today Dashboard - Daily Snapshot */}
+      <TodayDashboard 
+        tests={tests}
+        onTestComplete={handleToggleCompletion}
+        onRefresh={() => {
+          if (userId) {
+            axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`)
+              .then(response => {
+                if (Array.isArray(response.data)) {
+                  setTests(response.data)
+                }
+              })
+              .catch(error => console.error(error))
+          }
+        }}
+      />
+
       {/* Weekly Streak Component */}
       <WeeklyStreak />
+
+      {/* AI Planner Sync & Review Scheduler */}
+      <PlannerSyncScheduler
+        userId={userId}
+        onTestsAdded={(newTests) => {
+          // Convert the new tests to CalendarTest format
+          const calendarTests = newTests.map((test) => ({
+            _id: test._id,
+            subjectName: test.subjectName,
+            testTopic: test.testTopic,
+            date: test.date.toISOString(),
+            color: test.color,
+            completed: test.completed,
+          }))
+          setTests([...tests, ...calendarTests])
+        }}
+      />
+
+      {/* Performance Visualizer */}
+      <PerformanceVisualizer
+        tests={tests.map((test) => ({
+          _id: test._id || "",
+          subjectName: test.subjectName,
+          testTopic: test.testTopic,
+          date: test.date,
+          color: test.color,
+          completed: test.completed || false,
+          userId: userId,
+        }))}
+      />
 
       {/* New Test Form */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -309,27 +362,54 @@ const SmartStudyCalendar = () => {
             {selectedDateTests.length > 0 ? (
               <ul className="space-y-2">
                 {selectedDateTests.map((test) => (
-                  <li key={test._id} className="flex justify-between items-center">
+                  <li key={test._id} className="flex flex-col space-y-2 border-b pb-2 mb-2">
                     <div className="flex items-center">
                       <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: test.color }}></div>
-                      <div>
+                      <div className="flex items-center">
                         <strong>{test.subjectName}</strong>: {test.testTopic}
+                        <PriorityIndicator subjectName={test.subjectName} />
                       </div>
                     </div>
-                    <button
-                      onClick={() => test._id && handleDeleteTest(test._id)}
-                      className="text-red-500 hover:text-red-700"
-                      disabled={isLoading}
-                    >
-                      <Trash2 size={20} />
-                    </button>
-                    <button
-                      onClick={() => test._id && handleToggleCompletion(test._id, !test.completed)}
-                      className={`${test.completed ? "bg-gray-500" : "bg-green-500"} text-white py-1 px-3 rounded hover:opacity-90 transition-colors`}
-                      disabled={isLoading}
-                    >
-                      {test.completed ? "Mark Incomplete" : "Complete"}
-                    </button>
+                    <div className="flex items-center gap-2 ml-6">
+                      <TestReviewScheduler 
+                        userId={userId} 
+                        test={{
+                          _id: test._id || "",
+                          subjectName: test.subjectName,
+                          testTopic: test.testTopic,
+                          date: new Date(test.date),
+                          color: test.color,
+                          completed: test.completed || false,
+                          userId: userId
+                        }}
+                        onReviewsAdded={(newTests) => {
+                          // Convert the new tests to CalendarTest format
+                          const calendarTests = newTests.map(test => ({
+                            _id: test._id,
+                            subjectName: test.subjectName,
+                            testTopic: test.testTopic,
+                            date: test.date.toISOString(),
+                            color: test.color,
+                            completed: test.completed
+                          }));
+                          setTests([...tests, ...calendarTests]);
+                        }}
+                      />
+                      <button
+                        onClick={() => test._id && handleDeleteTest(test._id)}
+                        className="text-red-500 hover:text-red-700"
+                        disabled={isLoading}
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                      <button
+                        onClick={() => test._id && handleToggleCompletion(test._id, !test.completed)}
+                        className={`${test.completed ? "bg-gray-500" : "bg-green-500"} text-white py-1 px-3 rounded hover:opacity-90 transition-colors`}
+                        disabled={isLoading}
+                      >
+                        {test.completed ? "Mark Incomplete" : "Complete"}
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -405,27 +485,54 @@ const SmartStudyCalendar = () => {
             {selectedDateTests.length > 0 ? (
               <ul className="space-y-2">
                 {selectedDateTests.map((test) => (
-                  <li key={test._id} className="flex justify-between items-center">
+                  <li key={test._id} className="flex flex-col space-y-2 border-b pb-2 mb-2">
                     <div className="flex items-center">
                       <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: test.color }}></div>
-                      <div>
+                      <div className="flex items-center">
                         <strong>{test.subjectName}</strong>: {test.testTopic}
+                        <PriorityIndicator subjectName={test.subjectName} />
                       </div>
                     </div>
-                    <button
-                      onClick={() => test._id && handleDeleteTest(test._id)}
-                      className="text-red-500 hover:text-red-700"
-                      disabled={isLoading}
-                    >
-                      <Trash2 size={20} />
-                    </button>
-                    <button
-                      onClick={() => test._id && handleToggleCompletion(test._id, !test.completed)}
-                      className={`${test.completed ? "bg-gray-500" : "bg-green-500"} text-white py-1 px-3 rounded hover:opacity-90 transition-colors`}
-                      disabled={isLoading}
-                    >
-                      {test.completed ? "Mark Incomplete" : "Complete"}
-                    </button>
+                    <div className="flex items-center gap-2 ml-6">
+                      <TestReviewScheduler 
+                        userId={userId} 
+                        test={{
+                          _id: test._id || "",
+                          subjectName: test.subjectName,
+                          testTopic: test.testTopic,
+                          date: new Date(test.date),
+                          color: test.color,
+                          completed: test.completed || false,
+                          userId: userId
+                        }}
+                        onReviewsAdded={(newTests) => {
+                          // Convert the new tests to CalendarTest format
+                          const calendarTests = newTests.map(test => ({
+                            _id: test._id,
+                            subjectName: test.subjectName,
+                            testTopic: test.testTopic,
+                            date: test.date.toISOString(),
+                            color: test.color,
+                            completed: test.completed
+                          }));
+                          setTests([...tests, ...calendarTests]);
+                        }}
+                      />
+                      <button
+                        onClick={() => test._id && handleDeleteTest(test._id)}
+                        className="text-red-500 hover:text-red-700"
+                        disabled={isLoading}
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                      <button
+                        onClick={() => test._id && handleToggleCompletion(test._id, !test.completed)}
+                        className={`${test.completed ? "bg-gray-500" : "bg-green-500"} text-white py-1 px-3 rounded hover:opacity-90 transition-colors`}
+                        disabled={isLoading}
+                      >
+                        {test.completed ? "Mark Incomplete" : "Complete"}
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -470,7 +577,7 @@ const SmartStudyCalendar = () => {
         </div>
       </div>
 
-      <div>
+      <div id="exam-simulation">
         <ExamInterface tests={getExamTests()} />
       </div>
     </div>
@@ -478,3 +585,4 @@ const SmartStudyCalendar = () => {
 }
 
 export default SmartStudyCalendar
+

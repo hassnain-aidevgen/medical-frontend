@@ -7,7 +7,11 @@ import { useRouter } from "next/navigation"
 import type React from "react"
 import { useCallback, useEffect, useState } from "react"
 import { toast, Toaster } from "react-hot-toast"
-
+import AITestSuggestions from "@/components/AITestSuggestions"
+import UserTestHistory from "@/components/UserTestHistory"
+import ExamSimulation from "@/components/exam-simulation"
+import TargetExamSelector from "@/components/TargetExamSelector"
+import SyllabusCoverageIndicator from "@/components/syllabus-coverage-indicator"
 interface Subject {
   _id: string
   name: string
@@ -37,13 +41,6 @@ interface Question {
   question_type: "case_based" | "single_best_answer" | "extended_matching"
   year: number
 }
-
-// Add new constants for "All" options
-// Add these right after the Question interface
-// const ALL_EXAM_TYPE = "ALL_USMLE_TYPES"
-// const ALL_DIFFICULTY = "ALL_DIFFICULTY_LEVELS"
-// const ALL_QUESTION_TYPE = "ALL_QUESTION_TYPES"
-// const ALL_YEARS = "ALL_YEARS"
 
 interface Recommendation {
   questionText: string
@@ -114,6 +111,9 @@ export default function CreateTest() {
   const [isLoading, setIsLoading] = useState(true)
   const [isFilterLoading, setIsFilterLoading] = useState(false)
   const [maxQuestions, setMaxQuestions] = useState(0)
+  const [selectedExam, setSelectedExam] = useState<string>("")
+  const [examDate, setExamDate] = useState<string>("")
+
   // const [questions, setQuestions] = useState<Question[]>([])
   // Update the state declarations to include the new "All" options
   // Replace the existing state declarations for examType, difficulty, and questionType with:
@@ -154,6 +154,7 @@ export default function CreateTest() {
 
   // Use environment variable or fallback to a relative path for API
   const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test/create-test"
+  const API_BASE_URL_LOCAL = "http://localhost:5000/api/test/create-test"
 
   // Replace the fetchRecommendations function with this enhanced version
   const fetchRecommendations = useCallback(async () => {
@@ -179,18 +180,42 @@ export default function CreateTest() {
     }
   }, [])
 
+  // New fetchData using local API
   const fetchData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const { data } = await axios.get(`${API_BASE_URL}/subjects`)
-      setSubjects(data)
+      console.log("⭐ Attempting to fetch from:", `${API_BASE_URL_LOCAL}/subjects2`)
+      const { data } = await axios.get(`${API_BASE_URL_LOCAL}/subjects2`)
+      console.log("✅ Data received:", data)
+
+      if (data && Array.isArray(data)) {
+        // Log the first subject and first subsection to verify counts
+        if (data.length > 0) {
+          console.log("First subject:", data[0].name, "count:", data[0].count)
+          if (data[0].subsections && data[0].subsections.length > 0) {
+            console.log("First subsection:", data[0].subsections[0].name, "count:", data[0].subsections[0].count)
+          }
+        }
+        setSubjects(data)
+      } else {
+        console.error("Invalid data format received:", data)
+        setError("Invalid data format received from API")
+      }
     } catch (error) {
       console.error("Error fetching subjects:", error)
-      setError("Failed to load subjects. Please try again.")
+      // If local server fails, try production API
+      try {
+        console.log("⚠️ Local API failed, trying production API:", `${API_BASE_URL}/subjects`)
+        const { data } = await axios.get(`${API_BASE_URL}/subjects`)
+        setSubjects(data)
+      } catch (prodError) {
+        console.error("Production API also failed:", prodError)
+        setError("Failed to load subjects. Please try again.")
+      }
     } finally {
       setIsLoading(false)
     }
-  }, [API_BASE_URL])
+  }, [API_BASE_URL, API_BASE_URL_LOCAL])
 
   // Update the fetchFilteredQuestions callback to handle the "All" options
   // Replace the existing fetchFilteredQuestions function with this updated version:
@@ -547,6 +572,31 @@ export default function CreateTest() {
       <Toaster position="top-right" />
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-8 text-center text-gray-800">Create Your Test</h1>
+        <div className="mb-8">
+          <UserTestHistory limit={3} />
+        </div>
+        <div className="mb-8">
+          <AITestSuggestions
+            // API_BASE_URL={API_BASE_URL}
+            mode={mode}
+          />
+        </div>
+        <TargetExamSelector
+          selectedExam={selectedExam}
+          onExamChange={(exam) => {
+            setSelectedExam(exam)
+            localStorage.setItem("selectedExam", exam) // optional
+          }}
+          examDate={examDate}
+          onDateChange={(date) => {
+            setExamDate(date)
+            localStorage.setItem("examDate", date) // optional
+          }}
+        />
+        {/* Add ExamSimulation component at the top for quick tests */}
+        <div className="mb-8">
+          <ExamSimulation />
+        </div>
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <form onSubmit={handleSubmit} className="p-6 space-y-8">
             <div>
@@ -557,16 +607,18 @@ export default function CreateTest() {
               <div className="flex space-x-4">
                 <button
                   type="button"
-                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${mode === "tutor" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                    mode === "tutor" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
                   onClick={() => setMode("tutor")}
                 >
                   Tutor Mode
                 </button>
                 <button
                   type="button"
-                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${mode === "timer" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                    mode === "timer" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
                   onClick={() => setMode("timer")}
                 >
                   Timer Mode
@@ -590,12 +642,20 @@ export default function CreateTest() {
                       type="button"
                       onClick={handleCreateRecommendedTest}
                       disabled={isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 shadow ${isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest
-                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                        : "bg-amber-500 text-white hover:bg-amber-600"
-                        }`}
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 shadow ${
+                        isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest
+                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          : "bg-amber-500 text-white hover:bg-amber-600"
+                      }`}
                     >
-                      {isCreatingRecommendedTest ? "Creating..." : "Create Test from All Recommendations"}
+                      {isCreatingRecommendedTest ? (
+                        "Creating..."
+                      ) : (
+                        <>
+                          <span className="hidden sm:inline">Create Test from All Recommendations</span>
+                          <span className="sm:hidden">Create from All</span>
+                        </>
+                      )}
                     </button>
                   </div>
 
@@ -620,10 +680,11 @@ export default function CreateTest() {
                             <button
                               type="button"
                               onClick={() => addRecommendedQuestion(recommendation)}
-                              className={`ml-2 px-3 py-1 text-xs font-medium rounded-full transition-colors ${selectedRecommendations.includes(recommendation.questionText)
-                                ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                : "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                                }`}
+                              className={`ml-2 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                                selectedRecommendations.includes(recommendation.questionText)
+                                  ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                  : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                              }`}
                             >
                               {selectedRecommendations.includes(recommendation.questionText)
                                 ? "Added ✓"
@@ -786,6 +847,16 @@ export default function CreateTest() {
               </div>
             </div>
 
+            {/* Add Syllabus Coverage Indicator */}
+            <div>
+              <SyllabusCoverageIndicator
+                subjects={subjects}
+                selectedSubjects={selectedSubjects}
+                selectedSubsections={selectedSubsections}
+                examType={examType}
+              />
+            </div>
+
             {/* Total Questions section */}
             <div className="relative">
               <input
@@ -830,12 +901,13 @@ export default function CreateTest() {
                   }))
                 }}
                 disabled={isFilterLoading || maxQuestions === 0}
-                className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:outline-none transition-colors duration-200 ${maxQuestions === 0
-                  ? "bg-gray-100 text-gray-400 border-gray-200"
-                  : validation.questionCount.isValid
-                    ? "border-green-400 focus:border-green-500 focus:ring-green-200"
-                    : "border-red-400 focus:border-red-500 focus:ring-red-200"
-                  }`}
+                className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:outline-none transition-colors duration-200 ${
+                  maxQuestions === 0
+                    ? "bg-gray-100 text-gray-400 border-gray-200"
+                    : validation.questionCount.isValid
+                      ? "border-green-400 focus:border-green-500 focus:ring-green-200"
+                      : "border-red-400 focus:border-red-500 focus:ring-red-200"
+                }`}
                 placeholder="Enter number of questions"
                 aria-label="Total number of questions"
                 aria-describedby="questions-hint"
@@ -851,7 +923,59 @@ export default function CreateTest() {
                     ? `Maximum questions available: ${maxQuestions}`
                     : "No questions available with current selection"}
                 </p>
-                {error && <p className="text-sm text-red-500">{error}</p>}
+                {error && error.includes("No questions available") && (
+                  <div className="mt-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <h3 className="text-sm font-semibold text-amber-800 mb-2">
+                      No questions found with your current filters
+                    </h3>
+                    <p className="text-sm text-amber-700 mb-3">Try these adjustments to find more questions:</p>
+                    <ul className="list-disc pl-5 text-sm text-amber-700 space-y-1">
+                      <li>
+                        Expand your year range to <strong>All Years</strong> instead of a specific year
+                      </li>
+                      <li>
+                        Select <strong>All Difficulty Levels</strong> instead of just one
+                      </li>
+                      <li>
+                        Include <strong>All Question Types</strong> for more variety
+                      </li>
+                      <li>Select additional subjects or subsections to broaden your search</li>
+                      {selectedSubjects.length === 1 && selectedSubsections.length <= 2 && (
+                        <li>You&apos;ve selected very few topics - try adding more subjects and subsections</li>
+                      )}
+                    </ul>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {year !== "ALL_YEARS" && (
+                        <button
+                          type="button"
+                          onClick={() => setYear("ALL_YEARS")}
+                          className="text-xs px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-full transition-colors"
+                        >
+                          Use All Years
+                        </button>
+                      )}
+                      {difficulty !== "ALL_DIFFICULTY_LEVELS" && (
+                        <button
+                          type="button"
+                          onClick={() => setDifficulty("ALL_DIFFICULTY_LEVELS")}
+                          className="text-xs px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-full transition-colors"
+                        >
+                          Use All Difficulty Levels
+                        </button>
+                      )}
+                      {questionType !== "ALL_QUESTION_TYPES" && (
+                        <button
+                          type="button"
+                          onClick={() => setQuestionType("ALL_QUESTION_TYPES")}
+                          className="text-xs px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-full transition-colors"
+                        >
+                          Use All Question Types
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {error && !error.includes("No questions available") && <p className="text-sm text-red-500">{error}</p>}
                 {isFilterLoading && <p className="text-sm text-blue-500">Updating available questions...</p>}
               </div>
             </div>
@@ -862,10 +986,11 @@ export default function CreateTest() {
               disabled={
                 isLoading || isFilterLoading || (!validation.overall.isValid && recommendedQuestionsToAdd.length === 0)
               }
-              className={`w-full py-3 px-6 rounded-lg text-lg font-semibold transition-colors duration-200 shadow-md ${isLoading || isFilterLoading || (!validation.overall.isValid && recommendedQuestionsToAdd.length === 0)
-                ? "bg-gray-400 text-gray-200 cursor-not-allowed"
-                : "bg-primary text-white hover:bg-primary-dark"
-                }`}
+              className={`w-full py-3 px-6 rounded-lg text-lg font-semibold transition-colors duration-200 shadow-md ${
+                isLoading || isFilterLoading || (!validation.overall.isValid && recommendedQuestionsToAdd.length === 0)
+                  ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                  : "bg-primary text-white hover:bg-primary-dark"
+              }`}
             >
               {isLoading || isFilterLoading ? "Loading..." : "Generate Test"}
             </button>

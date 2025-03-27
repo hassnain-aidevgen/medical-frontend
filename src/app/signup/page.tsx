@@ -46,7 +46,7 @@ const SignupPage = () => {
       if (response.status === 201) {
         setMessage({
           type: "success",
-          text: "Signup Successful! A verification email has been sent to your email address. Please check your inbox and follow the instructions to verify your account.",
+          text: "Signup Successful! A verification email has been sent to your email address. Please check your inbox and spam folder, and mark it as 'Not Spam' if needed. Follow the instructions to verify your account.",
         })
         // Removed the automatic redirection to login page
       } else {

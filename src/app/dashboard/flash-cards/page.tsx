@@ -16,7 +16,9 @@ import {
   Tag,
   Trash2,
   X,
-  XCircle
+  XCircle,
+  Calendar,
+  Clock,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
@@ -33,6 +35,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import apiService, { type Flashcard } from "@/services/api-service"
 import FlashcardForm from "./flashcard-form"
+import AutoFlashcardGenerator from "@/components/auto-flashcard-generator"
+
+// Import our new components
+import FlashcardReviewStatus from "@/components/flashcard-review-status"
+import ReviewControls from "@/components/review-controls"
+import spacedRepetitionService from "@/services/spaced-repetition-service"
+import ChallengeMode from "@/components/challenge-mode"
+import ThemeStatistics from "@/components/theme-statistics"
 
 export default function FlashcardsPage() {
   // State for flashcards and filtering
@@ -47,6 +57,7 @@ export default function FlashcardsPage() {
   const [difficultyFilter, setDifficultyFilter] = useState<string>("")
   const [tagFilter, setTagFilter] = useState<string>("")
   const [searchQuery, setSearchQuery] = useState("")
+  const [reviewFilter, setReviewFilter] = useState<"all" | "due" | "overdue" | "today">("all")
 
   // UI state
   const [activeTab, setActiveTab] = useState("browse")
@@ -56,9 +67,10 @@ export default function FlashcardsPage() {
   const [studyProgress, setStudyProgress] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isProcessingReview, setIsProcessingReview] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string>("")
-  const [debugMode, setDebugMode] = useState(false)
+  const [showAutoGenerator, setShowAutoGenerator] = useState(false)
 
   // Default flashcard template
   const defaultFlashcard: Partial<Flashcard> = {
@@ -71,6 +83,8 @@ export default function FlashcardsPage() {
     mastery: 0,
     reviewCount: 0,
     userId: "",
+    reviewStage: 0,
+    reviewPriority: null,
   }
 
   // Initialize user ID from localStorage
@@ -107,6 +121,35 @@ export default function FlashcardsPage() {
     return Array.from(tagSet)
   }, [flashcards])
 
+  // Calculate due and overdue cards
+  const { dueCount, overdueCount, todayCount } = useMemo(() => {
+    const now = new Date()
+    let due = 0
+    let overdue = 0
+    let today = 0
+
+    flashcards.forEach((card) => {
+      if (card.nextReviewDate) {
+        const reviewDate = new Date(card.nextReviewDate)
+
+        // Check if due today
+        if (reviewDate.toDateString() === now.toDateString()) {
+          today++
+        }
+        // Check if overdue
+        else if (reviewDate < now) {
+          overdue++
+        }
+        // Check if due in the next 3 days
+        else if (reviewDate <= new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)) {
+          due++
+        }
+      }
+    })
+
+    return { dueCount: due, overdueCount: overdue, todayCount: today }
+  }, [flashcards])
+
   // Fetch flashcards based on selected filters
   const fetchFlashcards = useCallback(async () => {
     if (!userId) return
@@ -132,8 +175,9 @@ export default function FlashcardsPage() {
 
       const response = await apiService.getFlashcards(params)
       setFlashcards(response.data)
-      setFilteredCards(response.data)
-      setCurrentCard(0)
+
+      // Apply review filter
+      applyFilters(response.data, searchQuery, reviewFilter)
     } catch (error) {
       console.error("Error fetching flashcards:", error)
 
@@ -149,23 +193,16 @@ export default function FlashcardsPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [categoryFilter, difficultyFilter, tagFilter, userId])
+  }, [categoryFilter, difficultyFilter, tagFilter, userId, reviewFilter, searchQuery])
 
-  // Initial data load
-  useEffect(() => {
-    if (userId) {
-      fetchFlashcards()
-    }
-  }, [fetchFlashcards, userId])
+  // Apply filters to cards
+  const applyFilters = useCallback((cards: Flashcard[], query: string, reviewFilterValue: string) => {
+    let filtered = [...cards]
 
-  // Filter cards when search query changes
-  useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setFilteredCards(flashcards)
-    } else {
-      const lowercaseQuery = searchQuery.toLowerCase()
-
-      const filtered = flashcards.filter((card) => {
+    // Apply search query filter
+    if (query.trim() !== "") {
+      const lowercaseQuery = query.toLowerCase()
+      filtered = filtered.filter((card) => {
         const questionMatch = card.question && card.question.toLowerCase().includes(lowercaseQuery)
         const answerMatch = card.answer && card.answer.toLowerCase().includes(lowercaseQuery)
         const tagsMatch =
@@ -176,11 +213,71 @@ export default function FlashcardsPage() {
 
         return questionMatch || answerMatch || tagsMatch || categoryMatch
       })
-
-      setFilteredCards(filtered)
-      setCurrentCard(0)
     }
-  }, [searchQuery, flashcards])
+
+    // Apply review filter
+    const now = new Date()
+    if (reviewFilterValue === "due") {
+      filtered = filtered.filter((card) => {
+        if (!card.nextReviewDate) return false
+        const reviewDate = new Date(card.nextReviewDate)
+        return reviewDate > now && reviewDate <= new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
+      })
+    } else if (reviewFilterValue === "overdue") {
+      filtered = filtered.filter((card) => {
+        if (!card.nextReviewDate) return false
+        return new Date(card.nextReviewDate) < now
+      })
+    } else if (reviewFilterValue === "today") {
+      filtered = filtered.filter((card) => {
+        if (!card.nextReviewDate) return false
+        const reviewDate = new Date(card.nextReviewDate)
+        return reviewDate.toDateString() === now.toDateString()
+      })
+    }
+
+    // Sort by priority and review date
+    filtered.sort((a, b) => {
+      // First by review priority (higher first)
+      const priorityDiff = getPriorityValue(b.reviewPriority) - getPriorityValue(a.reviewPriority)
+      if (priorityDiff !== 0) return priorityDiff
+
+      // Then by review date (earlier first)
+      if (a.nextReviewDate && b.nextReviewDate) {
+        return new Date(a.nextReviewDate).getTime() - new Date(b.nextReviewDate).getTime()
+      }
+
+      // Cards without review date go last
+      if (a.nextReviewDate && !b.nextReviewDate) return -1
+      if (!a.nextReviewDate && b.nextReviewDate) return 1
+
+      return 0
+    })
+
+    setFilteredCards(filtered)
+    setCurrentCard(0)
+  }, [])
+
+  // Helper function to convert priority to numeric value for sorting
+  const getPriorityValue = (priority: "high" | "medium" | "low" | null | undefined): number => {
+    if (!priority) return 0
+    if (priority === "high") return 3
+    if (priority === "medium") return 2
+    if (priority === "low") return 1
+    return 0
+  }
+
+  // Initial data load
+  useEffect(() => {
+    if (userId) {
+      fetchFlashcards()
+    }
+  }, [fetchFlashcards, userId])
+
+  // Update filtered cards when search query or review filter changes
+  useEffect(() => {
+    applyFilters(flashcards, searchQuery, reviewFilter)
+  }, [searchQuery, reviewFilter, flashcards, applyFilters])
 
   // Calculate overall study progress
   useEffect(() => {
@@ -240,6 +337,10 @@ export default function FlashcardsPage() {
     setTagFilter(value === "all_tags" ? "" : value)
   }
 
+  const handleReviewFilterChange = (value: string) => {
+    setReviewFilter(value as "all" | "due" | "overdue" | "today")
+  }
+
   // Form submission handlers
   const handleNewCardSubmit = async (data: Partial<Flashcard>) => {
     setIsSubmitting(true)
@@ -248,6 +349,8 @@ export default function FlashcardsPage() {
       const response = await apiService.createFlashcard({
         ...data,
         userId,
+        reviewStage: 0,
+        reviewPriority: null,
       })
 
       setFlashcards((prevCards) => [...prevCards, response.data])
@@ -261,6 +364,19 @@ export default function FlashcardsPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // Handle auto-generated flashcards
+  const handleFlashcardsGenerated = (newFlashcards: Flashcard[]) => {
+    // Add the generated flashcards to the state
+    setFlashcards((prevCards) => [...prevCards, ...newFlashcards])
+    setFilteredCards((prevCards) => [...prevCards, ...newFlashcards])
+
+    // Show a success message
+    toast.success(`${newFlashcards.length} flashcards generated from your missed questions`)
+
+    // Hide the generator after successful generation
+    setShowAutoGenerator(false)
   }
 
   // Edit card handlers
@@ -321,22 +437,23 @@ export default function FlashcardsPage() {
     }
   }
 
-  // Study progress tracking
-  const markCardAsKnown = async () => {
+  // Spaced repetition functions
+  const markCardForLater = async (priority: "low" | "medium" | "high") => {
     if (filteredCards.length === 0) return
 
     const card = filteredCards[currentCard]
+    setIsProcessingReview(true)
 
     try {
-      // Calculate new mastery level (increase by 10-20% based on current level)
-      const masteryIncrease = card.mastery < 50 ? 20 : 10
-      const newMastery = Math.min(100, card.mastery + masteryIncrease)
+      // Calculate updated card fields using the spaced repetition service
+      const updatedFields = spacedRepetitionService.scheduleNextReview(card, {
+        priority,
+      })
 
       const updatedCard = {
         ...card,
-        mastery: newMastery,
+        ...updatedFields,
         reviewCount: card.reviewCount + 1,
-        lastReviewed: new Date(),
       }
 
       if (!card.id) {
@@ -347,7 +464,98 @@ export default function FlashcardsPage() {
 
       // Update the cards in state
       setFlashcards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+      setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
 
+      nextCard()
+      toast.success(`Card scheduled for ${priority} priority review`)
+    } catch (error) {
+      apiService.handleApiError(error, "Failed to schedule card for later review")
+      nextCard() // Still move to next card even if there was an error
+    } finally {
+      setIsProcessingReview(false)
+    }
+  }
+
+  const markCardAsMastered = async () => {
+    if (filteredCards.length === 0) return
+
+    const card = filteredCards[currentCard]
+    setIsProcessingReview(true)
+
+    try {
+      // Set card to mastered state
+      const updatedFields = spacedRepetitionService.scheduleNextReview(card, {
+        mastery: 100,
+        reviewStage: 5, // Mastered stage
+      })
+
+      const updatedCard = {
+        ...card,
+        ...updatedFields,
+        mastery: 100,
+        reviewCount: card.reviewCount + 1,
+      }
+
+      if (!card.id) {
+        throw new Error("Card ID is missing")
+      }
+
+      const response = await apiService.updateFlashcard(card.id, updatedCard)
+
+      // Update the cards in state
+      setFlashcards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+      setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+
+      // Update overall study progress
+      const totalMastery = filteredCards.reduce((sum, card, index) => {
+        return sum + (index === currentCard ? 100 : card.mastery)
+      }, 0)
+
+      const newProgress = totalMastery / filteredCards.length
+      setStudyProgress(newProgress)
+
+      nextCard()
+      toast.success("Card marked as mastered! 🎉")
+    } catch (error) {
+      apiService.handleApiError(error, "Failed to mark card as mastered")
+      nextCard() // Still move to next card even if there was an error
+    } finally {
+      setIsProcessingReview(false)
+    }
+  }
+
+  // Update the existing markCardAsKnown function
+  const markCardAsKnown = async () => {
+    if (filteredCards.length === 0) return
+
+    const card = filteredCards[currentCard]
+    setIsProcessingReview(true)
+
+    try {
+      // Calculate new mastery level (increase by 10-20% based on current level)
+      const masteryIncrease = card.mastery < 50 ? 20 : 10
+      const newMastery = Math.min(100, card.mastery + masteryIncrease)
+
+      // Use the spaced repetition service to calculate the next review date
+      const updatedFields = spacedRepetitionService.scheduleNextReview(card, {
+        mastery: newMastery,
+      })
+
+      const updatedCard = {
+        ...card,
+        ...updatedFields,
+        mastery: newMastery,
+        reviewCount: card.reviewCount + 1,
+      }
+
+      if (!card.id) {
+        throw new Error("Card ID is missing")
+      }
+
+      const response = await apiService.updateFlashcard(card.id, updatedCard)
+
+      // Update the cards in state
+      setFlashcards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
       setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
 
       // Update overall study progress
@@ -363,24 +571,34 @@ export default function FlashcardsPage() {
     } catch (error) {
       apiService.handleApiError(error, "Failed to update card progress")
       nextCard() // Still move to next card even if there was an error
+    } finally {
+      setIsProcessingReview(false)
     }
   }
 
+  // Update the existing markCardAsUnknown function
   const markCardAsUnknown = async () => {
     if (filteredCards.length === 0) return
 
     const card = filteredCards[currentCard]
+    setIsProcessingReview(true)
 
     try {
       // Decrease mastery level (by 5-10% based on current level)
       const masteryDecrease = card.mastery > 50 ? 10 : 5
       const newMastery = Math.max(0, card.mastery - masteryDecrease)
 
+      // Use the spaced repetition service to calculate the next review date
+      const updatedFields = spacedRepetitionService.scheduleNextReview(card, {
+        mastery: newMastery,
+        priority: "medium", // Schedule for review soon
+      })
+
       const updatedCard = {
         ...card,
+        ...updatedFields,
         mastery: newMastery,
         reviewCount: card.reviewCount + 1,
-        lastReviewed: new Date(),
       }
 
       if (!card.id) {
@@ -391,7 +609,6 @@ export default function FlashcardsPage() {
 
       // Update the cards in state
       setFlashcards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
-
       setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
 
       // Update overall study progress
@@ -403,89 +620,122 @@ export default function FlashcardsPage() {
       setStudyProgress(newProgress)
 
       nextCard()
-      toast("Card marked for review", { icon: "📝" })
+      toast("Card marked as difficult", { icon: "📝" })
     } catch (error) {
       apiService.handleApiError(error, "Failed to update card progress")
       nextCard() // Still move to next card even if there was an error
+    } finally {
+      setIsProcessingReview(false)
     }
   }
 
+  // Add a new function to fetch due cards
+  const fetchDueCards = useCallback(async () => {
+    if (!userId) return
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      // Fetch all cards
+      const response = await apiService.getFlashcards({})
+
+      // Filter to get only due cards and sort by priority
+      const allCards = response.data
+      const dueCards = spacedRepetitionService.getDueCards(allCards)
+      const sortedDueCards = spacedRepetitionService.sortCardsByPriority(dueCards)
+
+      setFlashcards(allCards)
+      setFilteredCards(sortedDueCards)
+      setCurrentCard(0)
+
+      if (sortedDueCards.length === 0) {
+        toast.success("No cards due for review! 🎉")
+      } else {
+        toast.success(`${sortedDueCards.length} cards due for review`)
+      }
+    } catch (error) {
+      console.error("Error fetching due cards:", error)
+
+      if (error && typeof error === "object" && "message" in error) {
+        setError((error as Error).message || "Failed to load due cards")
+      } else {
+        setError("Failed to load due cards. Please try again later.")
+      }
+
+      setFlashcards([])
+      setFilteredCards([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [userId])
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      {/* Navigation Bar */}
-      {/* <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-4 py-3 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="icon" className="text-slate-600 dark:text-slate-300">
-              <Menu className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center space-x-2">
-              <BookOpen className="h-6 w-6 text-indigo-500" />
-              <h1 className="text-xl font-semibold text-slate-800 dark:text-white">MedCards</h1>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-slate-600 dark:text-slate-300"
-                    onClick={() => setDebugMode(!debugMode)}
-                  >
-                    <FileText className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Debug Mode</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="text-slate-600 dark:text-slate-300">
-                    <Bookmark className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Saved cards</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="text-slate-600 dark:text-slate-300">
-                    <Home className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Home</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <Avatar className="h-8 w-8">
-              <AvatarImage src="https://randomuser.me/api/portraits/men/42.jpg" alt="User" />
-              <AvatarFallback>MD</AvatarFallback>
-            </Avatar>
-          </div>
-        </div>
-      </nav> */}
-
       <main className="max-w-7xl mx-auto px-4 py-6">
-        <div>
+        <div className="flex justify-between items-center mb-6">
           <h1 className="text-4xl text-gray-700 font-bold">Flashcards</h1>
+          <div className="flex gap-3">
+            <ChallengeMode flashcards={flashcards} />
+            <Button
+              onClick={() => setShowAutoGenerator(!showAutoGenerator)}
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              <Lightbulb className="h-4 w-4 mr-2" />
+              {showAutoGenerator ? "Hide Generator" : "Auto-Generate Flashcards"}
+            </Button>
+          </div>
         </div>
+
+        {/* Auto Flashcard Generator */}
+        {showAutoGenerator && (
+          <div className="mb-8">
+            <AutoFlashcardGenerator userId={userId} onFlashcardsGenerated={handleFlashcardsGenerated} />
+          </div>
+        )}
+
+        {/* Review Status Summary */}
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="bg-amber-50 border-amber-200">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-amber-800">Due Today</h3>
+                <p className="text-2xl font-bold text-amber-600">{todayCount}</p>
+              </div>
+              <Clock className="h-8 w-8 text-amber-400" />
+            </CardContent>
+          </Card>
+
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-blue-800">Coming Up</h3>
+                <p className="text-2xl font-bold text-blue-600">{dueCount}</p>
+              </div>
+              <Calendar className="h-8 w-8 text-blue-400" />
+            </CardContent>
+          </Card>
+
+          <Card className="bg-red-50 border-red-200">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-red-800">Overdue</h3>
+                <p className="text-2xl font-bold text-red-600">{overdueCount}</p>
+              </div>
+              <XCircle className="h-8 w-8 text-red-400" />
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Tabs */}
         <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="mb-6">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-4">
             <TabsTrigger value="browse">Browse</TabsTrigger>
             <TabsTrigger value="study">Study</TabsTrigger>
+            <TabsTrigger value="due" onClick={fetchDueCards}>
+              Due Reviews
+            </TabsTrigger>
+            <TabsTrigger value="stats">Statistics</TabsTrigger>
           </TabsList>
 
           <TabsContent value="browse" className="mt-6">
@@ -581,6 +831,19 @@ export default function FlashcardsPage() {
                   </SelectContent>
                 </Select>
 
+                {/* New Review Status Filter */}
+                <Select value={reviewFilter} onValueChange={handleReviewFilterChange}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="All cards" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All cards</SelectItem>
+                    <SelectItem value="today">Due today ({todayCount})</SelectItem>
+                    <SelectItem value="due">Coming up ({dueCount})</SelectItem>
+                    <SelectItem value="overdue">Overdue ({overdueCount})</SelectItem>
+                  </SelectContent>
+                </Select>
+
                 <div className="flex gap-2 ml-auto">
                   <Button variant="outline" size="icon" onClick={shuffleCards}>
                     <Shuffle className="h-4 w-4" />
@@ -654,6 +917,15 @@ export default function FlashcardsPage() {
                                 {(filteredCards[currentCard]?.difficulty || "medium").charAt(0).toUpperCase() +
                                   (filteredCards[currentCard]?.difficulty || "medium").slice(1)}
                               </Badge>
+
+                              {/* Display review schedule badge */}
+                              {filteredCards[currentCard]?.nextReviewDate && (
+                                <FlashcardReviewStatus
+                                  nextReviewDate={filteredCards[currentCard].nextReviewDate}
+                                  lastReviewedDate={filteredCards[currentCard].lastReviewedDate ?? null}
+                                  reviewStage={filteredCards[currentCard].reviewStage || 0}
+                                />
+                              )}
                             </div>
                             <div className="flex flex-col items-end gap-2">
                               <span className="text-slate-600 dark:text-slate-400 font-medium">
@@ -683,9 +955,6 @@ export default function FlashcardsPage() {
                                         </p>
                                       </div>
                                       <div className="flex justify-end gap-2">
-                                        {/* <Button variant="outline" size="sm">
-                                          Cancel
-                                        </Button> */}
                                         <Button
                                           variant="destructive"
                                           size="sm"
@@ -753,32 +1022,43 @@ export default function FlashcardsPage() {
                                 </Badge>
                               ))}
                           </div>
-                          <div className="flex justify-between items-center w-full">
-                            <Button
-                              variant="ghost"
-                              onClick={prevCard}
-                              disabled={filteredCards.length <= 1}
-                              className="text-slate-600 dark:text-slate-400"
-                            >
-                              <ChevronLeft className="h-5 w-5 mr-1" />
-                              Previous
-                            </Button>
 
-                            <Button onClick={flipCard} className="bg-indigo-500 hover:bg-indigo-600 text-white px-6">
-                              <RotateCcw className="mr-2 h-5 w-5" />
-                              {showAnswer ? "Show Question" : "Reveal Answer"}
-                            </Button>
+                          {showAnswer ? (
+                            <ReviewControls
+                              onMarkKnown={markCardAsKnown}
+                              onMarkUnknown={markCardAsUnknown}
+                              onMarkForLater={markCardForLater}
+                              onMarkMastered={markCardAsMastered}
+                              isProcessing={isProcessingReview}
+                            />
+                          ) : (
+                            <div className="flex justify-between items-center w-full">
+                              <Button
+                                variant="ghost"
+                                onClick={prevCard}
+                                disabled={filteredCards.length <= 1}
+                                className="text-slate-600 dark:text-slate-400"
+                              >
+                                <ChevronLeft className="h-5 w-5 mr-1" />
+                                Previous
+                              </Button>
 
-                            <Button
-                              variant="ghost"
-                              onClick={nextCard}
-                              disabled={filteredCards.length <= 1}
-                              className="text-slate-600 dark:text-slate-400"
-                            >
-                              Next
-                              <ChevronRight className="h-5 w-5 ml-1" />
-                            </Button>
-                          </div>
+                              <Button onClick={flipCard} className="bg-indigo-500 hover:bg-indigo-600 text-white px-6">
+                                <RotateCcw className="mr-2 h-5 w-5" />
+                                Reveal Answer
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                onClick={nextCard}
+                                disabled={filteredCards.length <= 1}
+                                className="text-slate-600 dark:text-slate-400"
+                              >
+                                Next
+                                <ChevronRight className="h-5 w-5 ml-1" />
+                              </Button>
+                            </div>
+                          )}
                         </CardFooter>
                       </Card>
                     </motion.div>
@@ -861,6 +1141,15 @@ export default function FlashcardsPage() {
                               {filteredCards[currentCard]?.difficulty.charAt(0).toUpperCase() +
                                 filteredCards[currentCard]?.difficulty.slice(1)}
                             </Badge>
+
+                            {/* Display review schedule badge */}
+                            {filteredCards[currentCard]?.nextReviewDate && (
+                              <FlashcardReviewStatus
+                                nextReviewDate={filteredCards[currentCard].nextReviewDate}
+                                lastReviewedDate={filteredCards[currentCard].lastReviewedDate ?? null}
+                                reviewStage={filteredCards[currentCard].reviewStage || 0}
+                              />
+                            )}
                           </div>
                           <div className="flex flex-col items-end gap-1">
                             <span className="text-slate-600 dark:text-slate-400 font-medium">
@@ -928,20 +1217,13 @@ export default function FlashcardsPage() {
                           ))}
                         </div>
                         {showAnswer ? (
-                          <div className="grid grid-cols-2 gap-4 w-full">
-                            <Button
-                              variant="outline"
-                              onClick={markCardAsUnknown}
-                              className="border-red-200 text-red-500 hover:bg-red-50"
-                            >
-                              <XCircle className="h-5 w-5 mr-2" />
-                              Revisit Later
-                            </Button>
-                            <Button onClick={markCardAsKnown} className="bg-green-500 hover:bg-green-600 text-white">
-                              <CheckCircle2 className="h-5 w-5 mr-2" />
-                              Got It
-                            </Button>
-                          </div>
+                          <ReviewControls
+                            onMarkKnown={markCardAsKnown}
+                            onMarkUnknown={markCardAsUnknown}
+                            onMarkForLater={markCardForLater}
+                            onMarkMastered={markCardAsMastered}
+                            isProcessing={isProcessingReview}
+                          />
                         ) : (
                           <Button onClick={flipCard} className="bg-indigo-500 hover:bg-indigo-600 text-white w-full">
                             <RotateCcw className="mr-2 h-5 w-5" />
@@ -954,6 +1236,180 @@ export default function FlashcardsPage() {
                 </AnimatePresence>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="due" className="mt-6">
+            {/* Due Reviews Mode */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-slate-800 dark:text-white">Due Reviews</h2>
+                <Button variant="outline" onClick={fetchDueCards} className="text-indigo-500">
+                  <Clock className="h-4 w-4 mr-2" />
+                  Refresh
+                </Button>
+              </div>
+            </div>
+
+            {isLoading ? (
+              <div className="flex justify-center items-center h-[28rem]">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+              </div>
+            ) : error ? (
+              <Card className="h-[28rem] flex items-center justify-center">
+                <CardContent className="text-center">
+                  <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-slate-800 dark:text-white mb-2">Error Loading Cards</h3>
+                  <p className="text-slate-600 dark:text-slate-400 mb-4">{error}</p>
+                  <Button onClick={() => fetchDueCards()}>Try Again</Button>
+                </CardContent>
+              </Card>
+            ) : filteredCards.length === 0 ? (
+              <Card className="h-[28rem] flex items-center justify-center">
+                <CardContent className="text-center">
+                  <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-slate-800 dark:text-white mb-2">All Caught Up!</h3>
+                  <p className="text-slate-600 dark:text-slate-400 mb-4">
+                    You have no cards due for review. Great job staying on top of your studies!
+                  </p>
+                  <Button onClick={() => setActiveTab("browse")}>Browse All Cards</Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="relative">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentCard}
+                    initial={{ opacity: 0, y: 50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -50 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <Card
+                      className={`h-[28rem] p-8 flex flex-col justify-between rounded-xl shadow-md overflow-hidden
+                        ${flipping ? "scale-95 opacity-50" : ""}
+                        ${showAnswer ? "bg-indigo-50 dark:bg-indigo-950" : "bg-white dark:bg-slate-800"}`}
+                    >
+                      <CardHeader className="p-0">
+                        <div className="flex justify-between items-center mb-4">
+                          <div className="flex flex-col gap-2">
+                            <Badge
+                              variant="outline"
+                              className="text-indigo-500 border-indigo-200 bg-indigo-50 dark:bg-indigo-950"
+                            >
+                              {filteredCards[currentCard]?.category}
+                            </Badge>
+                            <Badge
+                              variant={
+                                filteredCards[currentCard]?.difficulty === "easy"
+                                  ? "default"
+                                  : filteredCards[currentCard]?.difficulty === "hard"
+                                    ? "destructive"
+                                    : "secondary"
+                              }
+                              className="w-fit"
+                            >
+                              {filteredCards[currentCard]?.difficulty.charAt(0).toUpperCase() +
+                                filteredCards[currentCard]?.difficulty.slice(1)}
+                            </Badge>
+
+                            {/* Display review schedule badge */}
+                            {filteredCards[currentCard]?.nextReviewDate && (
+                              <FlashcardReviewStatus
+                                nextReviewDate={filteredCards[currentCard].nextReviewDate}
+                                lastReviewedDate={filteredCards[currentCard].lastReviewedDate ?? null}
+                                reviewStage={filteredCards[currentCard].reviewStage || 0}
+                              />
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="text-slate-600 dark:text-slate-400 font-medium">
+                              Card {currentCard + 1}/{filteredCards.length}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-slate-500">
+                                Mastery: {filteredCards[currentCard]?.mastery}%
+                              </span>
+                              <div className="w-20 h-2 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-green-500"
+                                  style={{ width: `${filteredCards[currentCard]?.mastery}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="flex-grow flex items-center justify-center p-0">
+                        <AnimatePresence mode="wait">
+                          <motion.div
+                            key={showAnswer ? "answer" : "question"}
+                            initial={{ opacity: 0, rotateY: 180 }}
+                            animate={{ opacity: 1, rotateY: 0 }}
+                            exit={{ opacity: 0, rotateY: -180 }}
+                            transition={{ duration: 0.5 }}
+                            className="w-full h-full flex flex-col items-center justify-center"
+                          >
+                            {showAnswer ? (
+                              <div className="text-center">
+                                <Badge className="mb-4 bg-green-500">Answer</Badge>
+                                <p className="text-2xl font-bold text-slate-800 dark:text-white text-center">
+                                  {filteredCards[currentCard]?.answer}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="text-center">
+                                <Badge className="mb-4 bg-indigo-500">Question</Badge>
+                                <p className="text-2xl font-bold text-slate-800 dark:text-white mb-6 text-center">
+                                  {filteredCards[currentCard]?.question}
+                                </p>
+                                {filteredCards[currentCard]?.hint && (
+                                  <div className="bg-amber-50 dark:bg-amber-950 rounded-lg p-4 inline-block">
+                                    <Lightbulb className="text-amber-500 inline mr-2 h-5 w-5" />
+                                    <span className="text-slate-700 dark:text-slate-300 italic">
+                                      {filteredCards[currentCard]?.hint}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </motion.div>
+                        </AnimatePresence>
+                      </CardContent>
+
+                      <CardFooter className="p-0 flex flex-col gap-4">
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {filteredCards[currentCard]?.tags.map((tag) => (
+                            <Badge key={tag} variant="outline" className="flex items-center gap-1">
+                              <Tag className="h-3 w-3 mr-1" />
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                        {showAnswer ? (
+                          <ReviewControls
+                            onMarkKnown={markCardAsKnown}
+                            onMarkUnknown={markCardAsUnknown}
+                            onMarkForLater={markCardForLater}
+                            onMarkMastered={markCardAsMastered}
+                            isProcessing={isProcessingReview}
+                          />
+                        ) : (
+                          <Button onClick={flipCard} className="bg-indigo-500 hover:bg-indigo-600 text-white w-full">
+                            <RotateCcw className="mr-2 h-5 w-5" />
+                            Reveal Answer
+                          </Button>
+                        )}
+                      </CardFooter>
+                    </Card>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="stats" className="mt-6">
+            <ThemeStatistics flashcards={flashcards} />
           </TabsContent>
         </Tabs>
       </main>
@@ -978,28 +1434,7 @@ export default function FlashcardsPage() {
       </Dialog>
 
       <Toaster position="top-right" />
-      {debugMode && (
-        <div className="fixed bottom-4 right-4 p-4 bg-black/80 text-white rounded-lg max-w-md max-h-96 overflow-auto">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="font-bold">Debug Info</h3>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-white" onClick={() => setDebugMode(false)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="text-xs">
-            <p>User ID: {userId || "Not set"}</p>
-            <p>Cards: {flashcards.length}</p>
-            <p>Filtered: {filteredCards.length}</p>
-            <p>Current: {currentCard}</p>
-            <p>Category: {categoryFilter || "All"}</p>
-            <p>Error: {error || "None"}</p>
-            <details>
-              <summary>First Card Data</summary>
-              <pre>{JSON.stringify(flashcards[0] || {}, null, 2)}</pre>
-            </details>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
+
