@@ -1,53 +1,16 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { useDailyChallenge } from "@/contexts/daily-challenge-context"
 import { cn } from "@/lib/utils"
-import axios from "axios"
 import { motion } from "framer-motion"
 import { Calendar, Flame, Sparkles, Trophy } from "lucide-react"
-import { useSession } from "next-auth/react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import DailyChallengeModal from "./daily-challenge-modal"
 
 export default function DailyChallengeButton({ variant = "default" }: { variant?: "default" | "dashboard" }) {
     const [showModal, setShowModal] = useState(false)
-    const [hasNewChallenge, setHasNewChallenge] = useState(false)
-    const [streakCount, setStreakCount] = useState(0)
-    const { status } = useSession()
-
-    useEffect(() => {
-        const checkDailyChallenge = async () => {
-            try {
-                const userId = localStorage.getItem("Medical_User_Id")
-                const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/daily-challenge?userId=${userId}`)
-                const data = response.data
-
-                if (response.status === 200) {
-                    // If there's a challenge and it's not completed, show notification
-                    setHasNewChallenge(!data.completed)
-
-                    // Get streak from localStorage or API
-                    const streak = localStorage.getItem("dailyChallengeStreak")
-                        ? Number.parseInt(localStorage.getItem("dailyChallengeStreak") || "0")
-                        : 0
-                    setStreakCount(streak)
-                }
-            } catch (err) {
-                console.error("Error checking daily challenge:", err)
-            }
-        }
-
-        checkDailyChallenge()
-
-        // Check for new challenges when the component mounts
-        const lastCheck = localStorage.getItem("lastDailyChallengeCheck")
-        const now = new Date().toDateString()
-
-        if (lastCheck !== now) {
-            localStorage.setItem("lastDailyChallengeCheck", now)
-            setHasNewChallenge(true)
-        }
-    }, [status])
+    const { hasNewChallenge, streakCount } = useDailyChallenge()
 
     if (variant === "dashboard") {
         return (

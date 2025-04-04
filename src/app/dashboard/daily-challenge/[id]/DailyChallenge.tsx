@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { useDailyChallenge } from "@/contexts/daily-challenge-context"
 
 interface Question {
     _id: string
@@ -20,18 +21,18 @@ interface Question {
     options: string[]
     answer: string
     explanation: string
-    subject: string
-    subsection: string
-    system: string
-    topic: string
-    subtopics: string[]
-    exam_type: "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3"
-    year: number
-    difficulty: "easy" | "medium" | "hard"
-    specialty: string
+    subject?: string
+    subsection?: string
+    system?: string
+    topic?: string
+    subtopics?: string[]
+    exam_type?: string
+    year?: number
+    difficulty?: string
+    specialty?: string
     state_specific?: string
-    clinical_setting: string
-    question_type: "case_based" | "single_best_answer" | "extended_matching"
+    clinical_setting?: string
+    question_type?: string
 }
 
 interface DailyChallengeProps {
@@ -41,6 +42,7 @@ interface DailyChallengeProps {
 
 const DailyChallenge: React.FC<DailyChallengeProps> = ({ initialQuestions, challengeId }) => {
     const router = useRouter()
+    const { refetchChallenge, setCompletedManually } = useDailyChallenge()
 
     // State
     const [questions] = useState<Question[]>(initialQuestions)
@@ -49,8 +51,6 @@ const DailyChallenge: React.FC<DailyChallengeProps> = ({ initialQuestions, chall
     const [submittedQuestions, setSubmittedQuestions] = useState<Record<number, boolean>>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    // const [startTime] = useState<number>(Date.now())
-    // const [questionTimes, setQuestionTimes] = useState<Record<number, number>>({})
     const [aiExplanation, setAiExplanation] = useState<string | null>(null)
     const [isLoadingAiExplanation, setIsLoadingAiExplanation] = useState(false)
     const [aiExplanationError, setAiExplanationError] = useState<string | null>(null)
@@ -83,15 +83,6 @@ const DailyChallenge: React.FC<DailyChallengeProps> = ({ initialQuestions, chall
     // Submit answer for current question
     const handleSubmitAnswer = () => {
         if (!selectedAnswer) return
-
-        // Record time spent on question
-        // const currentTime = Date.now()
-        // const timeSpent = Math.round((currentTime - startTime) / 1000)
-
-        // setQuestionTimes((prev) => ({
-        //     ...prev,
-        //     [currentQuestionIndex]: timeSpent,
-        // }))
 
         // Mark question as submitted
         setSubmittedQuestions((prev) => ({
@@ -152,13 +143,22 @@ const DailyChallenge: React.FC<DailyChallengeProps> = ({ initialQuestions, chall
                 answers,
             })
 
-            const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/daily-challenge", {
+            const response = await axios.post("http://localhost:5000/api/test/daily-challenge", {
                 challengeId,
                 userId,
                 answers, // Send the complete answers array
             })
 
             if (response.status === 200) {
+                // Manually set the completed status to true before redirecting
+                // This ensures the results page knows the challenge is completed
+                setCompletedManually(true)
+
+                // Store the score in localStorage as a fallback
+                localStorage.setItem("lastChallengeScore", response.data.score.toString())
+                localStorage.setItem("lastChallengeTotal", response.data.total.toString())
+
+                // Navigate to results page
                 router.push("/dashboard/daily-challenge/results")
             } else {
                 setError("Failed to submit daily challenge")

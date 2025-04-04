@@ -4,60 +4,55 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import axios from "axios"
+import { useDailyChallenge } from "@/contexts/daily-challenge-context"
 import { AlertCircle, Calendar, Trophy } from "lucide-react"
-import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 export default function DailyChallengeResults() {
     const router = useRouter()
-    const { status } = useSession()
-    interface Results {
-        score: number;
-        questions: { id: number; question: string; answer: string; correct: boolean }[];
-        date: string;
-    }
+    const { challenge, completed, loading, error, results, fetchResults } = useDailyChallenge()
 
-    const [results, setResults] = useState<Results | null>(null)
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState("")
+    // Local state to prevent redirect loops
+    const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false)
+    const [fallbackResults, setFallbackResults] = useState<{
+        score: number
+        total: number
+        date: string
+    } | null>(null)
 
     useEffect(() => {
-        const fetchResults = async () => {
-            try {
-                setLoading(true)
-                const userId = localStorage.getItem("Medical_User_Id")
+        // If the challenge is completed but we don't have results yet, fetch them
+        if (challenge && completed && !results && !hasAttemptedFetch) {
+            fetchResults()
+            setHasAttemptedFetch(true)
+        } else if (!completed && !loading && !hasAttemptedFetch) {
+            // Check if we have fallback results in localStorage
+            const score = localStorage.getItem("lastChallengeScore")
+            const total = localStorage.getItem("lastChallengeTotal")
 
-                const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/daily-challenge?userId=${userId}`)
-                const data = response.data
-
-                if (response.status === 200) {
-                    if (!data.completed) {
-                        router.push("/daily-challenge")
-                        return
-                    }
-
-                    setResults(data.progress)
-                } else {
-                    setError(data.error || "Failed to fetch daily challenge results")
-                }
-            } catch (err) {
-                setError("An error occurred while fetching your results")
-                console.error(err)
-            } finally {
-                setLoading(false)
+            if (score && total) {
+                // Use fallback results from localStorage
+                setFallbackResults({
+                    score: Number.parseInt(score),
+                    total: Number.parseInt(total),
+                    date: new Date().toISOString(),
+                })
+            } else {
+                // If the challenge isn't completed and we have no fallback, redirect
+                console.log("/dashboard/daily-challenge")
+                // router.push("/dashboard/daily-challenge")
             }
+
+            setHasAttemptedFetch(true)
         }
+    }, [challenge, completed, results, fetchResults, router, loading, hasAttemptedFetch])
 
-        fetchResults()
-    }, [router, status])
-
-    if (status === "loading" || loading) {
+    if (loading && !hasAttemptedFetch) {
         return <div className="flex justify-center items-center h-screen">Loading results...</div>
     }
 
-    if (error) {
+    if (error && !fallbackResults) {
         return (
             <div className="container mx-auto px-4 py-8">
                 <Alert variant="destructive">
@@ -69,12 +64,30 @@ export default function DailyChallengeResults() {
         )
     }
 
-    if (!results) {
+    // Use either API results or fallback results
+    const displayResults =
+        results ||
+        (fallbackResults
+            ? {
+                score: fallbackResults.score,
+                questions: Array(fallbackResults.total).fill({
+                    id: "fallback",
+                    question: "Question",
+                    answer: "",
+                    correct: false,
+                }),
+                date: fallbackResults.date,
+            }
+            : null)
+
+    if (!displayResults) {
         return null
     }
 
-    const scorePercentage = (results.score / results.questions.length) * 100
-    const formattedDate = new Date(results.date).toLocaleDateString("en-US", {
+    const scorePercentage =
+        displayResults.questions.length > 0 ? (displayResults.score / displayResults.questions.length) * 100 : 0
+
+    const formattedDate = new Date(displayResults.date).toLocaleDateString("en-US", {
         weekday: "long",
         year: "numeric",
         month: "long",
@@ -98,8 +111,8 @@ export default function DailyChallengeResults() {
                         <div className="relative w-40 h-40">
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <div className="text-center">
-                                    <div className="text-4xl font-bold">{results.score}</div>
-                                    <div className="text-sm text-muted-foreground">out of {results.questions.length}</div>
+                                    <div className="text-4xl font-bold">{displayResults.score}</div>
+                                    <div className="text-sm text-muted-foreground">out of {displayResults.questions.length || 10}</div>
                                 </div>
                             </div>
                             <svg className="w-full h-full" viewBox="0 0 100 100">
@@ -138,11 +151,13 @@ export default function DailyChallengeResults() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="bg-primary/10 p-4 rounded-lg">
                                     <div className="text-sm text-muted-foreground">Correct Answers</div>
-                                    <div className="text-2xl font-bold">{results.score}</div>
+                                    <div className="text-2xl font-bold">{displayResults.score}</div>
                                 </div>
                                 <div className="bg-muted p-4 rounded-lg">
                                     <div className="text-sm text-muted-foreground">Incorrect Answers</div>
-                                    <div className="text-2xl font-bold">{results.questions.length - results.score}</div>
+                                    <div className="text-2xl font-bold">
+                                        {(displayResults.questions.length || 10) - displayResults.score}
+                                    </div>
                                 </div>
                             </div>
 

@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/sidebar";
 import { Inter } from "next/font/google";
 import "../globals.css";
 
+import { DailyChallengeProvider } from "@/contexts/daily-challenge-context";
 import type React from "react"; // Import React
 
 const inter = Inter({ subsets: ["latin"] });
@@ -71,7 +72,7 @@ export default function RootLayout({
           <div className="flex flex-col flex-1 overflow-hidden h-screen ">
             <Navbar toggleSidebar={toggleSidebar} />
             <main className="flex-1  bg-gray-50 p-6 overflow-auto">
-              {children}
+              <DailyChallengeProvider>{children}</DailyChallengeProvider>
             </main>
           </div>
         </div>
