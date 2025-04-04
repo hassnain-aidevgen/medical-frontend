@@ -1,7 +1,7 @@
 "use client"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
+// import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -18,11 +18,12 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet"
 import axios from "axios"
-import { Filter, Search, Star } from "lucide-react"
+import { Filter, Search } from 'lucide-react'
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
+import { MentorBadgeSet } from "./MentorBadgeSet"
 
 interface Mentor {
     _id: string
@@ -381,34 +382,14 @@ export default function MentorsPage() {
                                             </div>
                                         </CardHeader>
                                         <CardContent>
-                                            <div className="flex items-center mb-2">
-                                                <div className="flex">
-                                                    {[1, 2, 3, 4, 5].map((star) => (
-                                                        <Star
-                                                            key={star}
-                                                            className={`h-4 w-4 ${star <= mentor.rating ? "text-primary fill-primary" : "text-muted-foreground"}`}
-                                                        />
-                                                    ))}
-                                                </div>
-                                                <span className="text-sm ml-2">
-                                                    {mentor.rating.toFixed(1)} ({mentor.reviews.length} reviews)
-                                                </span>
-                                            </div>
+                                            {/* Replace the existing rating and expertise display with MentorBadgeSet */}
+                                            <MentorBadgeSet 
+                                                rating={mentor.rating} 
+                                                expertise={mentor.expertise} 
+                                                reviewCount={mentor.reviews.length} 
+                                            />
 
-                                            <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{mentor.bio}</p>
-
-                                            <div className="flex flex-wrap gap-1 mt-2">
-                                                {mentor.expertise.slice(0, 3).map((skill) => (
-                                                    <Badge key={skill} variant="secondary" className="text-xs">
-                                                        {skill}
-                                                    </Badge>
-                                                ))}
-                                                {mentor.expertise.length > 3 && (
-                                                    <Badge variant="outline" className="text-xs">
-                                                        +{mentor.expertise.length - 3} more
-                                                    </Badge>
-                                                )}
-                                            </div>
+                                            <p className="text-sm text-muted-foreground line-clamp-2 mb-3 mt-3">{mentor.bio}</p>
                                         </CardContent>
                                         <CardFooter>
                                             <Link href={`/dashboard/mentor/${mentor._id}`} className="w-full">
@@ -425,4 +406,3 @@ export default function MentorsPage() {
         </div>
     )
 }
-

@@ -19,7 +19,7 @@ const TargetExamSelector: React.FC<TargetExamSelectorProps> = ({
 }) => {
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h2 className="text-xl font-semibold mb-4">National Board Filters</h2>
+      <h2 className="text-xl font-semibold mb-4">Filter by Exam Type (NBF)</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
         {/* Exam Selection */}

@@ -2,13 +2,12 @@
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import axios from "axios"
-import { Book, Brain, Clock, Lightbulb } from "lucide-react"
+import { Book, Brain, Clock, Lightbulb, BookOpen } from "lucide-react"
 import { useRouter } from "next/navigation"
 import type React from "react"
 import { useCallback, useEffect, useState } from "react"
 import { toast, Toaster } from "react-hot-toast"
 import AITestSuggestions from "@/components/AITestSuggestions"
-import UserTestHistory from "@/components/UserTestHistory"
 import ExamSimulation from "@/components/exam-simulation"
 import TargetExamSelector from "@/components/TargetExamSelector"
 import SyllabusCoverageIndicator from "@/components/syllabus-coverage-indicator"
@@ -67,6 +66,22 @@ interface FilteredResponse {
   questions: Question[]
 }
 
+// Add this interface with the other interfaces
+interface TestResult {
+  userId: string
+  questions: {
+    questionId: string
+    questionText: string
+    userAnswer: string
+    correctAnswer: string
+    timeSpent: number
+  }[]
+  score: number
+  totalTime: number
+  percentage: number
+  createdAt: string
+}
+
 const SubjectCheckbox: React.FC<{
   subject: Subject
   isSelected: boolean
@@ -101,6 +116,75 @@ const SubsectionCheckbox: React.FC<{
   </label>
 )
 
+// Replace the current RecentTests component with this improved version
+const RecentTests: React.FC<{ performanceData: TestResult[]; isLoading: boolean }> = ({
+  performanceData,
+  isLoading,
+}) => {
+  return (
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+      <div className="p-6">
+        <h2 className="text-2xl font-semibold mb-4 flex items-center text-gray-700">
+          <BookOpen className="mr-2" size={24} />
+          Recent Tests
+        </h2>
+
+        {isLoading ? (
+          <div className="text-center py-4">Loading recent tests...</div>
+        ) : !performanceData || performanceData.length === 0 ? (
+          <div className="text-center py-4 text-gray-500">No recent tests available.</div>
+        ) : (
+          <div className="max-h-[300px] overflow-y-auto pr-2">
+            <div className="space-y-3">
+              {performanceData.slice(0, 5).map((test, index) => (
+                <div
+                  key={test.createdAt}
+                  className="bg-gray-50 rounded-lg p-4 border border-gray-100 hover:shadow-md transition-all duration-200"
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <BookOpen className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Test {performanceData.length - index}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(test.createdAt).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="font-medium">{test.percentage}%</p>
+                        <p className="text-sm text-muted-foreground">
+                          Score: {test.score}/{test.questions.length}
+                        </p>
+                      </div>
+                      <div
+                        className={`w-2 h-10 rounded-full ${
+                          test.percentage >= 70
+                            ? "bg-green-500"
+                            : test.percentage >= 50
+                              ? "bg-yellow-500"
+                              : "bg-red-500"
+                        }`}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function CreateTest() {
   const router = useRouter()
   const [mode, setMode] = useState<"tutor" | "timer">("tutor")
@@ -118,12 +202,12 @@ export default function CreateTest() {
   // Update the state declarations to include the new "All" options
   // Replace the existing state declarations for examType, difficulty, and questionType with:
   const [examType, setExamType] = useState<"USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3" | "ALL_USMLE_TYPES">(
-    "USMLE_STEP1",
+    "ALL_USMLE_TYPES",
   )
-  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | "ALL_DIFFICULTY_LEVELS">("medium")
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | "ALL_DIFFICULTY_LEVELS">("ALL_DIFFICULTY_LEVELS")
   const [questionType, setQuestionType] = useState<
     "case_based" | "single_best_answer" | "extended_matching" | "ALL_QUESTION_TYPES"
-  >("single_best_answer")
+  >("ALL_QUESTION_TYPES")
   const [year, setYear] = useState<string>("ALL_YEARS")
   const [error, setError] = useState<string | null>(null)
   const [inputValue, setInputValue] = useState<string>("10")
@@ -144,6 +228,8 @@ export default function CreateTest() {
   // Add this new state to track if recommendations are being added to the test
   const [recommendedQuestionsToAdd, setRecommendedQuestionsToAdd] = useState<Recommendation[]>([])
   const [isCreatingRecommendedTest, setIsCreatingRecommendedTest] = useState(false)
+  // Add this state declaration with the other state declarations
+  const [performanceData, setPerformanceData] = useState<TestResult[]>([])
 
   const availableSubsections = subjects.reduce((acc: Subsection[], subject: Subject) => {
     if (selectedSubjects.includes(subject._id)) {
@@ -156,7 +242,31 @@ export default function CreateTest() {
   const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test/create-test"
   const API_BASE_URL_LOCAL = "http://localhost:5000/api/test/create-test"
 
-  // Replace the fetchRecommendations function with this enhanced version
+  // // Older one
+  // const fetchRecommendations = useCallback(async () => {
+  //   setIsLoadingRecommendations(true)
+  //   try {
+  //     const userId = localStorage.getItem("Medical_User_Id")
+  //     if (!userId) {
+  //       console.log("No user ID found in localStorage")
+  //       return
+  //     }
+
+  //     const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations/${userId}`)
+  //     setRecommendations(data.recommendations)
+
+  //     // If we got recommendations, show the section
+  //     if (data.recommendations && data.recommendations.length > 0) {
+  //       setShowRecommendations(true)
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching recommendations:", error)
+  //   } finally {
+  //     setIsLoadingRecommendations(false)
+  //   }
+  // }, [])
+
+  // Update this function in your create-test page
   const fetchRecommendations = useCallback(async () => {
     setIsLoadingRecommendations(true)
     try {
@@ -166,15 +276,21 @@ export default function CreateTest() {
         return
       }
 
-      const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations/${userId}`)
+      // Update the URL to point to your new endpoint on localhost
+      const { data } = await axios.get(`http://localhost:5000/api/test/recommendations2/${userId}`)
+      console.log("Recommendation data received:", data) // For debugging
+
       setRecommendations(data.recommendations)
 
       // If we got recommendations, show the section
       if (data.recommendations && data.recommendations.length > 0) {
         setShowRecommendations(true)
+      } else {
+        setShowRecommendations(false)
       }
     } catch (error) {
       console.error("Error fetching recommendations:", error)
+      setShowRecommendations(false)
     } finally {
       setIsLoadingRecommendations(false)
     }
@@ -293,6 +409,29 @@ export default function CreateTest() {
     fetchRecommendations()
   }, [fetchRecommendations])
 
+  // Add this code to fetch performance data in the useEffect where you fetch other data
+  // Find a suitable useEffect or add this to an existing one:
+  useEffect(() => {
+    const fetchPerformanceData = async () => {
+      try {
+        const userId = localStorage.getItem("Medical_User_Id")
+        if (!userId) return
+
+        const performanceResponse = await axios.get<TestResult[]>(
+          "https://medical-backend-loj4.onrender.com/api/test/performance",
+          {
+            params: { userId },
+          },
+        )
+        setPerformanceData(performanceResponse.data)
+      } catch (error) {
+        console.error("Error fetching performance data:", error)
+      }
+    }
+
+    fetchPerformanceData()
+  }, [])
+
   const handleSubjectChange = (subjectId: string) => {
     setSelectedSubjects((prev) => {
       const newSelectedSubjects = prev.includes(subjectId) ? prev.filter((s) => s !== subjectId) : [...prev, subjectId]
@@ -325,6 +464,7 @@ export default function CreateTest() {
   }
 
   // Add function to toggle recommendation selection
+  // Updated function for individual "Add to Test" buttons
   const addRecommendedQuestion = (recommendation: Recommendation) => {
     setSelectedRecommendations((prev) => {
       if (prev.includes(recommendation.questionText)) {
@@ -332,20 +472,26 @@ export default function CreateTest() {
         setRecommendedQuestionsToAdd((current) => current.filter((q) => q.questionText !== recommendation.questionText))
         return prev.filter((id) => id !== recommendation.questionText)
       } else {
+        // Add with a unique ID to ensure it's processed correctly
+        const enhancedRecommendation = {
+          ...recommendation,
+          uniqueId: `rec_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        }
+
         // Add if not already selected
-        setRecommendedQuestionsToAdd((current) => [...current, recommendation])
+        setRecommendedQuestionsToAdd((current) => [...current, enhancedRecommendation])
         return [...prev, recommendation.questionText]
       }
     })
   }
-
   // Add this new validateForm function
+  // Update the validateForm function to ensure the button is disabled by default
   const validateForm = useCallback(() => {
     const newValidation: FormValidation = {
       subjects: { isValid: true, message: null },
       subsections: { isValid: true, message: null },
       questionCount: { isValid: true, message: null },
-      overall: { isValid: true, message: null },
+      overall: { isValid: false, message: "Please select subjects and subsections" }, // Default to invalid
     }
 
     // If we have recommended questions to add, we can bypass some validations
@@ -396,7 +542,11 @@ export default function CreateTest() {
     } else {
       newValidation.overall = {
         isValid:
-          newValidation.subjects.isValid && newValidation.subsections.isValid && newValidation.questionCount.isValid,
+          newValidation.subjects.isValid &&
+          newValidation.subsections.isValid &&
+          newValidation.questionCount.isValid &&
+          selectedSubjects.length > 0 && // Explicitly check for selections
+          selectedSubsections.length > 0,
         message: newValidation.subjects.isValid
           ? newValidation.subsections.isValid
             ? newValidation.questionCount.message
@@ -409,7 +559,13 @@ export default function CreateTest() {
     return newValidation.overall.isValid
   }, [selectedSubjects, selectedSubsections, inputValue, maxQuestions, recommendedQuestionsToAdd.length])
 
+  // Add a useEffect to run validation whenever selections change
+  useEffect(() => {
+    validateForm()
+  }, [selectedSubjects, selectedSubsections, validateForm])
+
   // Replace the handleSubmit function with this enhanced version
+  // Updated handleSubmit function to properly handle added recommendations
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -431,27 +587,40 @@ export default function CreateTest() {
       return
     }
 
-    // Create URL parameters
-    const params = new URLSearchParams({
-      mode,
-      subjects: selectedSubjects.join(","),
-      subsections: selectedSubsections.join(","),
-      count: totalQuestions.toString(),
-      exam_type: examType,
-      difficulty: difficulty,
-      question_type: questionType,
-      year: year,
-    })
+    try {
+      // Create URL parameters
+      const params = new URLSearchParams({
+        mode,
+        subjects: selectedSubjects.join(","),
+        subsections: selectedSubsections.join(","),
+        count: totalQuestions.toString(),
+        exam_type: examType,
+        difficulty: difficulty,
+        question_type: questionType,
+        year: year,
+      })
 
-    // Add recommended questions if any
-    if (recommendedQuestionsToAdd.length > 0) {
-      params.append("recommendedQuestions", JSON.stringify(recommendedQuestionsToAdd))
+      // If we have recommended questions to add, append them
+      if (recommendedQuestionsToAdd.length > 0) {
+        // Add a flag to indicate we have recommended questions
+        params.append("hasRecommended", "true")
+
+        // Add the recommended questions to the URL
+        params.append("recommendedQuestions", JSON.stringify(recommendedQuestionsToAdd))
+      }
+
+      // Force cache bust with timestamp
+      params.append("t", Date.now().toString())
+
+      router.push(`/dashboard/take-test?${params.toString()}`)
+    } catch (error) {
+      console.error("Error submitting form:", error)
+      toast.error("An error occurred. Please try again.")
     }
-
-    router.push(`/dashboard/take-test?${params.toString()}`)
   }
 
   // Add new function to create test with only recommended questions
+  // Updated function for "Create Test from All Recommendations" button
   const handleCreateRecommendedTest = () => {
     if (recommendations.length === 0) {
       toast.error("No recommendations available")
@@ -460,16 +629,32 @@ export default function CreateTest() {
 
     setIsCreatingRecommendedTest(true)
 
-    // Create URL parameters for recommended questions test
-    const params = new URLSearchParams({
-      mode,
-      isRecommendedTest: "true",
-    })
+    try {
+      // Create URL parameters for recommended questions test
+      const params = new URLSearchParams({
+        mode,
+        isRecommendedTest: "true",
+      })
 
-    // Add all recommendations to the test
-    params.append("recommendedQuestions", JSON.stringify(recommendations))
+      // Add the recommendations with a uniqueId to ensure they're processed correctly
+      const recommendationsWithIds = recommendations.map((rec, index) => ({
+        ...rec,
+        uniqueId: `rec_${Date.now()}_${index}`, // Add a unique identifier
+      }))
 
-    router.push(`/dashboard/take-test?${params.toString()}`)
+      // Add all recommendations to the test
+      params.append("recommendedQuestions", JSON.stringify(recommendationsWithIds))
+
+      // Force cache bust with timestamp
+      params.append("t", Date.now().toString())
+
+      // Navigate to the test page
+      router.push(`/dashboard/take-test?${params.toString()}`)
+    } catch (error) {
+      console.error("Error creating recommended test:", error)
+      toast.error("An error occurred. Please try again.")
+      setIsCreatingRecommendedTest(false)
+    }
   }
 
   // Add this effect to validate the form on input changes
@@ -573,7 +758,7 @@ export default function CreateTest() {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-8 text-center text-gray-800">Create Your Test</h1>
         <div className="mb-8">
-          <UserTestHistory limit={3} />
+          <RecentTests performanceData={performanceData} isLoading={isLoading} />
         </div>
         <div className="mb-8">
           <AITestSuggestions
@@ -984,15 +1169,26 @@ export default function CreateTest() {
             <button
               type="submit"
               disabled={
-                isLoading || isFilterLoading || (!validation.overall.isValid && recommendedQuestionsToAdd.length === 0)
+                isLoading ||
+                isFilterLoading ||
+                (!validation.overall.isValid && recommendedQuestionsToAdd.length === 0) ||
+                selectedSubjects.length === 0 ||
+                selectedSubsections.length === 0 // Explicitly check for selections
               }
               className={`w-full py-3 px-6 rounded-lg text-lg font-semibold transition-colors duration-200 shadow-md ${
-                isLoading || isFilterLoading || (!validation.overall.isValid && recommendedQuestionsToAdd.length === 0)
+                isLoading ||
+                isFilterLoading ||
+                (!validation.overall.isValid && recommendedQuestionsToAdd.length === 0) ||
+                (selectedSubjects.length === 0 || selectedSubsections.length === 0)
                   ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                   : "bg-primary text-white hover:bg-primary-dark"
               }`}
             >
-              {isLoading || isFilterLoading ? "Loading..." : "Generate Test"}
+              {isLoading || isFilterLoading
+                ? "Loading..."
+                : selectedSubjects.length === 0 || selectedSubsections.length === 0
+                  ? "Select Subjects and Subsections"
+                  : "Generate Test"}
             </button>
           </form>
         </div>

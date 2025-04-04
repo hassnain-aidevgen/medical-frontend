@@ -124,7 +124,7 @@ export default function SyllabusCoverageIndicator({
         {/* Overall coverage indicator */}
         <div>
           <div className="flex justify-between mb-1">
-            <span className="text-sm font-medium text-gray-700">Overall Coverage</span>
+            <span className="text-sm font-medium text-gray-700">Exam Blueprint</span>
             <span
               className={`text-sm font-medium ${
                 coverageLevel === "high"

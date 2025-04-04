@@ -9,8 +9,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Lightbulb, Brain, AlertCircle, CheckCircle, Loader2 } from "lucide-react"
 import apiService, { type Flashcard } from "@/services/api-service"
-import missedQuestionsService, { type MissedQuestion } from "@/services/missed-questions-service"
+import type { MissedQuestion } from "@/services/missed-questions-service"
 import toast from "react-hot-toast"
+
+// Replace the existing missedQuestionsService import with a direct axios import
+import axios from "axios"
 
 interface AutoFlashcardGeneratorProps {
   userId: string
@@ -58,20 +61,37 @@ export default function AutoFlashcardGenerator({ userId, onFlashcardsGenerated }
   const [activeTab, setActiveTab] = useState("missed")
 
   // Fetch missed questions from recent tests
+  // Replace the existing fetchMissedQuestions function with this implementation
   const fetchMissedQuestions = useCallback(async () => {
     if (!userId) return
 
     setIsLoading(true)
     try {
-      // Use the new missedQuestionsService instead of apiService
-      const response = await missedQuestionsService.getMissedQuestions(userId)
-      setMissedQuestions(response.data || [])
+      // Use the recommendations2 endpoint to get wrongly answered questions
+      const response = await axios.get(`http://localhost:5000/api/test/recommendations2/${userId}`)
+
+      // Transform the recommendations data into the format needed for missed questions
+      const wrongQuestions = response.data.recommendations.map((item: { questionText: string; correctAnswer: string; topic?: string }, index: number) => ({
+        id: `wrong_${index}_${Date.now()}`,
+        question: item.questionText,
+        correctAnswer: item.correctAnswer,
+        topic: item.topic || "Wrongly answered questions",
+        subject: "Test Review",
+        testId: `recent_test_${index}`,
+        testDate: new Date().toISOString(),
+        difficulty: "medium",
+        userAnswer: "Incorrect answer", // We don't have the exact wrong answer
+        explanation: "This question was answered incorrectly in a previous test.",
+      }))
+
+      setMissedQuestions(wrongQuestions)
 
       // Auto-select all questions by default
-      setSelectedQuestions(response.data.map((q: MissedQuestion) => q.id))
+      setSelectedQuestions(wrongQuestions.map((q: { id: string }) => q.id))
     } catch (error) {
       console.error("Error fetching missed questions:", error)
       toast.error("Failed to load missed questions")
+      setMissedQuestions([])
     } finally {
       setIsLoading(false)
     }
@@ -254,6 +274,7 @@ export default function AutoFlashcardGenerator({ userId, onFlashcardsGenerated }
   }
 
   // Generate flashcards from selected missed questions
+  // Replace the existing generateFlashcards function with this implementation
   const generateFlashcards = async () => {
     if (selectedQuestions.length === 0) {
       toast.error("Please select at least one question")
@@ -268,16 +289,12 @@ export default function AutoFlashcardGenerator({ userId, onFlashcardsGenerated }
       // Generate flashcards
       const newFlashcards = questionsToProcess.map(createFlashcardFromQuestion)
 
-      // In a real implementation, you would save these to your API
-      // const savedFlashcards = await Promise.all(
-      //   newFlashcards.map(card => apiService.createFlashcard(card))
-      // )
-
+      // Save the flashcards to state and notify parent component
       setGeneratedFlashcards(newFlashcards)
       onFlashcardsGenerated(newFlashcards)
       setActiveTab("generated")
 
-      toast.success(`Generated ${newFlashcards.length} flashcards`)
+      toast.success(`Generated ${newFlashcards.length} flashcards from your missed questions`)
     } catch (error) {
       console.error("Error generating flashcards:", error)
       toast.error("Failed to generate flashcards")

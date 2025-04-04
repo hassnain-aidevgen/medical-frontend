@@ -71,6 +71,10 @@ export default function FlashcardsPage() {
   const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string>("")
   const [showAutoGenerator, setShowAutoGenerator] = useState(false)
+  // Add a state to track if we need to force a re-render of the card display
+  const [cardDisplayKey, setCardDisplayKey] = useState(0)
+  // Add this new state variable near the top of the component with the other state variables
+  const [reviewedCardIds, setReviewedCardIds] = useState<Set<string>>(new Set())
 
   // Default flashcard template
   const defaultFlashcard: Partial<Flashcard> = {
@@ -85,6 +89,33 @@ export default function FlashcardsPage() {
     userId: "",
     reviewStage: 0,
     reviewPriority: null,
+  }
+
+  // Add this debugging function to help diagnose the issue
+  const debugCardState = (message: string, cards: Flashcard[]) => {
+    console.log(`[DEBUG] ${message}:`)
+    console.log(`- Total cards: ${cards.length}`)
+    console.log(`- Cards with nextReviewDate: ${cards.filter((c) => c.nextReviewDate).length}`)
+
+    const now = new Date()
+    const dueToday = cards.filter((c) => {
+      if (!c.nextReviewDate) return false
+      const reviewDate = new Date(c.nextReviewDate)
+      return reviewDate.toDateString() === now.toDateString()
+    }).length
+
+    const overdue = cards.filter((c) => {
+      if (!c.nextReviewDate) return false
+      return new Date(c.nextReviewDate) < now
+    }).length
+
+    const comingUp = cards.filter((c) => {
+      if (!c.nextReviewDate) return false
+      const reviewDate = new Date(c.nextReviewDate)
+      return reviewDate > now && reviewDate <= new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
+    }).length
+
+    console.log(`- Due today: ${dueToday}, Overdue: ${overdue}, Coming up: ${comingUp}`)
   }
 
   // Initialize user ID from localStorage
@@ -256,6 +287,8 @@ export default function FlashcardsPage() {
 
     setFilteredCards(filtered)
     setCurrentCard(0)
+    // Force a re-render of the card display
+    setCardDisplayKey((prev) => prev + 1)
   }, [])
 
   // Helper function to convert priority to numeric value for sorting
@@ -291,17 +324,6 @@ export default function FlashcardsPage() {
   }, [filteredCards])
 
   // Navigation functions
-  const nextCard = () => {
-    if (filteredCards.length === 0) return
-    setCurrentCard((prev) => (prev + 1) % filteredCards.length)
-    setShowAnswer(false)
-  }
-
-  const prevCard = () => {
-    if (filteredCards.length === 0) return
-    setCurrentCard((prev) => (prev - 1 + filteredCards.length) % filteredCards.length)
-    setShowAnswer(false)
-  }
 
   const flipCard = () => {
     setFlipping(true)
@@ -321,6 +343,8 @@ export default function FlashcardsPage() {
     setFilteredCards(shuffled)
     setCurrentCard(0)
     setShowAnswer(false)
+    // Force a re-render of the card display
+    setCardDisplayKey((prev) => prev + 1)
     toast.success("Cards shuffled")
   }
 
@@ -438,6 +462,91 @@ export default function FlashcardsPage() {
   }
 
   // Spaced repetition functions
+  // Replace the fetchDueCards function with this improved version that handles cards without nextReviewDate
+  const fetchDueCards = useCallback(async () => {
+    if (!userId) return
+
+    setIsLoading(true)
+    setError(null)
+    // Reset the reviewed cards when fetching new due cards
+    setReviewedCardIds(new Set())
+
+    try {
+      // Fetch all cards
+      const response = await apiService.getFlashcards({})
+      const allCards = response.data
+
+      // Debug the initial state
+      debugCardState("Initial cards from API", allCards)
+
+      // Get all due cards (today, overdue, and coming up)
+      // IMPORTANT CHANGE: Include cards without nextReviewDate as "due"
+      const now = new Date()
+      const dueCards = allCards.filter((card) => {
+        // If card has no nextReviewDate, consider it due for review
+        if (!card.nextReviewDate) return true
+
+        const reviewDate = new Date(card.nextReviewDate)
+
+        // Include cards due today, overdue, or coming up in the next 3 days
+        return (
+          reviewDate.toDateString() === now.toDateString() || // Due today
+          reviewDate < now || // Overdue
+          (reviewDate > now && reviewDate <= new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)) // Coming up
+        )
+      })
+
+      // Debug the filtered cards
+      debugCardState("Filtered due cards", dueCards)
+
+      // Sort cards by priority and review date
+      const sortedDueCards = [...dueCards].sort((a, b) => {
+        // First by review priority (higher first)
+        const priorityDiff = getPriorityValue(b.reviewPriority) - getPriorityValue(a.reviewPriority)
+        if (priorityDiff !== 0) return priorityDiff
+
+        // Then by review date (earlier first)
+        if (a.nextReviewDate && b.nextReviewDate) {
+          return new Date(a.nextReviewDate).getTime() - new Date(b.nextReviewDate).getTime()
+        }
+
+        return 0
+      })
+
+      // Debug the sorted cards
+      debugCardState("Sorted due cards", sortedDueCards)
+
+      // Update state with all cards and filtered due cards
+      setFlashcards(allCards)
+      setFilteredCards(sortedDueCards)
+      setCurrentCard(0)
+      setShowAnswer(false) // Reset to question side when loading new cards
+      // Force a re-render of the card display
+      setCardDisplayKey((prev) => prev + 1)
+
+      if (sortedDueCards.length === 0) {
+        toast.success("No cards due for review! 🎉")
+      } else {
+        toast.success(`${sortedDueCards.length} cards due for review`)
+      }
+    } catch (error) {
+      console.error("Error fetching due cards:", error)
+
+      if (error && typeof error === "object" && "message" in error) {
+        setError((error as Error).message || "Failed to load due cards")
+      } else {
+        setError("Failed to load due cards. Please try again later.")
+      }
+
+      setFlashcards([])
+      setFilteredCards([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [userId])
+
+  // Now update all four review functions to remove cards from the filtered list when in "due" tab
+  // First, update markCardForLater
   const markCardForLater = async (priority: "low" | "medium" | "high") => {
     if (filteredCards.length === 0) return
 
@@ -464,18 +573,36 @@ export default function FlashcardsPage() {
 
       // Update the cards in state
       setFlashcards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
-      setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
 
-      nextCard()
+      // If we're in the "due" tab, mark this card as reviewed
+      if (activeTab === "due" && card.id) {
+        console.log(`Marking card ${card.id} as reviewed`)
+        setReviewedCardIds((prev) => {
+          const newSet = new Set(prev)
+          newSet.add(card.id as string)
+          console.log(`Cards reviewed so far: ${newSet.size}`)
+          return newSet
+        })
+
+        // Move to the next unreviewed card
+        moveToNextUnreviewedCard()
+      } else {
+        // For other tabs, just update the card in the filtered list
+        setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+        internalNextCard()
+      }
+
+      setShowAnswer(false)
       toast.success(`Card scheduled for ${priority} priority review`)
     } catch (error) {
       apiService.handleApiError(error, "Failed to schedule card for later review")
-      nextCard() // Still move to next card even if there was an error
+      internalNextCard() // Still move to next card even if there was an error
     } finally {
       setIsProcessingReview(false)
     }
   }
 
+  // Update markCardAsMastered
   const markCardAsMastered = async () => {
     if (filteredCards.length === 0) return
 
@@ -504,7 +631,24 @@ export default function FlashcardsPage() {
 
       // Update the cards in state
       setFlashcards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
-      setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+
+      // If we're in the "due" tab, mark this card as reviewed
+      if (activeTab === "due" && card.id) {
+        console.log(`Marking card ${card.id} as reviewed`)
+        setReviewedCardIds((prev) => {
+          const newSet = new Set(prev)
+          newSet.add(card.id as string)
+          console.log(`Cards reviewed so far: ${newSet.size}`)
+          return newSet
+        })
+
+        // Move to the next unreviewed card
+        moveToNextUnreviewedCard()
+      } else {
+        // For other tabs, just update the card in the filtered list
+        setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+        internalNextCard()
+      }
 
       // Update overall study progress
       const totalMastery = filteredCards.reduce((sum, card, index) => {
@@ -514,17 +658,17 @@ export default function FlashcardsPage() {
       const newProgress = totalMastery / filteredCards.length
       setStudyProgress(newProgress)
 
-      nextCard()
+      setShowAnswer(false)
       toast.success("Card marked as mastered! 🎉")
     } catch (error) {
       apiService.handleApiError(error, "Failed to mark card as mastered")
-      nextCard() // Still move to next card even if there was an error
+      internalNextCard() // Still move to next card even if there was an error
     } finally {
       setIsProcessingReview(false)
     }
   }
 
-  // Update the existing markCardAsKnown function
+  // Update markCardAsKnown
   const markCardAsKnown = async () => {
     if (filteredCards.length === 0) return
 
@@ -556,7 +700,24 @@ export default function FlashcardsPage() {
 
       // Update the cards in state
       setFlashcards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
-      setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+
+      // If we're in the "due" tab, mark this card as reviewed
+      if (activeTab === "due" && card.id) {
+        console.log(`Marking card ${card.id} as reviewed`)
+        setReviewedCardIds((prev) => {
+          const newSet = new Set(prev)
+          newSet.add(card.id as string)
+          console.log(`Cards reviewed so far: ${newSet.size}`)
+          return newSet
+        })
+
+        // Move to the next unreviewed card
+        moveToNextUnreviewedCard()
+      } else {
+        // For other tabs, just update the card in the filtered list
+        setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+        internalNextCard()
+      }
 
       // Update overall study progress
       const totalMastery = filteredCards.reduce((sum, card, index) => {
@@ -566,17 +727,17 @@ export default function FlashcardsPage() {
       const newProgress = totalMastery / filteredCards.length
       setStudyProgress(newProgress)
 
-      nextCard()
+      setShowAnswer(false)
       toast.success("Card marked as known")
     } catch (error) {
       apiService.handleApiError(error, "Failed to update card progress")
-      nextCard() // Still move to next card even if there was an error
+      internalNextCard() // Still move to next card even if there was an error
     } finally {
       setIsProcessingReview(false)
     }
   }
 
-  // Update the existing markCardAsUnknown function
+  // Update markCardAsUnknown
   const markCardAsUnknown = async () => {
     if (filteredCards.length === 0) return
 
@@ -609,7 +770,24 @@ export default function FlashcardsPage() {
 
       // Update the cards in state
       setFlashcards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
-      setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+
+      // If we're in the "due" tab, mark this card as reviewed
+      if (activeTab === "due" && card.id) {
+        console.log(`Marking card ${card.id} as reviewed`)
+        setReviewedCardIds((prev) => {
+          const newSet = new Set(prev)
+          newSet.add(card.id as string)
+          console.log(`Cards reviewed so far: ${newSet.size}`)
+          return newSet
+        })
+
+        // Move to the next unreviewed card
+        moveToNextUnreviewedCard()
+      } else {
+        // For other tabs, just update the card in the filtered list
+        setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+        internalNextCard()
+      }
 
       // Update overall study progress
       const totalMastery = filteredCards.reduce((sum, card, index) => {
@@ -619,56 +797,187 @@ export default function FlashcardsPage() {
       const newProgress = totalMastery / filteredCards.length
       setStudyProgress(newProgress)
 
-      nextCard()
+      setShowAnswer(false)
       toast("Card marked as difficult", { icon: "📝" })
     } catch (error) {
       apiService.handleApiError(error, "Failed to update card progress")
-      nextCard() // Still move to next card even if there was an error
+      internalNextCard() // Still move to next card even if there was an error
     } finally {
       setIsProcessingReview(false)
     }
   }
 
-  // Add a new function to fetch due cards
-  const fetchDueCards = useCallback(async () => {
-    if (!userId) return
+  // Add this new function to move to the next unreviewed card
+  const moveToNextUnreviewedCard = () => {
+    console.log("Moving to next unreviewed card")
 
-    setIsLoading(true)
-    setError(null)
+    // Find the next unreviewed card
+    const unreviewedCardIndex = filteredCards.findIndex((card, index) => {
+      // Skip the current card and find the next unreviewed card
+      return index > currentCard && card.id && !reviewedCardIds.has(card.id)
+    })
 
-    try {
-      // Fetch all cards
-      const response = await apiService.getFlashcards({})
+    if (unreviewedCardIndex !== -1) {
+      // Found an unreviewed card after the current one
+      console.log(`Found unreviewed card at index ${unreviewedCardIndex}`)
+      setCurrentCard(unreviewedCardIndex)
+    } else {
+      // Check from the beginning of the array
+      const fromStartIndex = filteredCards.findIndex((card) => {
+        return card.id && !reviewedCardIds.has(card.id)
+      })
 
-      // Filter to get only due cards and sort by priority
-      const allCards = response.data
-      const dueCards = spacedRepetitionService.getDueCards(allCards)
-      const sortedDueCards = spacedRepetitionService.sortCardsByPriority(dueCards)
-
-      setFlashcards(allCards)
-      setFilteredCards(sortedDueCards)
-      setCurrentCard(0)
-
-      if (sortedDueCards.length === 0) {
-        toast.success("No cards due for review! 🎉")
+      if (fromStartIndex !== -1) {
+        console.log(`Found unreviewed card from start at index ${fromStartIndex}`)
+        setCurrentCard(fromStartIndex)
       } else {
-        toast.success(`${sortedDueCards.length} cards due for review`)
-      }
-    } catch (error) {
-      console.error("Error fetching due cards:", error)
+        // All cards have been reviewed
+        console.log("All cards have been reviewed!")
+        toast.success("All due cards have been reviewed! 🎉")
 
-      if (error && typeof error === "object" && "message" in error) {
-        setError((error as Error).message || "Failed to load due cards")
-      } else {
-        setError("Failed to load due cards. Please try again later.")
+        // Optional: You could redirect to another tab or show a completion message
+        // setActiveTab("browse");
       }
-
-      setFlashcards([])
-      setFilteredCards([])
-    } finally {
-      setIsLoading(false)
     }
-  }, [userId])
+
+    setShowAnswer(false)
+    setCardDisplayKey((prev) => prev + 1)
+  }
+
+  // Modify the nextCard function to skip reviewed cards in the "due" tab
+  const internalNextCard = () => {
+    if (filteredCards.length === 0) return
+
+    // Log the current state for debugging
+    console.log(`Moving to next card. Current: ${currentCard}, Total: ${filteredCards.length}`)
+
+    if (activeTab === "due") {
+      // In the due tab, we need to skip reviewed cards
+      let nextIndex = (currentCard + 1) % filteredCards.length
+      let loopCount = 0
+
+      // Find the next unreviewed card, but avoid infinite loops
+      while (loopCount < filteredCards.length) {
+        const nextCard = filteredCards[nextIndex]
+        if (nextCard && nextCard.id && !reviewedCardIds.has(nextCard.id)) {
+          break
+        }
+        nextIndex = (nextIndex + 1) % filteredCards.length
+        loopCount++
+      }
+
+      if (loopCount < filteredCards.length) {
+        console.log(`New card index: ${nextIndex}`)
+        setCurrentCard(nextIndex)
+      } else {
+        console.log("All cards have been reviewed!")
+        toast.success("All due cards have been reviewed! 🎉")
+      }
+    } else {
+      // Normal behavior for other tabs
+      setCurrentCard((prev) => {
+        const next = (prev + 1) % filteredCards.length
+        console.log(`New card index: ${next}`)
+        return next
+      })
+    }
+
+    setShowAnswer(false)
+  }
+
+  // Modify the prevCard function to skip reviewed cards in the "due" tab
+  const internalPrevCard = () => {
+    if (filteredCards.length === 0) return
+
+    // Log the current state for debugging
+    console.log(`Moving to previous card. Current: ${currentCard}, Total: ${filteredCards.length}`)
+
+    if (activeTab === "due") {
+      // In the due tab, we need to skip reviewed cards
+      let prevIndex = (currentCard - 1 + filteredCards.length) % filteredCards.length
+      let loopCount = 0
+
+      // Find the previous unreviewed card, but avoid infinite loops
+      while (loopCount < filteredCards.length) {
+        const prevCard = filteredCards[prevIndex]
+        if (prevCard && prevCard.id && !reviewedCardIds.has(prevCard.id)) {
+          break
+        }
+        prevIndex = (prevIndex - 1 + filteredCards.length) % filteredCards.length
+        loopCount++
+      }
+
+      if (loopCount < filteredCards.length) {
+        console.log(`New card index: ${prevIndex}`)
+        setCurrentCard(prevIndex)
+      } else {
+        console.log("All cards have been reviewed!")
+        toast.success("All due cards have been reviewed! 🎉")
+      }
+    } else {
+      // Normal behavior for other tabs
+      setCurrentCard((prev) => {
+        const next = (prev - 1 + filteredCards.length) % filteredCards.length
+        console.log(`New card index: ${next}`)
+        return next
+      })
+    }
+
+    setShowAnswer(false)
+  }
+
+  // Modify the useEffect for the "due" tab to check for unreviewed cards
+  useEffect(() => {
+    if (activeTab === "due" && !isLoading) {
+      console.log("Active tab is 'due', checking filtered cards:", filteredCards.length)
+      console.log("Reviewed cards:", reviewedCardIds.size)
+
+      // Check if all cards have been reviewed
+      const allReviewed = filteredCards.every((card) => card.id && reviewedCardIds.has(card.id))
+
+      if (allReviewed && filteredCards.length > 0) {
+        console.log("All cards have been reviewed!")
+        toast.success("All due cards have been reviewed! 🎉")
+      }
+
+      // If we're on the due tab but have no filtered cards, try fetching again
+      if (filteredCards.length === 0 && flashcards.length > 0) {
+        const now = new Date()
+        const hasDueCards = flashcards.some((card) => {
+          if (!card.nextReviewDate) return true // Consider cards without nextReviewDate as due
+          const reviewDate = new Date(card.nextReviewDate)
+          return (
+            reviewDate.toDateString() === now.toDateString() || // Due today
+            reviewDate < now || // Overdue
+            (reviewDate > now && reviewDate <= new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)) // Coming up
+          )
+        })
+
+        if (hasDueCards) {
+          console.log("Found due cards but filteredCards is empty, re-applying filters")
+          // Re-apply filters to make sure we're showing due cards
+          const dueCards = flashcards.filter((card) => {
+            if (!card.nextReviewDate) return true // Include cards without nextReviewDate
+            const reviewDate = new Date(card.nextReviewDate)
+            const now = new Date()
+            return (
+              reviewDate.toDateString() === now.toDateString() || // Due today
+              reviewDate < now || // Overdue
+              (reviewDate > now && reviewDate <= new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)) // Coming up
+            )
+          })
+
+          setFilteredCards(dueCards)
+          setCurrentCard(0)
+          // Force a re-render of the card display
+          setCardDisplayKey((prev) => prev + 1)
+        } else {
+          // All due cards have been reviewed
+          toast.success("All due cards have been reviewed! 🎉")
+        }
+      }
+    }
+  }, [activeTab, isLoading, filteredCards.length, flashcards, reviewedCardIds])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
@@ -732,7 +1041,13 @@ export default function FlashcardsPage() {
           <TabsList className="grid w-full max-w-md mx-auto grid-cols-4">
             <TabsTrigger value="browse">Browse</TabsTrigger>
             <TabsTrigger value="study">Study</TabsTrigger>
-            <TabsTrigger value="due" onClick={fetchDueCards}>
+            <TabsTrigger
+              value="due"
+              onClick={() => {
+                console.log("Due Reviews tab clicked, fetching cards...")
+                fetchDueCards()
+              }}
+            >
               Due Reviews
             </TabsTrigger>
             <TabsTrigger value="stats">Statistics</TabsTrigger>
@@ -881,7 +1196,7 @@ export default function FlashcardsPage() {
               // Add defensive checks for card rendering
               filteredCards.length > 0 &&
               currentCard < filteredCards.length && (
-                <div className="relative">
+                <div className="relative" key={cardDisplayKey}>
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={currentCard}
@@ -1035,7 +1350,7 @@ export default function FlashcardsPage() {
                             <div className="flex justify-between items-center w-full">
                               <Button
                                 variant="ghost"
-                                onClick={prevCard}
+                                onClick={internalPrevCard}
                                 disabled={filteredCards.length <= 1}
                                 className="text-slate-600 dark:text-slate-400"
                               >
@@ -1050,7 +1365,7 @@ export default function FlashcardsPage() {
 
                               <Button
                                 variant="ghost"
-                                onClick={nextCard}
+                                onClick={internalNextCard}
                                 disabled={filteredCards.length <= 1}
                                 className="text-slate-600 dark:text-slate-400"
                               >
@@ -1105,7 +1420,7 @@ export default function FlashcardsPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="relative">
+              <div className="relative" key={cardDisplayKey}>
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentCard}
@@ -1146,7 +1461,7 @@ export default function FlashcardsPage() {
                             {filteredCards[currentCard]?.nextReviewDate && (
                               <FlashcardReviewStatus
                                 nextReviewDate={filteredCards[currentCard].nextReviewDate}
-                                lastReviewedDate={filteredCards[currentCard].lastReviewedDate ?? null}
+                                lastReviewedDate={filteredCards[currentCard].lastReviewedDate}
                                 reviewStage={filteredCards[currentCard].reviewStage || 0}
                               />
                             )}
@@ -1275,7 +1590,7 @@ export default function FlashcardsPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="relative">
+              <div className="relative" key={cardDisplayKey}>
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentCard}
@@ -1316,7 +1631,7 @@ export default function FlashcardsPage() {
                             {filteredCards[currentCard]?.nextReviewDate && (
                               <FlashcardReviewStatus
                                 nextReviewDate={filteredCards[currentCard].nextReviewDate}
-                                lastReviewedDate={filteredCards[currentCard].lastReviewedDate ?? null}
+                                lastReviewedDate={filteredCards[currentCard].lastReviewedDate}
                                 reviewStage={filteredCards[currentCard].reviewStage || 0}
                               />
                             )}
