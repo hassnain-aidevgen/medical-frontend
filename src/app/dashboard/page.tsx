@@ -1,7 +1,7 @@
 "use client"
 
 import axios from "axios"
-import { BarChart2, BookOpen, Clock, Dna, Pause, Play, Settings, Users } from "lucide-react"
+import { BarChart2, BookOpen, CheckCircle, Clock, Dna, Pause, Play, Settings, Users } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { PiRankingDuotone } from "react-icons/pi"
@@ -64,6 +64,10 @@ export default function DashboardPage() {
   const [isActive, setIsActive] = useState(false)
   const audioContextRef = useRef<AudioContext | null>(null)
   const tickIntervalRef = useRef<number | null>(null)
+
+  // Add a new state for daily questions stats
+  const [dailyStats, setDailyStats] = useState({ completedQuestions: 0, totalQuestions: 0 })
+  const [dailyStatsLoading, setDailyStatsLoading] = useState(true)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -153,6 +157,35 @@ export default function DashboardPage() {
 
     if (userId) {
       fetchGoalsData()
+    }
+  }, [userId])
+
+  // Add a new useEffect to fetch daily questions stats
+  useEffect(() => {
+    const fetchDailyStats = async () => {
+      if (!userId) return
+
+      setDailyStatsLoading(true)
+      try {
+        const response = await axios.get(
+          `http://localhost:5000/api/test/daily-question-stats?userId=${userId}`,
+        )
+        console.log("DailyQuestionStat: ", response.data)
+        if (response.data) {
+          setDailyStats({
+            completedQuestions: response.data.completedQuestions || 0,
+            totalQuestions: response.data.totalQuestions || 0,
+          })
+        }
+      } catch (error) {
+        console.error("Error fetching daily questions stats:", error)
+      } finally {
+        setDailyStatsLoading(false)
+      }
+    }
+
+    if (userId) {
+      fetchDailyStats()
     }
   }, [userId])
 
@@ -260,7 +293,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Student&apos;s current Study Streak</CardTitle>
@@ -300,6 +333,38 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Today&apos;s Questions</CardTitle>
+            <CheckCircle className="h-6 w-6 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+            {dailyStatsLoading ? (
+              <div className="text-2xl font-bold">Loading...</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {dailyStats.completedQuestions}/{dailyStats.totalQuestions}
+                </div>
+                <Progress
+                  value={
+                    dailyStats.totalQuestions > 0
+                      ? (dailyStats.completedQuestions / dailyStats.totalQuestions) * 100
+                      : 0
+                  }
+                  className="h-2 mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  {dailyStats.totalQuestions === 0
+                    ? "No questions for today yet"
+                    : dailyStats.completedQuestions === dailyStats.totalQuestions
+                      ? "All questions completed!"
+                      : `${dailyStats.totalQuestions - dailyStats.completedQuestions} questions remaining`}
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
         <Card className="cursor-pointer group" onClick={navigateToPomodoro}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Pomodoro Timer</CardTitle>
@@ -321,7 +386,7 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">{isActive ? "Timer running" : "Click to start"}</p>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer" onClick={navigateToLeaderboard}>
+        <Card className="cursor-pointer lg:col-span-4" onClick={navigateToLeaderboard}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Leaderboard Rank</CardTitle>
             <PiRankingDuotone className="h-6 w-6 text-yellow-500" />
@@ -332,25 +397,6 @@ export default function DashboardPage() {
             ) : (
               <>
                 <div className="text-2xl font-bold">#{userRank || " "}</div>
-                {/* {leaderboardData.length > 0 && (
-                  <div className="mt-2">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Top Performers:</p>
-                    <div className="space-y-1">
-                      {leaderboardData.map((entry, index) => (
-                        <div key={entry._id} className="flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-1">
-                            {index === 0 && <Crown className="h-3 w-3 text-yellow-500" />}
-                            <span>{entry.name}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Star className="h-3 w-3 text-primary" />
-                            <span>{entry.score}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )} */}
               </>
             )}
           </CardContent>
@@ -387,4 +433,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-

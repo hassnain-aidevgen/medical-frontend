@@ -1,22 +1,22 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Tabs, TabsContent } from "@/components/ui/tabs"
+import { Label } from "@/components/ui/label"
+import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
+import { AnimatePresence, motion } from "framer-motion"
+import { useCallback, useEffect, useMemo, useState } from "react"
 // import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Brain, Clock, Flame, CloudLightningIcon as Lightning, Lightbulb, Medal, RotateCcw, Trophy, XCircle, CheckCircle } from 'lucide-react'
-import confetti from "canvas-confetti"
 import type { Flashcard } from "@/services/api-service"
+import confetti from "canvas-confetti"
+import { Brain, CheckCircle, Clock, Flame, Lightbulb, CloudLightningIcon as Lightning, Medal, RotateCcw, Trophy, XCircle } from 'lucide-react'
 
 // Challenge difficulty levels
 type DifficultyLevel = "easy" | "medium" | "hard" | "expert"
@@ -74,7 +74,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
   // State for challenge dialog
   const [isOpen, setIsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"setup" | "challenge" | "results">("setup")
-  
+
   // Challenge settings
   const [settings, setSettings] = useState<ChallengeSettings>({
     duration: 120, // 2 minutes
@@ -83,7 +83,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
     categories: [],
     includeHints: true,
   })
-  
+
   // Challenge state
   const [isRunning, setIsRunning] = useState(false)
   const [currentCardIndex, setCurrentCardIndex] = useState(0)
@@ -91,9 +91,9 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
   const [challengeCards, setChallengeCards] = useState<Flashcard[]>([])
   const [responses, setResponses] = useState<Array<"correct" | "incorrect" | "skipped">>([])
   const [responseTimes, setResponseTimes] = useState<number[]>([])
-  const [startTime, setStartTime] = useState<number>(0)
+  // const [startTime, setStartTime] = useState<number>(0)
   const [cardStartTime, setCardStartTime] = useState<number>(0)
-  
+
   // Challenge stats
   const [stats, setStats] = useState<ChallengeStats>({
     score: 0,
@@ -105,13 +105,13 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
     longestStreak: 0,
     timeRemaining: 0,
   })
-  
+
   // Timer state
   const [timeLeft, setTimeLeft] = useState(settings.duration)
-  
+
   // Challenge history
   const [history, setHistory] = useState<ChallengeHistoryEntry[]>([])
-  
+
   // Available categories from flashcards
   const availableCategories = useMemo(() => {
     const categories = new Set<string>()
@@ -120,7 +120,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
     })
     return Array.from(categories)
   }, [flashcards])
-  
+
   // Achievements
   const achievements = useMemo<Achievement[]>(() => [
     {
@@ -160,39 +160,39 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
       name: "Challenge Champion",
       description: "Score over 90% on a hard or expert challenge",
       icon: <Medal className="h-5 w-5 text-indigo-500" />,
-      condition: (stats) => 
-        (stats.correctAnswers / settings.cardsCount) > 0.9 && 
+      condition: (stats) =>
+        (stats.correctAnswers / settings.cardsCount) > 0.9 &&
         (settings.difficulty === "hard" || settings.difficulty === "expert"),
       unlocked: false
     }
   ], [settings.cardsCount, settings.difficulty, settings.duration])
-  
+
   // Prepare challenge cards based on settings
   const prepareChallenge = useCallback(() => {
     let filteredCards = [...flashcards]
-    
+
     // Filter by categories if selected
     if (settings.categories.length > 0) {
-      filteredCards = filteredCards.filter(card => 
+      filteredCards = filteredCards.filter(card =>
         settings.categories.includes(card.category)
       )
     }
-    
+
     // Filter by difficulty
     if (settings.difficulty !== "expert") {
-      filteredCards = filteredCards.filter(card => 
+      filteredCards = filteredCards.filter(card =>
         settings.difficulty === "easy" ? card.difficulty === "easy" :
-        settings.difficulty === "medium" ? ["easy", "medium"].includes(card.difficulty) :
-        true // hard includes all difficulties
+          settings.difficulty === "medium" ? ["easy", "medium"].includes(card.difficulty) :
+            true // hard includes all difficulties
       )
     }
-    
+
     // Shuffle cards
     filteredCards = filteredCards.sort(() => Math.random() - 0.5)
-    
+
     // Limit to card count
     filteredCards = filteredCards.slice(0, settings.cardsCount)
-    
+
     // If not enough cards, add random cards to reach the count
     if (filteredCards.length < settings.cardsCount) {
       const remainingCount = settings.cardsCount - filteredCards.length
@@ -200,13 +200,13 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
         .filter(card => !filteredCards.includes(card))
         .sort(() => Math.random() - 0.5)
         .slice(0, remainingCount)
-      
+
       filteredCards = [...filteredCards, ...additionalCards]
     }
-    
+
     return filteredCards
   }, [flashcards, settings.categories, settings.difficulty, settings.cardsCount])
-  
+
   // Start challenge
   const startChallenge = useCallback(() => {
     const cards = prepareChallenge()
@@ -227,32 +227,32 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
       timeRemaining: 0,
     })
     setIsRunning(true)
-    setStartTime(Date.now())
+    // setStartTime(Date.now())
     setCardStartTime(Date.now())
     setActiveTab("challenge")
   }, [prepareChallenge, settings.duration])
-  
+
   // End challenge
   const endChallenge = useCallback((timeExpired = false) => {
     setIsRunning(false)
-    
+
     // Calculate final stats
     const correctCount = responses.filter(r => r === "correct").length
     const incorrectCount = responses.filter(r => r === "incorrect").length
-    const skippedCount = responses.filter(r => r === "skipped").length + 
+    const skippedCount = responses.filter(r => r === "skipped").length +
       (challengeCards.length - currentCardIndex - (timeExpired ? 0 : 1))
-    
-    const avgResponseTime = responseTimes.filter(t => t > 0).reduce((sum, time) => sum + time, 0) / 
+
+    const avgResponseTime = responseTimes.filter(t => t > 0).reduce((sum, time) => sum + time, 0) /
       responseTimes.filter(t => t > 0).length || 0
-    
+
     // Calculate score: base points for correct answers, bonus for speed, penalty for incorrect
     const basePoints = correctCount * 100
     const speedBonus = Math.round((settings.duration - avgResponseTime) * 2)
     const streakBonus = stats.longestStreak * 20
     const incorrectPenalty = incorrectCount * 30
-    
+
     const finalScore = Math.max(0, basePoints + speedBonus + streakBonus - incorrectPenalty)
-    
+
     const finalStats: ChallengeStats = {
       score: finalScore,
       correctAnswers: correctCount,
@@ -263,15 +263,15 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
       longestStreak: stats.longestStreak,
       timeRemaining: timeLeft,
     }
-    
+
     setStats(finalStats)
-    
+
     // Check achievements
     const unlockedAchievements = achievements.map(achievement => ({
       ...achievement,
       unlocked: achievement.condition(finalStats)
     }))
-    
+
     // If any achievements were unlocked, trigger confetti
     if (unlockedAchievements.some(a => a.unlocked)) {
       confetti({
@@ -280,7 +280,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
         origin: { y: 0.6 }
       })
     }
-    
+
     // Create history entry
     const historyEntry: ChallengeHistoryEntry = {
       id: Date.now().toString(),
@@ -293,34 +293,34 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
       duration: settings.duration,
       achievements: unlockedAchievements.filter(a => a.unlocked).map(a => a.id)
     }
-    
+
     setHistory(prev => [historyEntry, ...prev])
-    
+
     // Call onComplete callback if provided
     if (onComplete) {
       onComplete(finalStats, historyEntry)
     }
-    
+
     setActiveTab("results")
   }, [
-    responses, 
-    responseTimes, 
-    challengeCards.length, 
-    currentCardIndex, 
-    settings.duration, 
-    settings.categories, 
-    settings.difficulty, 
-    stats.streak, 
-    stats.longestStreak, 
-    timeLeft, 
-    achievements, 
+    responses,
+    responseTimes,
+    challengeCards.length,
+    currentCardIndex,
+    settings.duration,
+    settings.categories,
+    settings.difficulty,
+    stats.streak,
+    stats.longestStreak,
+    timeLeft,
+    achievements,
     onComplete
   ])
-  
+
   // Timer effect
   useEffect(() => {
     let timer: NodeJS.Timeout
-    
+
     if (isRunning && timeLeft > 0) {
       timer = setInterval(() => {
         setTimeLeft(prev => {
@@ -333,32 +333,32 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
         })
       }, 1000)
     }
-    
+
     return () => {
       if (timer) clearInterval(timer)
     }
   }, [isRunning, timeLeft, endChallenge])
-  
+
   // Handle card response
   const handleResponse = (response: "correct" | "incorrect") => {
     if (!isRunning) return
-    
+
     // Calculate response time
     const responseTime = (Date.now() - cardStartTime) / 1000
-    
+
     // Update responses and times
     const newResponses = [...responses]
     newResponses[currentCardIndex] = response
     setResponses(newResponses)
-    
+
     const newResponseTimes = [...responseTimes]
     newResponseTimes[currentCardIndex] = responseTime
     setResponseTimes(newResponseTimes)
-    
+
     // Update streak
     let newStreak = stats.streak
     let newLongestStreak = stats.longestStreak
-    
+
     if (response === "correct") {
       newStreak++
       if (newStreak > newLongestStreak) {
@@ -367,7 +367,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
     } else {
       newStreak = 0
     }
-    
+
     setStats(prev => ({
       ...prev,
       correctAnswers: response === "correct" ? prev.correctAnswers + 1 : prev.correctAnswers,
@@ -375,7 +375,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
       streak: newStreak,
       longestStreak: newLongestStreak
     }))
-    
+
     // Move to next card or end challenge
     if (currentCardIndex < challengeCards.length - 1) {
       setCurrentCardIndex(prev => prev + 1)
@@ -385,22 +385,22 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
       endChallenge()
     }
   }
-  
+
   // Handle skipping a card
   const handleSkip = () => {
     if (!isRunning) return
-    
+
     // Update responses
     const newResponses = [...responses]
     newResponses[currentCardIndex] = "skipped"
     setResponses(newResponses)
-    
+
     setStats(prev => ({
       ...prev,
       skippedAnswers: prev.skippedAnswers + 1,
       streak: 0 // Reset streak on skip
     }))
-    
+
     // Move to next card or end challenge
     if (currentCardIndex < challengeCards.length - 1) {
       setCurrentCardIndex(prev => prev + 1)
@@ -410,25 +410,25 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
       endChallenge()
     }
   }
-  
+
   // Reset challenge
   const resetChallenge = () => {
     setActiveTab("setup")
     setIsRunning(false)
   }
-  
+
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
-  
+
   // Calculate progress percentage
   const progressPercentage = useMemo(() => {
     return (currentCardIndex / challengeCards.length) * 100
   }, [currentCardIndex, challengeCards.length])
-  
+
   // Get difficulty color
   const getDifficultyColor = (difficulty: DifficultyLevel) => {
     switch (difficulty) {
@@ -439,7 +439,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
       default: return "text-blue-500"
     }
   }
-  
+
   // Get grade based on percentage correct
   const getGrade = (percentage: number) => {
     if (percentage >= 90) return { grade: "A", color: "text-green-500" }
@@ -448,7 +448,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
     if (percentage >= 60) return { grade: "D", color: "text-orange-500" }
     return { grade: "F", color: "text-red-500" }
   }
-  
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -465,7 +465,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
               Challenge Mode
             </DialogTitle>
           </DialogHeader>
-          
+
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "setup" | "challenge" | "results")}>
             {/* Setup Tab */}
             <TabsContent value="setup" className="space-y-4 py-4">
@@ -477,9 +477,9 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                       {/* Difficulty */}
                       <div className="space-y-2">
                         <Label htmlFor="difficulty">Difficulty Level</Label>
-                        <Select 
-                          value={settings.difficulty} 
-                          onValueChange={(value) => setSettings({...settings, difficulty: value as DifficultyLevel})}
+                        <Select
+                          value={settings.difficulty}
+                          onValueChange={(value) => setSettings({ ...settings, difficulty: value as DifficultyLevel })}
                         >
                           <SelectTrigger id="difficulty">
                             <SelectValue placeholder="Select difficulty" />
@@ -498,7 +498,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                           {settings.difficulty === "expert" && "Maximum difficulty, includes all card types."}
                         </p>
                       </div>
-                      
+
                       {/* Duration */}
                       <div className="space-y-2">
                         <div className="flex justify-between">
@@ -510,14 +510,14 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                           max={300}
                           step={30}
                           value={[settings.duration]}
-                          onValueChange={(value) => setSettings({...settings, duration: value[0]})}
+                          onValueChange={(value) => setSettings({ ...settings, duration: value[0] })}
                         />
                         <div className="flex justify-between text-xs text-muted-foreground">
                           <span>30s</span>
                           <span>5m</span>
                         </div>
                       </div>
-                      
+
                       {/* Card Count */}
                       <div className="space-y-2">
                         <div className="flex justify-between">
@@ -529,22 +529,22 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                           max={30}
                           step={5}
                           value={[settings.cardsCount]}
-                          onValueChange={(value) => setSettings({...settings, cardsCount: value[0]})}
+                          onValueChange={(value) => setSettings({ ...settings, cardsCount: value[0] })}
                         />
                         <div className="flex justify-between text-xs text-muted-foreground">
                           <span>5</span>
                           <span>30</span>
                         </div>
                       </div>
-                      
+
                       {/* Categories */}
                       <div className="space-y-2">
                         <Label>Categories</Label>
-                        <Select 
+                        <Select
                           value={settings.categories.length === 0 ? "all" : "custom"}
                           onValueChange={(value) => {
                             if (value === "all") {
-                              setSettings({...settings, categories: []})
+                              setSettings({ ...settings, categories: [] })
                             }
                           }}
                         >
@@ -556,19 +556,19 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                             <SelectItem value="custom">Custom Selection</SelectItem>
                           </SelectContent>
                         </Select>
-                        
+
                         {settings.categories.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-2">
                             {settings.categories.map(category => (
-                              <Badge 
+                              <Badge
                                 key={category}
                                 variant="secondary"
                                 className="flex items-center gap-1"
                               >
                                 {category}
-                                <button 
+                                <button
                                   onClick={() => setSettings({
-                                    ...settings, 
+                                    ...settings,
                                     categories: settings.categories.filter(c => c !== category)
                                   })}
                                   className="ml-1 rounded-full hover:bg-slate-200 p-0.5"
@@ -579,13 +579,13 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                             ))}
                           </div>
                         )}
-                        
+
                         {settings.categories.length === 0 && (
                           <div className="mt-2">
                             <p className="text-sm text-muted-foreground">Using all available categories</p>
                           </div>
                         )}
-                        
+
                         {settings.categories.length !== availableCategories.length && (
                           <div className="mt-2 max-h-40 overflow-y-auto">
                             <div className="grid grid-cols-2 gap-2">
@@ -611,27 +611,27 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Include Hints */}
                       <div className="flex items-center space-x-2">
                         <Switch
                           id="includeHints"
                           checked={settings.includeHints}
-                          onCheckedChange={(checked) => setSettings({...settings, includeHints: checked})}
+                          onCheckedChange={(checked) => setSettings({ ...settings, includeHints: checked })}
                         />
                         <Label htmlFor="includeHints">Show hints during challenge</Label>
                       </div>
                     </CardContent>
                   </Card>
                 </div>
-                
+
                 <div className="flex justify-end">
                   <Button onClick={startChallenge} disabled={flashcards.length === 0}>
                     <Lightning className="mr-2 h-4 w-4" />
                     Start Challenge
                   </Button>
                 </div>
-                
+
                 {/* Challenge History */}
                 {history.length > 0 && (
                   <div>
@@ -664,7 +664,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                 )}
               </div>
             </TabsContent>
-            
+
             {/* Challenge Tab */}
             <TabsContent value="challenge" className="space-y-4 py-4">
               {isRunning && challengeCards.length > 0 && currentCardIndex < challengeCards.length && (
@@ -689,9 +689,9 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                       )}
                     </div>
                   </div>
-                  
+
                   <Progress value={progressPercentage} className="h-2" />
-                  
+
                   {/* Flashcard */}
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -707,21 +707,21 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                             <Badge variant="outline">
                               {challengeCards[currentCardIndex].category}
                             </Badge>
-                            <Badge 
+                            <Badge
                               variant={
-                                challengeCards[currentCardIndex].difficulty === "easy" 
-                                  ? "default" 
-                                  : challengeCards[currentCardIndex].difficulty === "hard" 
-                                    ? "destructive" 
+                                challengeCards[currentCardIndex].difficulty === "easy"
+                                  ? "default"
+                                  : challengeCards[currentCardIndex].difficulty === "hard"
+                                    ? "destructive"
                                     : "secondary"
                               }
                             >
-                              {challengeCards[currentCardIndex].difficulty.charAt(0).toUpperCase() + 
+                              {challengeCards[currentCardIndex].difficulty.charAt(0).toUpperCase() +
                                 challengeCards[currentCardIndex].difficulty.slice(1)}
                             </Badge>
                           </div>
                         </CardHeader>
-                        
+
                         <CardContent className="flex-grow flex items-center justify-center">
                           <AnimatePresence mode="wait">
                             <motion.div
@@ -745,7 +745,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                                   <p className="text-2xl font-bold mb-4">
                                     {challengeCards[currentCardIndex].question}
                                   </p>
-                                  
+
                                   {settings.includeHints && challengeCards[currentCardIndex].hint && (
                                     <div className="mt-4 bg-amber-50 p-3 rounded-lg inline-block">
                                       <div className="flex items-center">
@@ -761,12 +761,12 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                             </motion.div>
                           </AnimatePresence>
                         </CardContent>
-                        
+
                         <CardFooter className="flex justify-between">
                           {!showAnswer ? (
                             <div className="w-full">
-                              <Button 
-                                onClick={() => setShowAnswer(true)} 
+                              <Button
+                                onClick={() => setShowAnswer(true)}
                                 className="w-full bg-indigo-500 hover:bg-indigo-600"
                               >
                                 <RotateCcw className="mr-2 h-4 w-4" />
@@ -775,22 +775,22 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                             </div>
                           ) : (
                             <div className="w-full grid grid-cols-3 gap-2">
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 onClick={handleSkip}
                                 className="border-slate-300"
                               >
                                 Skip
                               </Button>
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 onClick={() => handleResponse("incorrect")}
                                 className="border-red-200 text-red-600 hover:bg-red-50"
                               >
                                 <XCircle className="mr-1 h-4 w-4" />
                                 Incorrect
                               </Button>
-                              <Button 
+                              <Button
                                 onClick={() => handleResponse("correct")}
                                 className="bg-green-500 hover:bg-green-600"
                               >
@@ -806,7 +806,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                 </div>
               )}
             </TabsContent>
-            
+
             {/* Results Tab */}
             <TabsContent value="results" className="space-y-4 py-4">
               <div className="space-y-6">
@@ -816,7 +816,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                     You scored {stats.score} points
                   </p>
                 </div>
-                
+
                 <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-100">
                   <CardContent className="pt-6">
                     <div className="grid grid-cols-2 gap-4">
@@ -835,13 +835,12 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                                 cy="48"
                               />
                               <circle
-                                className={`${
-                                  stats.correctAnswers / (stats.correctAnswers + stats.incorrectAnswers) > 0.7
+                                className={`${stats.correctAnswers / (stats.correctAnswers + stats.incorrectAnswers) > 0.7
                                     ? "text-green-500"
                                     : stats.correctAnswers / (stats.correctAnswers + stats.incorrectAnswers) > 0.4
-                                    ? "text-amber-500"
-                                    : "text-red-500"
-                                }`}
+                                      ? "text-amber-500"
+                                      : "text-red-500"
+                                  }`}
                                 strokeWidth="6"
                                 strokeDasharray={36 * 2 * Math.PI}
                                 strokeDashoffset={
@@ -874,7 +873,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                           </Badge>
                         </div>
                       </div>
-                      
+
                       <div className="text-center p-4 bg-white rounded-lg shadow-sm">
                         <h3 className="text-lg font-medium text-slate-700">Performance</h3>
                         <div className="mt-2">
@@ -895,7 +894,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                           })()}
                         </div>
                       </div>
-                      
+
                       <div className="col-span-2 p-4 bg-white rounded-lg shadow-sm">
                         <h3 className="text-lg font-medium text-slate-700 mb-3">Statistics</h3>
                         <div className="grid grid-cols-2 gap-4">
@@ -926,7 +925,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                     </div>
                   </CardContent>
                 </Card>
-                
+
                 {/* Achievements */}
                 <div>
                   <h3 className="text-lg font-medium mb-3">Achievements</h3>
@@ -934,13 +933,12 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                     {achievements.map(achievement => {
                       const isUnlocked = achievement.condition(stats)
                       return (
-                        <div 
+                        <div
                           key={achievement.id}
-                          className={`p-3 rounded-lg border flex items-center gap-3 ${
-                            isUnlocked 
-                              ? "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200" 
+                          className={`p-3 rounded-lg border flex items-center gap-3 ${isUnlocked
+                              ? "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200"
                               : "bg-slate-50 border-slate-200 opacity-70"
-                          }`}
+                            }`}
                         >
                           <div className={`p-2 rounded-full ${isUnlocked ? "bg-amber-100" : "bg-slate-200"}`}>
                             {achievement.icon}
@@ -960,7 +958,7 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
                     })}
                   </div>
                 </div>
-                
+
                 <div className="flex justify-between">
                   <Button variant="outline" onClick={resetChallenge}>
                     Try Again
@@ -981,14 +979,14 @@ export default function ChallengeMode({ flashcards, onComplete }: ChallengeModeP
 // Helper component for the plus icon
 function Plus({ className }: { className?: string }) {
   return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       className={className}
     >
       <path d="M12 5v14M5 12h14" />

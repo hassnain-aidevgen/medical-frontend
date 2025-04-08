@@ -1,14 +1,14 @@
 "use client"
 
-import React, { useState } from "react"
-import { Brain, Loader2 } from "lucide-react"
-import axios from "axios"
-import { useRouter } from "next/navigation"
-import { toast } from "react-hot-toast"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import axios from "axios"
+import { Brain, Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import React, { useState } from "react"
+import { toast } from "react-hot-toast"
 
 interface AITestSuggestionsProps {
   mode: "tutor" | "timer"
@@ -20,7 +20,7 @@ const AITestSuggestions: React.FC<AITestSuggestionsProps> = ({ mode }) => {
   const [questionCount, setQuestionCount] = useState<string>("10")
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
   const [difficultyDistribution, setDifficultyDistribution] = useState<string>("balanced")
-  
+
   const handleQuestionCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     // Allow only numeric values
@@ -77,7 +77,7 @@ const AITestSuggestions: React.FC<AITestSuggestionsProps> = ({ mode }) => {
   }
 
   return (
-    <Card className="border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+    <Card className="bg-white">
       <CardHeader className="pb-4">
         <CardTitle className="text-2xl font-semibold flex items-center text-gray-700">
           <Brain className="mr-2" size={24} />
@@ -102,7 +102,7 @@ const AITestSuggestions: React.FC<AITestSuggestionsProps> = ({ mode }) => {
             disabled={isGenerating}
           />
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="question-count" className="block text-sm font-medium text-gray-700 mb-1">
@@ -121,7 +121,7 @@ const AITestSuggestions: React.FC<AITestSuggestionsProps> = ({ mode }) => {
               Recommended: 5-30 questions
             </p>
           </div>
-          
+
           <div>
             <label htmlFor="difficulty-distribution" className="block text-sm font-medium text-gray-700 mb-1">
               Difficulty Distribution
@@ -143,7 +143,7 @@ const AITestSuggestions: React.FC<AITestSuggestionsProps> = ({ mode }) => {
             </Select>
           </div>
         </div>
-        
+
         <Button
           onClick={handleGenerateTest}
           disabled={isGenerating}
@@ -158,7 +158,7 @@ const AITestSuggestions: React.FC<AITestSuggestionsProps> = ({ mode }) => {
             "Generate Topic-Focused Test"
           )}
         </Button>
-        
+
         <p className="text-xs text-gray-500 italic text-center">
           The AI will generate questions focused specifically on {topic || "your chosen topic"} with varying difficulty levels.
         </p>

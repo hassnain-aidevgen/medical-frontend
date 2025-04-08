@@ -20,7 +20,7 @@ import { Slider } from "@/components/ui/slider"
 import { apiClient } from "@/lib/api"
 import Image from "next/image"
 import { CourseRating } from "./course-rating"
-import { extractMedicalTopics, applyTopicAndPriceFilters } from "./filters"
+import { applyTopicAndPriceFilters, extractMedicalTopics } from "./filters"
 
 // Import the Course type from the types directory
 import type { Course } from "@/types"

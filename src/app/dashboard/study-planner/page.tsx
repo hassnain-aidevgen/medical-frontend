@@ -28,7 +28,7 @@ import {
     X,
     Zap,
 } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import StudyPlanResults from "./study-plan-results"
 
 // Add these type definitions at the top of the file, after the imports
@@ -182,27 +182,30 @@ const PlannerForm: React.FC = () => {
     const [hasExistingPlan, setHasExistingPlan] = useState<boolean>(false)
     const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-    const studyTips: string[] = [
+    const studyTips = useMemo(() => [
         "Spaced repetition is more effective than cramming",
         "Teaching concepts to others improves your own understanding",
         "Taking short breaks every 25-30 minutes can improve focus",
         "Mixing different subjects in one study session can improve retention",
         "Sleep is crucial for memory consolidation",
-    ]
+    ], [])
 
 
     useEffect(() => {
-        // Show a random tip when the form loads
-        const randomTip = studyTips[Math.floor(Math.random() * studyTips.length)]
-        setCurrentTip(randomTip)
-        setShowTip(true)
+        const showRandomTip = () => {
+            const randomTip = studyTips[Math.floor(Math.random() * studyTips.length)]
+            setCurrentTip(randomTip)
+            setShowTip(true)
 
-        const tipTimer = setTimeout(() => {
-            setShowTip(false)
-        }, 8000)
+            const tipTimer = setTimeout(() => {
+                setShowTip(false)
+            }, 8000)
 
-        return () => clearTimeout(tipTimer)
-    }, [])
+            return () => clearTimeout(tipTimer)
+        }
+
+        showRandomTip()
+    }, [studyTips])
 
     useEffect(() => {
         const savedPlan = localStorage.getItem("studyPlan")

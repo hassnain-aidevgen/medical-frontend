@@ -1,47 +1,66 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Progress } from "@/components/ui/progress"
+import type React from "react"
+
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import type { Flashcard } from "@/services/api-service"
 import {
-  BarChart,
+  ArrowDownRight,
+  ArrowUpRight,
+  BarChart2,
+  BookOpen,
+  Brain,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Clock3,
+  Download,
+  Filter,
+  Info,
+  PieChartIcon,
+  XCircle,
+} from "lucide-react"
+import { useMemo, useState } from "react"
+import {
   Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Sector,
   XAxis,
   YAxis,
-  CartesianGrid,
-  ResponsiveContainer,
-  Cell,
-  PieChart,
-  Pie,
-  Legend,
-  Sector,
 } from "recharts"
-import {
-  Brain,
-  BookOpen,
-  BarChart2,
-  PieChartIcon,
-  Calendar,
-  Clock,
-  ArrowUpRight,
-  ArrowDownRight,
-  Info,
-  CheckCircle,
-  XCircle,
-  Clock3,
-  Filter,
-  Download,
-} from "lucide-react"
-import type { Flashcard } from "@/services/api-service"
 
 interface ThemeStatisticsProps {
   flashcards: Flashcard[]
   timeframe?: "all" | "week" | "month" | "year"
+}
+
+// Define the type for the active shape props
+interface ActiveShapeProps {
+  cx: number
+  cy: number
+  innerRadius: number
+  outerRadius: number
+  startAngle: number
+  endAngle: number
+  fill: string
+  payload: {
+    name: string
+    value: number
+  }
+  percent: number
+  value: number
 }
 
 export default function ThemeStatistics({ flashcards, timeframe = "all" }: ThemeStatisticsProps) {
@@ -231,7 +250,7 @@ export default function ThemeStatistics({ flashcards, timeframe = "all" }: Theme
   }, [categoryStats])
 
   // Custom active shape for pie chart
-  const renderActiveShape = (props: any) => {
+  const renderActiveShape = (props: ActiveShapeProps) => {
     const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } = props
 
     return (
@@ -259,7 +278,7 @@ export default function ThemeStatistics({ flashcards, timeframe = "all" }: Theme
   }
 
   // Handle pie chart hover
-  const onPieEnter = (_: any, index: number) => {
+  const onPieEnter = (_: React.MouseEvent<SVGElement>, index: number) => {
     setActiveIndex(index)
   }
 
@@ -583,10 +602,7 @@ export default function ThemeStatistics({ flashcards, timeframe = "all" }: Theme
                           {selectedCategoryStats.masteredCards}/{selectedCategoryStats.totalCards}
                         </span>
                       </div>
-                      <Progress
-                        value={selectedCategoryStats.masteredPercentage}
-                        className="h-1.5 bg-green-100"
-                      />
+                      <Progress value={selectedCategoryStats.masteredPercentage} className="h-1.5 bg-green-100" />
                     </div>
                   </div>
 
@@ -744,8 +760,7 @@ export default function ThemeStatistics({ flashcards, timeframe = "all" }: Theme
                         <div className="flex items-center gap-2">
                           <Progress
                             value={100}
-                            className="h-2 bg-slate-100"
-                            indicatorClassName={`${getMasteryBgColor(stat.averageMastery)}`}
+                            className={`h-2 bg-slate-100 ${getMasteryBgColor(stat.averageMastery)}`}
                           />
                           <span className="text-xs font-medium">{formatPercentage(stat.averageMastery)}</span>
                         </div>
@@ -780,7 +795,7 @@ export default function ThemeStatistics({ flashcards, timeframe = "all" }: Theme
                   <ArrowUpRight className="mr-2 h-5 w-5 text-green-500" />
                   Strong Areas
                 </CardTitle>
-                <CardDescription>Categories where you're performing well</CardDescription>
+                <CardDescription>Categories where you&apos;re performing well</CardDescription>
               </CardHeader>
               <CardContent>
                 {strongAreas.length > 0 ? (
@@ -800,7 +815,6 @@ export default function ThemeStatistics({ flashcards, timeframe = "all" }: Theme
                           <Progress
                             value={area.masteredPercentage}
                             className="h-1.5 bg-green-100"
-                            indicatorClassName="bg-green-500"
                           />
                         </div>
                       </div>
@@ -919,7 +933,8 @@ export default function ThemeStatistics({ flashcards, timeframe = "all" }: Theme
                       <div>
                         <h3 className="font-medium text-blue-800">Start New Cards</h3>
                         <p className="mt-1 text-sm text-blue-700">
-                          You have {overallStats.totalCards - overallStats.reviewedCards} cards you haven't studied yet.
+                          You have {overallStats.totalCards - overallStats.reviewedCards} cards you haven&apos;t studied
+                          yet.
                         </p>
                         <Button className="mt-3 bg-blue-600 hover:bg-blue-700 text-white">Explore New Cards</Button>
                       </div>
@@ -936,8 +951,8 @@ export default function ThemeStatistics({ flashcards, timeframe = "all" }: Theme
                       <div>
                         <h3 className="font-medium text-green-800">All Caught Up!</h3>
                         <p className="mt-1 text-sm text-green-700">
-                          Great job! You&apos;re up to date with your reviews. Consider adding more flashcards or challenging
-                          yourself.
+                          Great job! You&apos;re up to date with your reviews. Consider adding more flashcards or
+                          challenging yourself.
                         </p>
                         <Button className="mt-3 bg-green-600 hover:bg-green-700 text-white">Try Challenge Mode</Button>
                       </div>
@@ -972,4 +987,3 @@ function Lightbulb({ className }: { className?: string }) {
     </svg>
   )
 }
-

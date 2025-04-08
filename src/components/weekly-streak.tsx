@@ -128,7 +128,7 @@ export default function WeeklyStreak() {
   }
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden mb-8">
       <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">

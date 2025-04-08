@@ -79,7 +79,7 @@ type FlashcardResponse =
 
 // Enhanced axios instance with improved error handling
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api/v2",
+  baseURL: "http://localhost:5000/api/v2",
   headers: {
     "Content-Type": "application/json",
   },

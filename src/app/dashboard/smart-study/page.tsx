@@ -8,10 +8,10 @@ import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import ExamInterface from "./examInterface"
-import PlannerSyncScheduler from "./planner-sync-scheduler"
-import TestReviewScheduler from "./test-review-scheduler"
 import PerformanceVisualizer from "./performance-visualizer"
+import PlannerSyncScheduler from "./planner-sync-scheduler"
 import PriorityIndicator from "./priority-indicator"
+import TestReviewScheduler from "./test-review-scheduler"
 import TodayDashboard from "./today-dashboard"
 
 // Define the interface for your calendar tests
@@ -216,25 +216,41 @@ const SmartStudyCalendar = () => {
       days.push(
         <div
           key={day}
-          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${
-            isSelected ? "bg-blue-500 text-white" : ""
-          }`}
+          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${isSelected ? "bg-blue-500 text-white" : ""
+            }`}
           onClick={() => setSelectedDate(date)}
         >
           {day}
           {testsOnThisDay.length > 0 && (
             <div className="flex flex-wrap justify-center mt-1 gap-1">
-              {testsOnThisDay.map((test, index) => (
-                <div
-                  key={index}
-                  className="w-2 h-2 rounded-full"
-                  style={{ backgroundColor: test.color }}
-                  title={`${test.subjectName}: ${test.testTopic}`}
-                />
-              ))}
+              {testsOnThisDay.map((test, index) => {
+                // Determine color based on status
+                let dotColor = test.color
+                const testDate = new Date(test.date)
+                const today = new Date()
+                today.setHours(0, 0, 0, 0)
+
+                // If test has a completion status, use status-based colors
+                if (test.completed === true) {
+                  dotColor = "#22c55e" // green for complete
+                } else if (test.completed === false && testDate < today) {
+                  dotColor = "#9ca3af" // gray for missed (past date and not completed)
+                } else if (test.completed === false) {
+                  dotColor = "#ef4444" // red for incomplete
+                }
+
+                return (
+                  <div
+                    key={index}
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: dotColor }}
+                    title={`${test.subjectName}: ${test.testTopic} - ${test.completed ? "Complete" : testDate < today ? "Missed" : "Incomplete"}`}
+                  />
+                )
+              })}
             </div>
           )}
-        </div>
+        </div>,
       )
     }
     return days
@@ -247,19 +263,35 @@ const SmartStudyCalendar = () => {
       <Toaster position="top-right" />
       <h1 className="text-3xl font-bold mb-6">Smart Study Calendar</h1>
 
+      <div className="flex items-center gap-4 mb-4 text-sm">
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full bg-[#22c55e] mr-2"></div>
+          <span>Complete</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full bg-[#ef4444] mr-2"></div>
+          <span>Incomplete</span>
+        </div>
+        <div className="flex items-center">
+          <div className="w-3 h-3 rounded-full bg-[#9ca3af] mr-2"></div>
+          <span>Missed</span>
+        </div>
+      </div>
+
       {/* Today Dashboard - Daily Snapshot */}
-      <TodayDashboard 
+      <TodayDashboard
         tests={tests}
         onTestComplete={handleToggleCompletion}
         onRefresh={() => {
           if (userId) {
-            axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`)
-              .then(response => {
+            axios
+              .get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`)
+              .then((response) => {
                 if (Array.isArray(response.data)) {
                   setTests(response.data)
                 }
               })
-              .catch(error => console.error(error))
+              .catch((error) => console.error(error))
           }
         }}
       />
@@ -364,15 +396,25 @@ const SmartStudyCalendar = () => {
                 {selectedDateTests.map((test) => (
                   <li key={test._id} className="flex flex-col space-y-2 border-b pb-2 mb-2">
                     <div className="flex items-center">
-                      <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: test.color }}></div>
+                      {/* Replace the color dot with status-based color */}
+                      <div
+                        className="w-4 h-4 rounded-full mr-2"
+                        style={{
+                          backgroundColor: test.completed
+                            ? "#22c55e" // green for complete
+                            : new Date(test.date) < new Date(new Date().setHours(0, 0, 0, 0))
+                              ? "#9ca3af" // gray for missed
+                              : "#ef4444", // red for incomplete
+                        }}
+                      ></div>
                       <div className="flex items-center">
                         <strong>{test.subjectName}</strong>: {test.testTopic}
                         <PriorityIndicator subjectName={test.subjectName} />
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-6">
-                      <TestReviewScheduler 
-                        userId={userId} 
+                      <TestReviewScheduler
+                        userId={userId}
                         test={{
                           _id: test._id || "",
                           subjectName: test.subjectName,
@@ -380,19 +422,19 @@ const SmartStudyCalendar = () => {
                           date: new Date(test.date),
                           color: test.color,
                           completed: test.completed || false,
-                          userId: userId
+                          userId: userId,
                         }}
                         onReviewsAdded={(newTests) => {
                           // Convert the new tests to CalendarTest format
-                          const calendarTests = newTests.map(test => ({
+                          const calendarTests = newTests.map((test) => ({
                             _id: test._id,
                             subjectName: test.subjectName,
                             testTopic: test.testTopic,
                             date: test.date.toISOString(),
                             color: test.color,
-                            completed: test.completed
-                          }));
-                          setTests([...tests, ...calendarTests]);
+                            completed: test.completed,
+                          }))
+                          setTests([...tests, ...calendarTests])
                         }}
                       />
                       <button
@@ -427,11 +469,29 @@ const SmartStudyCalendar = () => {
                   {tests.map((test) => (
                     <li key={test._id} className="flex justify-between items-center">
                       <div className="flex items-center">
-                        <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: test.color }}></div>
+                        {/* Replace the color dot with status-based color */}
+                        <div
+                          className="w-4 h-4 rounded-full mr-2"
+                          style={{
+                            backgroundColor: test.completed
+                              ? "#22c55e" // green for complete
+                              : new Date(test.date) < new Date(new Date().setHours(0, 0, 0, 0))
+                                ? "#9ca3af" // gray for missed
+                                : "#ef4444", // red for incomplete
+                          }}
+                        ></div>
                         <div>
                           <strong>{test.subjectName}</strong>: {test.testTopic}
                           <br />
                           <small>{new Date(test.date).toLocaleDateString()}</small>
+                          {/* Add status text */}
+                          <small className="ml-2 text-xs">
+                            {test.completed
+                              ? "✓ Complete"
+                              : new Date(test.date) < new Date(new Date().setHours(0, 0, 0, 0))
+                                ? "⊗ Missed"
+                                : "⊘ Incomplete"}
+                          </small>
                         </div>
                       </div>
                       <div className="flex items-center">
@@ -487,15 +547,25 @@ const SmartStudyCalendar = () => {
                 {selectedDateTests.map((test) => (
                   <li key={test._id} className="flex flex-col space-y-2 border-b pb-2 mb-2">
                     <div className="flex items-center">
-                      <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: test.color }}></div>
+                      {/* Replace the color dot with status-based color */}
+                      <div
+                        className="w-4 h-4 rounded-full mr-2"
+                        style={{
+                          backgroundColor: test.completed
+                            ? "#22c55e" // green for complete
+                            : new Date(test.date) < new Date(new Date().setHours(0, 0, 0, 0))
+                              ? "#9ca3af" // gray for missed
+                              : "#ef4444", // red for incomplete
+                        }}
+                      ></div>
                       <div className="flex items-center">
                         <strong>{test.subjectName}</strong>: {test.testTopic}
                         <PriorityIndicator subjectName={test.subjectName} />
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-6">
-                      <TestReviewScheduler 
-                        userId={userId} 
+                      <TestReviewScheduler
+                        userId={userId}
                         test={{
                           _id: test._id || "",
                           subjectName: test.subjectName,
@@ -503,19 +573,19 @@ const SmartStudyCalendar = () => {
                           date: new Date(test.date),
                           color: test.color,
                           completed: test.completed || false,
-                          userId: userId
+                          userId: userId,
                         }}
                         onReviewsAdded={(newTests) => {
                           // Convert the new tests to CalendarTest format
-                          const calendarTests = newTests.map(test => ({
+                          const calendarTests = newTests.map((test) => ({
                             _id: test._id,
                             subjectName: test.subjectName,
                             testTopic: test.testTopic,
                             date: test.date.toISOString(),
                             color: test.color,
-                            completed: test.completed
-                          }));
-                          setTests([...tests, ...calendarTests]);
+                            completed: test.completed,
+                          }))
+                          setTests([...tests, ...calendarTests])
                         }}
                       />
                       <button
@@ -550,11 +620,29 @@ const SmartStudyCalendar = () => {
                   {tests.map((test) => (
                     <li key={test._id} className="flex justify-between items-center">
                       <div className="flex items-center">
-                        <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: test.color }}></div>
+                        {/* Replace the color dot with status-based color */}
+                        <div
+                          className="w-4 h-4 rounded-full mr-2"
+                          style={{
+                            backgroundColor: test.completed
+                              ? "#22c55e" // green for complete
+                              : new Date(test.date) < new Date(new Date().setHours(0, 0, 0, 0))
+                                ? "#9ca3af" // gray for missed
+                                : "#ef4444", // red for incomplete
+                          }}
+                        ></div>
                         <div>
                           <strong>{test.subjectName}</strong>: {test.testTopic}
                           <br />
                           <small>{new Date(test.date).toLocaleDateString()}</small>
+                          {/* Add status text */}
+                          <small className="ml-2 text-xs">
+                            {test.completed
+                              ? "✓ Complete"
+                              : new Date(test.date) < new Date(new Date().setHours(0, 0, 0, 0))
+                                ? "⊗ Missed"
+                                : "⊘ Incomplete"}
+                          </small>
                         </div>
                       </div>
                       <div className="flex items-center">
@@ -585,4 +673,3 @@ const SmartStudyCalendar = () => {
 }
 
 export default SmartStudyCalendar
-

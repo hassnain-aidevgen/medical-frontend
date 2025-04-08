@@ -51,7 +51,7 @@ export default function MotivationalToastProvider() {
         })
 
         // Log for debugging
-        console.log(`Showing ${category} message for path: ${pathname}`)
+        // console.log(`Showing ${category} message for path: ${pathname}`)
     }, [pathname, previousPath, isFirstLoad])
 
     return (

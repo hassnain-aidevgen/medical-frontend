@@ -10,35 +10,35 @@ import {
   Book,
   Bookmark,
   Calendar,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
   Clock,
   Download,
   FileText,
   GraduationCap,
+  HelpCircle,
   Layers,
   Lightbulb,
   ListTodo,
   Printer,
   X,
-  CheckCircle,
-  HelpCircle,
   XCircle,
 } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 // Add this import at the top
 import { jsPDF } from "jspdf"
 
 // Import our new components
-import { usePerformanceAdapter } from "./components/performance-adapter"
-import { TaskActions } from "./components/task-actions"
-import { ReplanAlert } from "./components/replan-alert"
-import { PerformanceSummary } from "./components/performance-summary"
-import { generateTaskId } from "./utils/task-utils"
 import { MockExamBlock } from "./components/mock-exam-block"
-import { shouldPlaceMockExam, getExamNumber } from "./utils/mock-exam-utils"
+import { usePerformanceAdapter } from "./components/performance-adapter"
+import { PerformanceSummary } from "./components/performance-summary"
+import { ReplanAlert } from "./components/replan-alert"
 import { StudyProgressBar } from "./components/study-progress-bar"
+import { TaskActions } from "./components/task-actions"
+import { getExamNumber, shouldPlaceMockExam } from "./utils/mock-exam-utils"
+import { generateTaskId } from "./utils/task-utils"
 // Add this import at the top with the other component imports
 import { ReviewScheduler } from "./components/review-scheduler"
 
@@ -153,6 +153,17 @@ interface UserData {
   previousScores: string
 }
 
+// Define type for task performance data
+interface TaskPerformance {
+  subject: string
+  activity: string
+  weekNumber: number
+  dayOfWeek: string
+  taskId: string
+  timestamp: number
+  status: "completed" | "incomplete" | "not-understood" | "skipped"
+}
+
 // Define props for the component
 interface StudyPlanResultsProps {
   plan: StudyPlanResponse
@@ -175,6 +186,11 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
       setStudyPlan(updatedPlan)
     })
 
+  // Memoize the initializeWeekTracking function with useCallback
+  const memoizedInitializeWeekTracking = useCallback(() => {
+    initializeWeekTracking(activeWeek)
+  }, [initializeWeekTracking, activeWeek])
+
   useEffect(() => {
     // Show a tip when the results first load
     setShowTip(true)
@@ -183,15 +199,15 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
     }, 8000)
 
     // Initialize tracking for the current week
-    initializeWeekTracking(activeWeek)
+    memoizedInitializeWeekTracking()
 
     return () => clearTimeout(tipTimer)
-  }, [])
+  }, [memoizedInitializeWeekTracking])
 
   // Initialize tracking whenever the active week changes
   useEffect(() => {
-    initializeWeekTracking(activeWeek)
-  }, [activeWeek])
+    memoizedInitializeWeekTracking()
+  }, [memoizedInitializeWeekTracking])
 
   const weeklyPlans = studyPlanData.weeklyPlans || []
   const totalWeeks = weeklyPlans.length
@@ -669,8 +685,7 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
                   return (
                     <div
                       key={taskIndex}
-                      className={`p-3 rounded-lg ${
-                        task.isReview
+                      className={`p-3 rounded-lg ${task.isReview
                           ? "bg-amber-50 border border-amber-100"
                           : status === "completed"
                             ? "bg-green-50 border border-green-100"
@@ -679,7 +694,7 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
                               : status === "skipped"
                                 ? "bg-red-50 border border-red-100"
                                 : "bg-gray-50"
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between items-center mb-2">
                         <div className="font-medium text-gray-800 flex items-center">
@@ -729,14 +744,14 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
                   day.dayOfWeek,
                   currentWeek.days?.map((d) => d.dayOfWeek) || [],
                 ) && (
-                  <MockExamBlock
-                    weekNumber={currentWeek.weekNumber}
-                    weekTheme={currentWeek.theme}
-                    focusAreas={currentWeek.focusAreas || []}
-                    dayOfWeek={day.dayOfWeek}
-                    examNumber={getExamNumber(currentWeek.weekNumber)}
-                  />
-                )}
+                    <MockExamBlock
+                      weekNumber={currentWeek.weekNumber}
+                      weekTheme={currentWeek.theme}
+                      focusAreas={currentWeek.focusAreas || []}
+                      dayOfWeek={day.dayOfWeek}
+                      examNumber={getExamNumber(currentWeek.weekNumber)}
+                    />
+                  )}
               </div>
             </div>
           ))}
@@ -880,7 +895,7 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
                 <CheckCircle className="text-green-500 mr-2" size={18} />
                 <div>
                   <div className="font-medium text-green-700">Completed</div>
-                  <div className="text-sm text-green-600">Tasks you've successfully completed</div>
+                  <div className="text-sm text-green-600">Tasks you&apos;ve successfully completed</div>
                 </div>
               </div>
             </div>
@@ -912,9 +927,9 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
               <div>
                 <div className="font-medium text-blue-700 mb-1">Intelligent Replanning</div>
                 <div className="text-sm text-blue-600">
-                  When you mark tasks as "Not Understood" or "Skipped", the system will automatically redistribute these
-                  topics into future weeks to ensure you master all the material. Click the "Adjust Plan" button when it
-                  appears to update your study schedule.
+                  When you mark tasks as &quot;Not Understood&quot; or &quot;Skipped&quot;, the system will
+                  automatically redistribute these topics into future weeks to ensure you master all the material. Click
+                  the &quot;Adjust Plan&quot; button when it appears to update your study schedule.
                 </div>
               </div>
             </div>
@@ -931,12 +946,14 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
           <div className="space-y-4">
             {userData.weakSubjects.map((subject) => {
               // Calculate performance for this subject
-              const subjectTasks = Object.values(performanceData.tasks).filter((task: any) => task.subject === subject)
+              const subjectTasks = Object.values(performanceData.tasks).filter(
+                (task: TaskPerformance) => task.subject === subject,
+              )
 
               const totalTasks = subjectTasks.length
               if (totalTasks === 0) return null
 
-              const completedTasks = subjectTasks.filter((task: any) => task.status === "completed").length
+              const completedTasks = subjectTasks.filter((task: TaskPerformance) => task.status === "completed").length
 
               const completionRate = Math.round((completedTasks / totalTasks) * 100)
 
@@ -948,9 +965,8 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
                   </div>
                   <div className="w-full bg-gray-200 h-2 rounded-full">
                     <div
-                      className={`h-2 rounded-full ${
-                        completionRate < 30 ? "bg-red-500" : completionRate < 70 ? "bg-amber-500" : "bg-green-500"
-                      }`}
+                      className={`h-2 rounded-full ${completionRate < 30 ? "bg-red-500" : completionRate < 70 ? "bg-amber-500" : "bg-green-500"
+                        }`}
                       style={{ width: `${completionRate}%` }}
                     ></div>
                   </div>
@@ -1037,40 +1053,36 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
         <div className="flex space-x-1 overflow-x-auto">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${
-              activeTab === "overview"
+            className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${activeTab === "overview"
                 ? "text-blue-600 border-b-2 border-blue-600"
                 : "text-gray-600 hover:text-blue-600"
-            }`}
+              }`}
           >
             Overview
           </button>
           <button
             onClick={() => setActiveTab("weekly")}
-            className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${
-              activeTab === "weekly" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-600 hover:text-blue-600"
-            }`}
+            className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${activeTab === "weekly" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-600 hover:text-blue-600"
+              }`}
           >
             Weekly Plan
           </button>
           <button
             onClick={() => setActiveTab("resources")}
-            className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${
-              activeTab === "resources"
+            className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${activeTab === "resources"
                 ? "text-blue-600 border-b-2 border-blue-600"
                 : "text-gray-600 hover:text-blue-600"
-            }`}
+              }`}
           >
             Resources
           </button>
           {/* Add new Performance tab */}
           <button
             onClick={() => setActiveTab("performance")}
-            className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${
-              activeTab === "performance"
+            className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${activeTab === "performance"
                 ? "text-blue-600 border-b-2 border-blue-600"
                 : "text-gray-600 hover:text-blue-600"
-            }`}
+              }`}
           >
             Performance
           </button>
@@ -1100,4 +1112,3 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
 }
 
 export default StudyPlanResults
-

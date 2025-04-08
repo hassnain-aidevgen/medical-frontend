@@ -3,7 +3,7 @@
 import axios from "axios"
 import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Timer, XCircle } from "lucide-react"
 import type React from "react"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import toast from "react-hot-toast"
 
 // Types definitions
@@ -82,7 +82,8 @@ const ExamSimulation: React.FC = () => {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
-  const fetchSimulationHistory = async () => {
+  // Wrap fetchSimulationHistory in useCallback to prevent it from changing on every render
+  const fetchSimulationHistory = useCallback(async () => {
     try {
       const user_id = localStorage.getItem("Medical_User_Id")
       const { data } = await axios.get(
@@ -94,82 +95,28 @@ const ExamSimulation: React.FC = () => {
       console.error(error)
       toast.error("Failed to fetch history")
     }
-  }
-
-  // Check for simulation requests from Today Dashboard
-  useEffect(() => {
-    const checkForSimulationRequest = () => {
-      if (typeof window !== "undefined") {
-        const startSimulationFlag = localStorage.getItem("startSimulation")
-
-        if (startSimulationFlag === "true") {
-          // Clear the flag immediately to prevent multiple starts
-          localStorage.removeItem("startSimulation")
-
-          // Get the simulation details
-          const simulationType = localStorage.getItem("simulationType")
-          const simulationSubject = localStorage.getItem("simulationSubject")
-          const simulationTitle = localStorage.getItem("simulationTitle")
-          const storedExam = localStorage.getItem("selectedExam")
-
-          // Log the details for debugging (can be removed later)
-          console.log("Starting simulation:", { simulationType, simulationSubject, simulationTitle, storedExam })
-
-          // Update the selected exam if it's available
-          if (storedExam && storedExam !== selectedExam) {
-            setSelectedExam(storedExam)
-            setExamConfig(examConfigs[storedExam] || examConfigs["DEFAULT"])
-          }
-
-          // Only start if we're not already in a simulation
-          if (!isSimulationActive && !isSimulationComplete) {
-            // Small delay to ensure the component is fully rendered and exam is set
-            setTimeout(() => {
-              startSimulation()
-            }, 800) // Increased delay to ensure state updates
-          }
-        }
-      }
-    }
-
-    // Check when component mounts
-    checkForSimulationRequest()
-
-    // Set up interval to check periodically
-    const intervalId = setInterval(checkForSimulationRequest, 2000)
-
-    return () => {
-      clearInterval(intervalId)
-    }
-  }, [isSimulationActive, isSimulationComplete, selectedExam])
-
-  // Load user data from localStorage
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedUserId = localStorage.getItem("Medical_User_Id")
-      const storedExam = localStorage.getItem("selectedExam")
-
-      setUserId(storedUserId || "")
-
-      if (storedExam) {
-        setSelectedExam(storedExam)
-        setExamConfig(examConfigs[storedExam] || examConfigs["DEFAULT"])
-      }
-    }
-
-    // Optionally fetch simulation history if you implement that feature
-    fetchSimulationHistory()
-
-    return () => {
-      // Cleanup timer on component unmount
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-      }
-    }
   }, [])
 
-  // Start simulation function
-  const startSimulation = async () => {
+  // Start simulation function - wrap in useCallback to use in dependency array
+  const startTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+    }
+
+    timerRef.current = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          // Time's up - submit automatically
+          clearInterval(timerRef.current as NodeJS.Timeout)
+          submitSimulation()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }, [submitSimulation])
+
+  const startSimulation = useCallback(async () => {
     if (!selectedExam) {
       toast.error("Please select an exam in the calendar settings first")
       return
@@ -255,26 +202,98 @@ const ExamSimulation: React.FC = () => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [selectedExam, userId, startTimer]) // Added startTimer to the dependency array
 
-  // Start the countdown timer
-  const startTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current)
+  // Check for simulation requests from Today Dashboard
+  useEffect(() => {
+    const checkForSimulationRequest = () => {
+      if (typeof window !== "undefined") {
+        const startSimulationFlag = localStorage.getItem("startSimulation")
+
+        if (startSimulationFlag === "true") {
+          // Clear the flag immediately to prevent multiple starts
+          localStorage.removeItem("startSimulation")
+
+          // Get the simulation details
+          const simulationType = localStorage.getItem("simulationType")
+          const simulationSubject = localStorage.getItem("simulationSubject")
+          const simulationTitle = localStorage.getItem("simulationTitle")
+          const storedExam = localStorage.getItem("selectedExam")
+
+          // Log the details for debugging (can be removed later)
+          console.log("Starting simulation:", { simulationType, simulationSubject, simulationTitle, storedExam })
+
+          // Update the selected exam if it's available
+          if (storedExam && storedExam !== selectedExam) {
+            setSelectedExam(storedExam)
+            setExamConfig(examConfigs[storedExam] || examConfigs["DEFAULT"])
+          }
+
+          // Only start if we're not already in a simulation
+          if (!isSimulationActive && !isSimulationComplete) {
+            // Small delay to ensure the component is fully rendered and exam is set
+            setTimeout(() => {
+              startSimulation()
+            }, 800) // Increased delay to ensure state updates
+          }
+        }
+      }
     }
 
-    timerRef.current = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          // Time's up - submit automatically
-          clearInterval(timerRef.current as NodeJS.Timeout)
-          submitSimulation()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-  }
+    // Check when component mounts
+    checkForSimulationRequest()
+
+    // Set up interval to check periodically
+    const intervalId = setInterval(checkForSimulationRequest, 2000)
+
+    return () => {
+      clearInterval(intervalId)
+    }
+  }, [isSimulationActive, isSimulationComplete, selectedExam, startSimulation]) // Added startSimulation to dependencies
+
+  // Start the countdown timer
+  // const startTimer = () => {
+  //   if (timerRef.current) {
+  //     clearInterval(timerRef.current)
+  //   }
+
+  //   timerRef.current = setInterval(() => {
+  //     setTimeRemaining((prev) => {
+  //       if (prev <= 1) {
+  //         // Time's up - submit automatically
+  //         clearInterval(timerRef.current as NodeJS.Timeout)
+  //         submitSimulation()
+  //         return 0
+  //       }
+  //       return prev - 1
+  //     })
+  //   }, 1000)
+  // }
+
+  // Load user data from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedUserId = localStorage.getItem("Medical_User_Id")
+      const storedExam = localStorage.getItem("selectedExam")
+
+      setUserId(storedUserId || "")
+
+      if (storedExam) {
+        setSelectedExam(storedExam)
+        setExamConfig(examConfigs[storedExam] || examConfigs["DEFAULT"])
+      }
+    }
+
+    // Optionally fetch simulation history if you implement that feature
+    fetchSimulationHistory()
+
+    return () => {
+      // Cleanup timer on component unmount
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
+    }
+  }, [fetchSimulationHistory])
 
   // Navigation functions
   const goToNextQuestion = () => {
@@ -307,8 +326,8 @@ const ExamSimulation: React.FC = () => {
     })
   }
 
-  // Calculate results and end simulation
-  const submitSimulation = () => {
+  // In the submitSimulation useCallback, remove 'toast' from the dependency array
+  const submitSimulation = useCallback(() => {
     // Stop the timer
     if (timerRef.current) {
       clearInterval(timerRef.current)
@@ -377,7 +396,7 @@ const ExamSimulation: React.FC = () => {
     }
 
     toast.success("Simulation completed!")
-  }
+  }, [examConfig.duration, selectedExam, setSimulationHistory, simulationQuestions, timeRemaining, userAnswers, userId]) // Removed 'toast' from the dependency array
 
   // Reset simulation state
   const resetSimulation = () => {
@@ -574,13 +593,12 @@ const ExamSimulation: React.FC = () => {
                   return (
                     <div
                       key={question._id}
-                      className={`p-4 rounded-lg border ${
-                        userAnswer?.selectedAnswer
-                          ? isCorrect
-                            ? "border-green-300 bg-green-50"
-                            : "border-red-300 bg-red-50"
-                          : "border-gray-300"
-                      }`}
+                      className={`p-4 rounded-lg border ${userAnswer?.selectedAnswer
+                        ? isCorrect
+                          ? "border-green-300 bg-green-50"
+                          : "border-red-300 bg-red-50"
+                        : "border-gray-300"
+                        }`}
                     >
                       <div className="flex justify-between">
                         <span className="font-medium">Question {index + 1}</span>
@@ -648,7 +666,7 @@ const ExamSimulation: React.FC = () => {
               {/* Show only subject and difficulty, NOT the question ID */}
               <span>
                 {typeof simulationQuestions[currentQuestionIndex].subject === "string" &&
-                !simulationQuestions[currentQuestionIndex].subject.includes("67")
+                  !simulationQuestions[currentQuestionIndex].subject.includes("67")
                   ? simulationQuestions[currentQuestionIndex].subject
                   : "Subject"}{" "}
                 • {simulationQuestions[currentQuestionIndex].difficulty}
@@ -725,4 +743,3 @@ const ExamSimulation: React.FC = () => {
 }
 
 export default ExamSimulation
-

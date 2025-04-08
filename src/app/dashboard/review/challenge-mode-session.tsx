@@ -190,123 +190,7 @@ export default function ChallengeModeSession() {
     }
   }, [])
 
-  useEffect(() => {
-    fetchSessionData()
-
-    // Cleanup timer on unmount
-    return () => {
-      setTimerActive(false)
-    }
-  }, [fetchSessionData])
-
-  // Timer effect
-  useEffect(() => {
-    let timerId: NodeJS.Timeout | null = null
-
-    if (timerActive && timeRemaining > 0) {
-      timerId = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            // Time's up for this question
-            clearInterval(timerId as NodeJS.Timeout)
-            handleTimeUp()
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-    }
-
-    return () => {
-      if (timerId) clearInterval(timerId)
-    }
-  }, [timerActive, timeRemaining])
-
-  const handleTimeUp = () => {
-    if (!session) return
-
-    // const currentItem = session.items[currentItemIndex]
-
-    // Record that time ran out (no answer selected)
-    const timeTaken = QUESTION_TIME_LIMIT
-    setQuestionTimes((prev) => [...prev, timeTaken])
-
-    // Reset combo since time ran out
-    setScore((prev) => ({
-      ...prev,
-      currentCombo: 0,
-      totalQuestions: prev.totalQuestions + 1,
-    }))
-
-    // Move to next question or complete the session
-    if (currentItemIndex < session.items.length - 1) {
-      setCurrentItemIndex(currentItemIndex + 1)
-      setTimeRemaining(QUESTION_TIME_LIMIT)
-    } else {
-      completeSession()
-    }
-  }
-
-  const handleAnswer = (itemId: string, answer: string) => {
-    if (!session) return
-
-    // Stop the timer
-    setTimerActive(false)
-
-    // Calculate time taken to answer
-    const timeTaken = QUESTION_TIME_LIMIT - timeRemaining
-    setQuestionTimes((prev) => [...prev, timeTaken])
-
-    // Record the answer
-    setUserAnswers({
-      ...userAnswers,
-      [itemId]: answer,
-    })
-
-    const currentItem = session.items[currentItemIndex]
-    const isCorrect = answer === currentItem.answer
-
-    // Calculate score for this question
-    const basePoints = isCorrect ? BASE_POINTS : 0
-    const timeBonus = isCorrect ? Math.round(MAX_TIME_BONUS * (timeRemaining / QUESTION_TIME_LIMIT)) : 0
-
-    // Update combo
-    const newCombo = isCorrect ? score.currentCombo + 1 : 0
-    const maxCombo = Math.max(score.maxCombo, newCombo)
-
-    // Calculate combo bonus
-    const comboBonus = isCorrect && newCombo > 1 ? Math.round(basePoints * (newCombo * COMBO_MULTIPLIER)) : 0
-
-    // Update total score
-    const questionScore = basePoints + timeBonus + comboBonus
-
-    setScore((prev) => ({
-      points: prev.points + basePoints,
-      timeBonus: prev.timeBonus + timeBonus,
-      comboBonus: prev.comboBonus + comboBonus,
-      totalScore: prev.totalScore + questionScore,
-      currentCombo: newCombo,
-      maxCombo,
-      correctAnswers: isCorrect ? prev.correctAnswers + 1 : prev.correctAnswers,
-      totalQuestions: prev.totalQuestions + 1,
-      averageTimePerQuestion: 0, // Will calculate at the end
-    }))
-  }
-
-  const moveToNext = () => {
-    if (!session) return
-
-    // Move to next question or complete the session
-    if (currentItemIndex < session.items.length - 1) {
-      setCurrentItemIndex(currentItemIndex + 1)
-      setTimeRemaining(QUESTION_TIME_LIMIT)
-      setTimerActive(true)
-    } else {
-      completeSession()
-    }
-  }
-
-  const completeSession = async () => {
+  const completeSession = useCallback(async () => {
     try {
       if (!session) return
 
@@ -343,7 +227,127 @@ export default function ChallengeModeSession() {
       setCompleted(true)
       toast.error("Failed to save challenge results")
     }
-  }
+  }, [session, questionTimes, score, userAnswers])
+
+  // Wrap handleTimeUp in useCallback to prevent it from being recreated on every render
+  const handleTimeUp = useCallback(() => {
+    if (!session) return
+
+    // Record that time ran out (no answer selected)
+    const timeTaken = QUESTION_TIME_LIMIT
+    setQuestionTimes((prev) => [...prev, timeTaken])
+
+    // Reset combo since time ran out
+    setScore((prev) => ({
+      ...prev,
+      currentCombo: 0,
+      totalQuestions: prev.totalQuestions + 1,
+    }))
+
+    // Move to next question or complete the session
+    if (currentItemIndex < session.items.length - 1) {
+      setCurrentItemIndex(currentItemIndex + 1)
+      setTimeRemaining(QUESTION_TIME_LIMIT)
+    } else {
+      completeSession()
+    }
+  }, [session, currentItemIndex, completeSession])
+
+
+
+  useEffect(() => {
+    fetchSessionData()
+
+    // Cleanup timer on unmount
+    return () => {
+      setTimerActive(false)
+    }
+  }, [fetchSessionData])
+
+  // Timer effect with handleTimeUp in the dependency array
+  useEffect(() => {
+    let timerId: NodeJS.Timeout | null = null
+
+    if (timerActive && timeRemaining > 0) {
+      timerId = setInterval(() => {
+        setTimeRemaining((prev) => {
+          if (prev <= 1) {
+            // Time's up for this question
+            clearInterval(timerId as NodeJS.Timeout)
+            handleTimeUp()
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+
+    return () => {
+      if (timerId) clearInterval(timerId)
+    }
+  }, [timerActive, timeRemaining, handleTimeUp])
+
+  const handleAnswer = useCallback(
+    (itemId: string, answer: string) => {
+      if (!session) return
+
+      // Stop the timer
+      setTimerActive(false)
+
+      // Calculate time taken to answer
+      const timeTaken = QUESTION_TIME_LIMIT - timeRemaining
+      setQuestionTimes((prev) => [...prev, timeTaken])
+
+      // Record the answer
+      setUserAnswers((prev) => ({
+        ...prev,
+        [itemId]: answer,
+      }))
+
+      const currentItem = session.items[currentItemIndex]
+      const isCorrect = answer === currentItem.answer
+
+      // Calculate score for this question
+      const basePoints = isCorrect ? BASE_POINTS : 0
+      const timeBonus = isCorrect ? Math.round(MAX_TIME_BONUS * (timeRemaining / QUESTION_TIME_LIMIT)) : 0
+
+      // Update combo
+      const newCombo = isCorrect ? score.currentCombo + 1 : 0
+      const maxCombo = Math.max(score.maxCombo, newCombo)
+
+      // Calculate combo bonus
+      const comboBonus = isCorrect && newCombo > 1 ? Math.round(basePoints * (newCombo * COMBO_MULTIPLIER)) : 0
+
+      // Update total score
+      const questionScore = basePoints + timeBonus + comboBonus
+
+      setScore((prev) => ({
+        points: prev.points + basePoints,
+        timeBonus: prev.timeBonus + timeBonus,
+        comboBonus: prev.comboBonus + comboBonus,
+        totalScore: prev.totalScore + questionScore,
+        currentCombo: newCombo,
+        maxCombo,
+        correctAnswers: isCorrect ? prev.correctAnswers + 1 : prev.correctAnswers,
+        totalQuestions: prev.totalQuestions + 1,
+        averageTimePerQuestion: 0, // Will calculate at the end
+      }))
+    },
+    [session, currentItemIndex, timeRemaining, score.currentCombo, score.maxCombo],
+  )
+
+  const moveToNext = useCallback(() => {
+    if (!session) return
+
+    // Move to next question or complete the session
+    if (currentItemIndex < session.items.length - 1) {
+      setCurrentItemIndex((prevIndex) => prevIndex + 1)
+      setTimeRemaining(QUESTION_TIME_LIMIT)
+      setTimerActive(true)
+    } else {
+      completeSession()
+    }
+  }, [session, currentItemIndex, completeSession])
 
   if (loading) {
     return (
@@ -550,13 +554,12 @@ export default function ChallengeModeSession() {
               {currentItem.options.map((option) => (
                 <div
                   key={option}
-                  className={`flex items-center space-x-2 rounded-md border p-3 hover:bg-muted ${
-                    userAnswers[currentItem._id] === option && option === currentItem.answer
-                      ? "bg-green-50 border-green-200"
-                      : userAnswers[currentItem._id] === option && option !== currentItem.answer
-                        ? "bg-red-50 border-red-200"
-                        : ""
-                  }`}
+                  className={`flex items-center space-x-2 rounded-md border p-3 hover:bg-muted ${userAnswers[currentItem._id] === option && option === currentItem.answer
+                    ? "bg-green-50 border-green-200"
+                    : userAnswers[currentItem._id] === option && option !== currentItem.answer
+                      ? "bg-red-50 border-red-200"
+                      : ""
+                    }`}
                 >
                   <RadioGroupItem value={option} id={option} />
                   <Label htmlFor={option} className="flex-1 cursor-pointer">
@@ -607,4 +610,3 @@ export default function ChallengeModeSession() {
     </div>
   )
 }
-

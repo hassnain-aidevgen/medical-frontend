@@ -1,12 +1,56 @@
 "use client"
 
+import { Award, BarChart3, CheckCircle, Clock } from "lucide-react"
 import type React from "react"
-import { useEffect, useState } from "react"
-import { BarChart3, CheckCircle, Clock, Award } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
+
+// Define proper types for the component props and data structures
+interface Task {
+  subject: string
+  duration: number
+  activity: string
+}
+
+interface Day {
+  dayOfWeek: string
+  tasks: Task[]
+}
+
+interface WeeklyPlan {
+  weekNumber: number
+  theme: string
+  focusAreas: string[]
+  days: Day[]
+}
+
+interface UserData {
+  daysPerWeek: number
+  name?: string
+  email?: string
+  preferences?: {
+    studyTime?: string
+    difficulty?: string
+  }
+}
+
+interface TaskPerformance {
+  weekNumber: number
+  dayOfWeek: string
+  subject: string
+  activity: string
+  status: "completed" | "incomplete" | "not-understood" | "skipped"
+  taskId: string
+  timestamp: number
+}
+
+interface PerformanceData {
+  tasks: Record<string, TaskPerformance>
+  lastUpdated: number
+}
 
 interface StudyProgressBarProps {
-  weeklyPlans: any[]
-  userData: any
+  weeklyPlans: WeeklyPlan[]
+  userData: UserData
 }
 
 export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans, userData }) => {
@@ -16,14 +60,13 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
   const [daysCompleted, setDaysCompleted] = useState<number>(0)
   const [totalDays, setTotalDays] = useState<number>(0)
 
-  useEffect(() => {
-    calculateProgress()
-  }, [])
-
-  const calculateProgress = () => {
+  // Wrap calculateProgress in useCallback to prevent it from being recreated on every render
+  const calculateProgress = useCallback(() => {
     // Get performance data from localStorage
     const storedData = localStorage.getItem("studyPlanPerformance")
-    const performanceData = storedData ? JSON.parse(storedData) : { tasks: {}, lastUpdated: Date.now() }
+    const performanceData: PerformanceData = storedData
+      ? JSON.parse(storedData)
+      : { tasks: {}, lastUpdated: Date.now() }
 
     // Calculate total tasks and completed tasks
     let completed = 0
@@ -37,7 +80,7 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
 
     // Count tasks from performance data
     if (performanceData && performanceData.tasks) {
-      Object.values(performanceData.tasks).forEach((task: any) => {
+      Object.values(performanceData.tasks).forEach((task: TaskPerformance) => {
         total++
         if (task.status === "completed") {
           completed++
@@ -49,10 +92,10 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
 
         // Check if all tasks for this day are completed
         const dayTasks = Object.values(performanceData.tasks).filter(
-          (t: any) => t.weekNumber === task.weekNumber && t.dayOfWeek === task.dayOfWeek,
+          (t: TaskPerformance) => t.weekNumber === task.weekNumber && t.dayOfWeek === task.dayOfWeek,
         )
 
-        const allDayTasksCompleted = dayTasks.every((t: any) => t.status === "completed")
+        const allDayTasksCompleted = dayTasks.every((t: TaskPerformance) => t.status === "completed")
         if (allDayTasksCompleted) {
           completedDaysSet.add(dayKey)
         }
@@ -63,7 +106,7 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
     if (total === 0 && weeklyPlans) {
       weeklyPlans.forEach((week) => {
         if (week.days) {
-          week.days.forEach((day: any) => {
+          week.days.forEach((day: Day) => {
             if (day.tasks) {
               total += day.tasks.length
 
@@ -91,7 +134,11 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
     setTotalTasks(total)
     setDaysCompleted(completedDays)
     setTotalDays(totalDaysCount)
-  }
+  }, [weeklyPlans])
+
+  useEffect(() => {
+    calculateProgress()
+  }, [calculateProgress])
 
   // Get color based on progress
   const getProgressColor = () => {
@@ -186,4 +233,3 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
     </div>
   )
 }
-

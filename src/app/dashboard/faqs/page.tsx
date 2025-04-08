@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowRight, Mail, Search } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
-import SupportTicketPanel from "./SupportTicketPanel"
+// import SupportTicketPanel from "./SupportTicketPanel"
 import AutoSuggestionEngine from "./AutoSuggestionEngine"
 import ContextualFAQ from "./ContextualFAQ"
 
@@ -166,15 +166,15 @@ export default function FAQPage() {
   // Filter questions based on search query
   const filteredFAQs = searchQuery
     ? faqCategories
-        .map((category) => ({
-          ...category,
-          questions: category.questions.filter(
-            (q) =>
-              q.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              q.answer.toLowerCase().includes(searchQuery.toLowerCase()),
-          ),
-        }))
-        .filter((category) => category.questions.length > 0)
+      .map((category) => ({
+        ...category,
+        questions: category.questions.filter(
+          (q) =>
+            q.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            q.answer.toLowerCase().includes(searchQuery.toLowerCase()),
+        ),
+      }))
+      .filter((category) => category.questions.length > 0)
     : faqCategories
 
   // Available context tags for demo
@@ -301,7 +301,7 @@ export default function FAQPage() {
           </div>
 
           {/* Support Ticket Panel */}
-          <SupportTicketPanel />
+          {/* <SupportTicketPanel /> */}
 
           <div className="bg-muted rounded-lg p-8 text-center mt-16">
             <h2 className="text-2xl font-bold mb-4">Still have questions?</h2>

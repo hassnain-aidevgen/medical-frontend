@@ -1,8 +1,8 @@
 "use client"
 
+import { AlertCircle, BookOpen, CheckCircle, Clock } from "lucide-react"
 import type React from "react"
-import { useEffect, useState } from "react"
-import { BookOpen, AlertCircle, CheckCircle, Clock } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
 
 interface ReviewItem {
   subject: string
@@ -13,6 +13,22 @@ interface ReviewItem {
   timestamp: number
 }
 
+// Define a proper type for the task in performance data
+interface TaskPerformance {
+  subject: string
+  activity: string
+  weekNumber: number
+  dayOfWeek: string
+  taskId: string
+  timestamp: number
+  status: "completed" | "incomplete" | "not-understood" | "skipped"
+}
+
+interface PerformanceData {
+  tasks: Record<string, TaskPerformance>
+  lastUpdated: number
+}
+
 interface ReviewSchedulerProps {
   currentWeekNumber: number
   focusAreas?: string[]
@@ -21,18 +37,14 @@ interface ReviewSchedulerProps {
 export const ReviewScheduler: React.FC<ReviewSchedulerProps> = ({ currentWeekNumber, focusAreas = [] }) => {
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
 
-  useEffect(() => {
-    // Load review items from localStorage
-    loadReviewItems()
-  }, [currentWeekNumber])
-
-  const loadReviewItems = () => {
+  // Wrap loadReviewItems in useCallback to prevent it from being recreated on every render
+  const loadReviewItems = useCallback(() => {
     // Get performance data from localStorage
     const storedData = localStorage.getItem("studyPlanPerformance")
     if (!storedData) return
 
     try {
-      const performanceData = JSON.parse(storedData)
+      const performanceData: PerformanceData = JSON.parse(storedData)
 
       // Find items from the previous week that need review
       // (marked as "not-understood" or "skipped")
@@ -42,7 +54,7 @@ export const ReviewScheduler: React.FC<ReviewSchedulerProps> = ({ currentWeekNum
 
       const itemsToReview: ReviewItem[] = []
 
-      Object.values(performanceData.tasks).forEach((task: any) => {
+      Object.values(performanceData.tasks).forEach((task: TaskPerformance) => {
         if (task.weekNumber === previousWeekNumber && (task.status === "not-understood" || task.status === "skipped")) {
           itemsToReview.push({
             subject: task.subject,
@@ -58,11 +70,22 @@ export const ReviewScheduler: React.FC<ReviewSchedulerProps> = ({ currentWeekNum
       // Sort by subject to group related topics
       itemsToReview.sort((a, b) => a.subject.localeCompare(b.subject))
 
-      setReviewItems(itemsToReview)
+      // Filter by focus areas if provided and not empty
+      if (focusAreas.length > 0) {
+        const filteredItems = itemsToReview.filter((item) => focusAreas.includes(item.subject))
+        setReviewItems(filteredItems)
+      } else {
+        setReviewItems(itemsToReview)
+      }
     } catch (error) {
       console.error("Error loading review items:", error)
     }
-  }
+  }, [currentWeekNumber, focusAreas])
+
+  useEffect(() => {
+    // Load review items from localStorage
+    loadReviewItems()
+  }, [loadReviewItems])
 
   // If there are no review items, don't render anything
   if (reviewItems.length === 0) {
@@ -126,7 +149,7 @@ export const ReviewScheduler: React.FC<ReviewSchedulerProps> = ({ currentWeekNum
             if (!storedData) return
 
             try {
-              const performanceData = JSON.parse(storedData)
+              const performanceData: PerformanceData = JSON.parse(storedData)
 
               // Update status for all review items
               reviewItems.forEach((item) => {
@@ -153,4 +176,3 @@ export const ReviewScheduler: React.FC<ReviewSchedulerProps> = ({ currentWeekNum
     </div>
   )
 }
-

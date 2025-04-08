@@ -1,16 +1,16 @@
 "use client"
 
+import AITestSuggestions from "@/components/AITestSuggestions"
+import ExamSimulation from "@/components/exam-simulation"
+import SyllabusCoverageIndicator from "@/components/syllabus-coverage-indicator"
+import TargetExamSelector from "@/components/TargetExamSelector"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import axios from "axios"
-import { Book, Brain, Clock, Lightbulb, BookOpen } from "lucide-react"
+import { Book, BookOpen, Brain, Clock, Lightbulb } from "lucide-react"
 import { useRouter } from "next/navigation"
 import type React from "react"
 import { useCallback, useEffect, useState } from "react"
 import { toast, Toaster } from "react-hot-toast"
-import AITestSuggestions from "@/components/AITestSuggestions"
-import ExamSimulation from "@/components/exam-simulation"
-import TargetExamSelector from "@/components/TargetExamSelector"
-import SyllabusCoverageIndicator from "@/components/syllabus-coverage-indicator"
 interface Subject {
   _id: string
   name: string
@@ -165,13 +165,12 @@ const RecentTests: React.FC<{ performanceData: TestResult[]; isLoading: boolean 
                         </p>
                       </div>
                       <div
-                        className={`w-2 h-10 rounded-full ${
-                          test.percentage >= 70
-                            ? "bg-green-500"
-                            : test.percentage >= 50
-                              ? "bg-yellow-500"
-                              : "bg-red-500"
-                        }`}
+                        className={`w-2 h-10 rounded-full ${test.percentage >= 70
+                          ? "bg-green-500"
+                          : test.percentage >= 50
+                            ? "bg-yellow-500"
+                            : "bg-red-500"
+                          }`}
                       ></div>
                     </div>
                   </div>
@@ -753,13 +752,12 @@ export default function CreateTest() {
   }, [maxQuestions, totalQuestions])
 
   return (
-    <div className="max-h-[85dvh] overflow-y-auto overflow-x-hidden bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8 rounded-md border border-slate-200">
+    // <div className="max-h-[85dvh] overflow-y-auto overflow-x-hidden bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8 rounded-md border border-slate-200">
+    <div className="">
       <Toaster position="top-right" />
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-8 text-center text-gray-800">Create Your Test</h1>
-        <div className="mb-8">
-          <RecentTests performanceData={performanceData} isLoading={isLoading} />
-        </div>
+
         <div className="mb-8">
           <AITestSuggestions
             // API_BASE_URL={API_BASE_URL}
@@ -792,18 +790,16 @@ export default function CreateTest() {
               <div className="flex space-x-4">
                 <button
                   type="button"
-                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                    mode === "tutor" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${mode === "tutor" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
                   onClick={() => setMode("tutor")}
                 >
                   Tutor Mode
                 </button>
                 <button
                   type="button"
-                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                    mode === "timer" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${mode === "timer" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
                   onClick={() => setMode("timer")}
                 >
                   Timer Mode
@@ -827,11 +823,10 @@ export default function CreateTest() {
                       type="button"
                       onClick={handleCreateRecommendedTest}
                       disabled={isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 shadow ${
-                        isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest
-                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                          : "bg-amber-500 text-white hover:bg-amber-600"
-                      }`}
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 shadow ${isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-amber-500 text-white hover:bg-amber-600"
+                        }`}
                     >
                       {isCreatingRecommendedTest ? (
                         "Creating..."
@@ -865,11 +860,10 @@ export default function CreateTest() {
                             <button
                               type="button"
                               onClick={() => addRecommendedQuestion(recommendation)}
-                              className={`ml-2 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                                selectedRecommendations.includes(recommendation.questionText)
-                                  ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                  : "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                              }`}
+                              className={`ml-2 px-3 py-1 text-xs font-medium rounded-full transition-colors ${selectedRecommendations.includes(recommendation.questionText)
+                                ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                                }`}
                             >
                               {selectedRecommendations.includes(recommendation.questionText)
                                 ? "Added ✓"
@@ -1086,13 +1080,12 @@ export default function CreateTest() {
                   }))
                 }}
                 disabled={isFilterLoading || maxQuestions === 0}
-                className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:outline-none transition-colors duration-200 ${
-                  maxQuestions === 0
-                    ? "bg-gray-100 text-gray-400 border-gray-200"
-                    : validation.questionCount.isValid
-                      ? "border-green-400 focus:border-green-500 focus:ring-green-200"
-                      : "border-red-400 focus:border-red-500 focus:ring-red-200"
-                }`}
+                className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:outline-none transition-colors duration-200 ${maxQuestions === 0
+                  ? "bg-gray-100 text-gray-400 border-gray-200"
+                  : validation.questionCount.isValid
+                    ? "border-green-400 focus:border-green-500 focus:ring-green-200"
+                    : "border-red-400 focus:border-red-500 focus:ring-red-200"
+                  }`}
                 placeholder="Enter number of questions"
                 aria-label="Total number of questions"
                 aria-describedby="questions-hint"
@@ -1175,14 +1168,13 @@ export default function CreateTest() {
                 selectedSubjects.length === 0 ||
                 selectedSubsections.length === 0 // Explicitly check for selections
               }
-              className={`w-full py-3 px-6 rounded-lg text-lg font-semibold transition-colors duration-200 shadow-md ${
-                isLoading ||
+              className={`w-full py-3 px-6 rounded-lg text-lg font-semibold transition-colors duration-200 shadow-md ${isLoading ||
                 isFilterLoading ||
                 (!validation.overall.isValid && recommendedQuestionsToAdd.length === 0) ||
                 (selectedSubjects.length === 0 || selectedSubsections.length === 0)
-                  ? "bg-gray-400 text-gray-200 cursor-not-allowed"
-                  : "bg-primary text-white hover:bg-primary-dark"
-              }`}
+                ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                : "bg-primary text-white hover:bg-primary-dark"
+                }`}
             >
               {isLoading || isFilterLoading
                 ? "Loading..."
@@ -1191,6 +1183,10 @@ export default function CreateTest() {
                   : "Generate Test"}
             </button>
           </form>
+        </div>
+
+        <div className="mt-8">
+          <RecentTests performanceData={performanceData} isLoading={isLoading} />
         </div>
       </div>
     </div>

@@ -8,6 +8,7 @@ import { Inter } from "next/font/google";
 import "../globals.css";
 
 import { DailyChallengeProvider } from "@/contexts/daily-challenge-context";
+import { usePathname } from "next/navigation";
 import type React from "react"; // Import React
 
 const inter = Inter({ subsets: ["latin"] });
@@ -23,6 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
 
+  const pathname = usePathname()
   // ✅ Check protected route on mount
   useEffect(() => {
     const checkProtectedRoute = async () => {
@@ -66,8 +68,8 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <div className="flex min-h-screen bg-gray-100">
+      <body className={`${inter.className}  ${pathname === "/dashboard/create-test" ? "md:overflow-y-hidden" : ""}`}>
+        <div className={`flex min-h-screen bg-gray-100`}>
           <Sidebar isOpen={isOpen} toggleSidebar={toggleSidebar} />
           <div className="flex flex-col flex-1 overflow-hidden h-screen ">
             <Navbar toggleSidebar={toggleSidebar} />

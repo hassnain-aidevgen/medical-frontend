@@ -2,9 +2,11 @@
 
 import { AnimatePresence, motion } from "framer-motion"
 import {
+  Calendar,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Edit,
   FileText,
   Filter,
@@ -17,8 +19,6 @@ import {
   Trash2,
   X,
   XCircle,
-  Calendar,
-  Clock,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
@@ -33,16 +33,16 @@ import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
+import AutoFlashcardGenerator from "@/components/auto-flashcard-generator"
 import apiService, { type Flashcard } from "@/services/api-service"
 import FlashcardForm from "./flashcard-form"
-import AutoFlashcardGenerator from "@/components/auto-flashcard-generator"
 
 // Import our new components
+import ChallengeMode from "@/components/challenge-mode"
 import FlashcardReviewStatus from "@/components/flashcard-review-status"
 import ReviewControls from "@/components/review-controls"
-import spacedRepetitionService from "@/services/spaced-repetition-service"
-import ChallengeMode from "@/components/challenge-mode"
 import ThemeStatistics from "@/components/theme-statistics"
+import spacedRepetitionService from "@/services/spaced-repetition-service"
 
 export default function FlashcardsPage() {
   // State for flashcards and filtering
@@ -181,51 +181,6 @@ export default function FlashcardsPage() {
     return { dueCount: due, overdueCount: overdue, todayCount: today }
   }, [flashcards])
 
-  // Fetch flashcards based on selected filters
-  const fetchFlashcards = useCallback(async () => {
-    if (!userId) return
-
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      // Prepare filter parameters
-      const params: Record<string, string> = {}
-
-      if (categoryFilter) {
-        params.category = categoryFilter
-      }
-
-      if (difficultyFilter) {
-        params.difficulty = difficultyFilter
-      }
-
-      if (tagFilter) {
-        params.tag = tagFilter
-      }
-
-      const response = await apiService.getFlashcards(params)
-      setFlashcards(response.data)
-
-      // Apply review filter
-      applyFilters(response.data, searchQuery, reviewFilter)
-    } catch (error) {
-      console.error("Error fetching flashcards:", error)
-
-      // Set a user-friendly error message for the UI
-      if (error && typeof error === "object" && "message" in error) {
-        setError((error as Error).message || "Failed to load flashcards")
-      } else {
-        setError("Failed to load flashcards. Please try again later.")
-      }
-
-      setFlashcards([])
-      setFilteredCards([])
-    } finally {
-      setIsLoading(false)
-    }
-  }, [categoryFilter, difficultyFilter, tagFilter, userId, reviewFilter, searchQuery])
-
   // Apply filters to cards
   const applyFilters = useCallback((cards: Flashcard[], query: string, reviewFilterValue: string) => {
     let filtered = [...cards]
@@ -290,6 +245,54 @@ export default function FlashcardsPage() {
     // Force a re-render of the card display
     setCardDisplayKey((prev) => prev + 1)
   }, [])
+
+
+  // Fetch flashcards based on selected filters
+  const fetchFlashcards = useCallback(async () => {
+    if (!userId) return
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      // Prepare filter parameters
+      const params: Record<string, string> = {}
+
+      if (categoryFilter) {
+        params.category = categoryFilter
+      }
+
+      if (difficultyFilter) {
+        params.difficulty = difficultyFilter
+      }
+
+      if (tagFilter) {
+        params.tag = tagFilter
+      }
+
+      const response = await apiService.getFlashcards(params)
+      setFlashcards(response.data)
+
+      // Apply review filter
+      applyFilters(response.data, searchQuery, reviewFilter)
+    } catch (error) {
+      console.error("Error fetching flashcards:", error)
+
+      // Set a user-friendly error message for the UI
+      if (error && typeof error === "object" && "message" in error) {
+        setError((error as Error).message || "Failed to load flashcards")
+      } else {
+        setError("Failed to load flashcards. Please try again later.")
+      }
+
+      setFlashcards([])
+      setFilteredCards([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [categoryFilter, difficultyFilter, tagFilter, userId, reviewFilter, searchQuery, applyFilters])
+
+
 
   // Helper function to convert priority to numeric value for sorting
   const getPriorityValue = (priority: "high" | "medium" | "low" | null | undefined): number => {
@@ -977,7 +980,7 @@ export default function FlashcardsPage() {
         }
       }
     }
-  }, [activeTab, isLoading, filteredCards.length, flashcards, reviewedCardIds])
+  }, [activeTab, isLoading, filteredCards, flashcards, reviewedCardIds])
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
@@ -1461,7 +1464,7 @@ export default function FlashcardsPage() {
                             {filteredCards[currentCard]?.nextReviewDate && (
                               <FlashcardReviewStatus
                                 nextReviewDate={filteredCards[currentCard].nextReviewDate}
-                                lastReviewedDate={filteredCards[currentCard].lastReviewedDate}
+                                lastReviewedDate={filteredCards[currentCard].lastReviewedDate ?? null}
                                 reviewStage={filteredCards[currentCard].reviewStage || 0}
                               />
                             )}
@@ -1631,7 +1634,7 @@ export default function FlashcardsPage() {
                             {filteredCards[currentCard]?.nextReviewDate && (
                               <FlashcardReviewStatus
                                 nextReviewDate={filteredCards[currentCard].nextReviewDate}
-                                lastReviewedDate={filteredCards[currentCard].lastReviewedDate}
+                                lastReviewedDate={filteredCards[currentCard].lastReviewedDate ?? null}
                                 reviewStage={filteredCards[currentCard].reviewStage || 0}
                               />
                             )}

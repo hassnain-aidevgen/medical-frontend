@@ -42,7 +42,7 @@ interface DailyChallengeProps {
 
 const DailyChallenge: React.FC<DailyChallengeProps> = ({ initialQuestions, challengeId }) => {
     const router = useRouter()
-    const { refetchChallenge, setCompletedManually } = useDailyChallenge()
+    const { setCompletedManually } = useDailyChallenge()
 
     // State
     const [questions] = useState<Question[]>(initialQuestions)

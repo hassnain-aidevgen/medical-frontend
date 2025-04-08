@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
@@ -53,14 +52,6 @@ interface Quest {
   updatedAt: string
 }
 
-interface QuestStats {
-  status: string
-  count: number
-  totalTargetHours: number
-  totalCompletedHours: number
-  completionRate: number
-}
-
 // New quest initial state
 const initialNewQuest: Partial<Quest> = {
   title: "",
@@ -73,8 +64,9 @@ const initialNewQuest: Partial<Quest> = {
   tags: [],
 }
 
+// Create API instance with base URL from environment variable
 const api = axios.create({
-  baseURL: "https://medical-backend-loj4.onrender.com/api/",
+  baseURL: "http://localhost:5000/api/",
   withCredentials: true,
 })
 
@@ -106,8 +98,12 @@ const validateQuest = (quest: Partial<Quest>) => {
 
   if (!quest.dueDate) {
     errors.push("Due date is required")
-  } else if (new Date(quest.dueDate) <= new Date()) {
-    errors.push("Due date must be in the future")
+  } else {
+    const now = new Date()
+    const due = new Date(quest.dueDate)
+    if (due <= now) {
+      errors.push("Due date must be in the future")
+    }
   }
 
   return errors
@@ -119,32 +115,68 @@ export default function StudyQuest() {
   const [newQuest, setNewQuest] = useState<Partial<Quest>>(initialNewQuest)
   const [editingQuest, setEditingQuest] = useState<Quest | null>(null)
   const [loading, setLoading] = useState(false)
-  const [stats, setStats] = useState<QuestStats[]>([])
   const [activeTab, setActiveTab] = useState("all")
   const [newNote, setNewNote] = useState("")
   const [newTag, setNewTag] = useState("")
-  // const [selectedQuest, setSelectedQuest] = useState<Quest | null>(null)
+  const [isAddingTag, setIsAddingTag] = useState(false)
 
   // Check for user authentication
   useEffect(() => {
     const checkAuth = async () => {
-      const userId = localStorage.getItem("Medical_User_Id")
-      if (!userId) {
-        toast.error("Please login to access Study Quest")
-        router.push("/login") // Redirect to login page
+      try {
+        const userId = localStorage.getItem("Medical_User_Id")
+        if (!userId) {
+          toast.error("Please login to access Study Quest")
+          router.push("/login") // Redirect to login page
+          return
+        }
+      } catch (error) {
+        console.error("Authentication error:", error)
+        toast.error("Authentication error. Please login again.")
+        router.push("/login")
       }
     }
     checkAuth()
   }, [router])
 
+  // Set default due date for new quests (tomorrow)
+  useEffect(() => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    setNewQuest((prev) => ({
+      ...prev,
+      dueDate: tomorrow.toISOString().split("T")[0],
+    }))
+  }, [])
+
   const fetchQuests = useCallback(async () => {
     try {
       setLoading(true)
       const userId = localStorage.getItem("Medical_User_Id")
+
+      if (!userId) {
+        throw new Error("User ID not found")
+      }
+
       const response = await api.get(`/quest?userId=${userId}`)
 
       if (response.data.success) {
-        setQuests(response.data.data)
+        // Sort quests by due date (closest first) and completion status
+        const sortedQuests = response.data.data.sort((a: Quest, b: Quest) => {
+          // Completed quests go to the bottom
+          if (a.isCompleted && !b.isCompleted) return 1
+          if (!a.isCompleted && b.isCompleted) return -1
+
+          // Sort by due date for non-completed quests
+          if (!a.isCompleted && !b.isCompleted) {
+            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+          }
+
+          // Sort by completion date for completed quests
+          return new Date(b.completedAt || b.updatedAt).getTime() - new Date(a.completedAt || a.updatedAt).getTime()
+        })
+
+        setQuests(sortedQuests)
       } else {
         throw new Error(response.data.error || "Failed to fetch quests")
       }
@@ -156,23 +188,9 @@ export default function StudyQuest() {
     }
   }, [])
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const userId = localStorage.getItem("Medical_User_Id")
-      const response = await api.get(`/quest/stats?userId=${userId}`)
-
-      if (response.data.success) {
-        setStats(response.data.data)
-      }
-    } catch (error) {
-      console.error("Failed to fetch stats:", error)
-    }
-  }, [])
-
   useEffect(() => {
     fetchQuests()
-    fetchStats()
-  }, [fetchQuests, fetchStats])
+  }, [fetchQuests])
 
   const addQuest = async () => {
     const errors = validateQuest(newQuest)
@@ -185,6 +203,10 @@ export default function StudyQuest() {
       setLoading(true)
       const userId = localStorage.getItem("Medical_User_Id")
 
+      if (!userId) {
+        throw new Error("User ID not found")
+      }
+
       const questData = {
         ...newQuest,
         userId,
@@ -195,9 +217,11 @@ export default function StudyQuest() {
 
       if (response.data.success) {
         setQuests((prev) => [response.data.data, ...prev])
-        setNewQuest(initialNewQuest)
+        setNewQuest({
+          ...initialNewQuest,
+          dueDate: newQuest.dueDate, // Keep the current due date
+        })
         toast.success("Quest created successfully")
-        fetchStats()
       } else {
         throw new Error(response.data.error || "Failed to create quest")
       }
@@ -213,12 +237,44 @@ export default function StudyQuest() {
     const quest = quests.find((q) => q._id === id)
     if (!quest) return
 
-    // Optimistically update UI
-    setQuests((prev) => prev.map((q) => (q._id === id ? { ...q, ...updates } : q)))
-
     try {
+      setLoading(true)
       const userId = localStorage.getItem("Medical_User_Id")
-      const response = await api.patch(`/quest/${id}`, { ...updates, userId })
+
+      if (!userId) {
+        throw new Error("User ID not found")
+      }
+
+      // Create a copy of the quest with updates for optimistic UI update
+      const updatedQuest = { ...quest, ...updates }
+
+      // Optimistically update UI
+      setQuests((prev) => prev.map((q) => (q._id === id ? updatedQuest : q)))
+
+      // Create a clean update object with only fields that should be sent to the server
+      const cleanUpdates = {
+        userId,
+        title: updates.title,
+        subject: updates.subject,
+        description: updates.description,
+        category: updates.category,
+        priority: updates.priority,
+        targetHours: updates.targetHours,
+        dueDate: updates.dueDate,
+        tags: updates.tags,
+        status: updates.status,
+      }
+
+      // Remove undefined fields
+      Object.keys(cleanUpdates).forEach((key) => {
+        const typedKey = key as keyof typeof cleanUpdates
+        if (cleanUpdates[typedKey] === undefined) {
+          delete cleanUpdates[typedKey]
+        }
+      })
+
+      console.log("Sending update request for quest:", id, "with clean updates:", cleanUpdates)
+      const response = await api.patch(`/quest/${id}`, cleanUpdates)
 
       if (!response.data.success) {
         // Revert on failure
@@ -227,13 +283,19 @@ export default function StudyQuest() {
           Array.isArray(response.data.error) ? response.data.error[0] : response.data.error || "Failed to update quest",
         )
       } else {
+        console.log("Update successful, received data:", response.data.data)
         // Update with server response to ensure consistency
         setQuests((prev) => prev.map((q) => (q._id === id ? response.data.data : q)))
-        fetchStats()
+        toast.success("Quest updated successfully")
       }
     } catch (error) {
       console.error("Failed to update quest:", error)
       toast.error(error instanceof Error ? error.message : "Failed to update quest")
+
+      // Revert to original quest on any error
+      setQuests((prev) => prev.map((q) => (q._id === id ? quest : q)))
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -245,12 +307,16 @@ export default function StudyQuest() {
     try {
       setLoading(true)
       const userId = localStorage.getItem("Medical_User_Id")
+
+      if (!userId) {
+        throw new Error("User ID not found")
+      }
+
       const response = await api.delete(`/quest/${id}?userId=${userId}`)
 
       if (response.data.success) {
         setQuests((prev) => prev.filter((quest) => quest._id !== id))
         toast.success("Quest deleted successfully")
-        fetchStats()
       } else {
         throw new Error(response.data.error || "Failed to delete quest")
       }
@@ -262,29 +328,28 @@ export default function StudyQuest() {
     }
   }
 
-  // const updateProgress = async (id: string, hours: number) => {
-  //   const quest = quests.find((q) => q._id === id)
-  //   if (!quest) return
-
-  //   const newHours = Math.min(Math.max(0, hours), quest.targetHours)
-  //   await updateQuest(id, { completedHours: newHours })
-  // }
-
   const markAsComplete = async (id: string) => {
     try {
+      setLoading(true)
       const userId = localStorage.getItem("Medical_User_Id")
+
+      if (!userId) {
+        throw new Error("User ID not found")
+      }
+
       const response = await api.post(`/quest/${id}/complete`, { userId })
 
       if (response.data.success) {
         setQuests((prev) => prev.map((q) => (q._id === id ? response.data.data : q)))
         toast.success("Quest marked as complete")
-        fetchStats()
       } else {
         throw new Error(response.data.error || "Failed to complete quest")
       }
     } catch (error) {
       console.error("Failed to complete quest:", error)
       toast.error(error instanceof Error ? error.message : "Failed to complete quest")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -295,7 +360,13 @@ export default function StudyQuest() {
     }
 
     try {
+      setLoading(true)
       const userId = localStorage.getItem("Medical_User_Id")
+
+      if (!userId) {
+        throw new Error("User ID not found")
+      }
+
       const response = await api.post(`/quest/${id}/notes`, { userId, content })
 
       if (response.data.success) {
@@ -308,6 +379,8 @@ export default function StudyQuest() {
     } catch (error) {
       console.error("Failed to add note:", error)
       toast.error(error instanceof Error ? error.message : "Failed to add note")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -317,22 +390,32 @@ export default function StudyQuest() {
       return
     }
 
-    const quest = quests.find((q) => q._id === id)
-    if (!quest) return
-
-    if (quest.tags.includes(tag)) {
-      toast.error("Tag already exists")
-      return
-    }
-
     try {
+      setLoading(true)
       const userId = localStorage.getItem("Medical_User_Id")
+
+      if (!userId) {
+        throw new Error("User ID not found")
+      }
+
+      const quest = quests.find((q) => q._id === id)
+      if (!quest) {
+        throw new Error("Quest not found")
+      }
+
+      // Check if tag already exists
+      if (quest.tags.includes(tag)) {
+        toast.error("Tag already exists")
+        return
+      }
+
       const updatedTags = [...quest.tags, tag]
       const response = await api.patch(`/quest/${id}`, { userId, tags: updatedTags })
 
       if (response.data.success) {
         setQuests((prev) => prev.map((q) => (q._id === id ? response.data.data : q)))
         setNewTag("")
+        setIsAddingTag(false)
         toast.success("Tag added successfully")
       } else {
         throw new Error(response.data.error || "Failed to add tag")
@@ -340,6 +423,8 @@ export default function StudyQuest() {
     } catch (error) {
       console.error("Failed to add tag:", error)
       toast.error(error instanceof Error ? error.message : "Failed to add tag")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -348,7 +433,13 @@ export default function StudyQuest() {
     if (!quest) return
 
     try {
+      setLoading(true)
       const userId = localStorage.getItem("Medical_User_Id")
+
+      if (!userId) {
+        throw new Error("User ID not found")
+      }
+
       const updatedTags = quest.tags.filter((tag) => tag !== tagToRemove)
       const response = await api.patch(`/quest/${id}`, { userId, tags: updatedTags })
 
@@ -361,14 +452,18 @@ export default function StudyQuest() {
     } catch (error) {
       console.error("Failed to remove tag:", error)
       toast.error(error instanceof Error ? error.message : "Failed to remove tag")
+    } finally {
+      setLoading(false)
     }
   }
 
   const filteredQuests = quests.filter((quest) => {
+    if (!quest) return false // Add null check
+
     if (activeTab === "all") return true
     if (activeTab === "completed") return quest.isCompleted
     if (activeTab === "active") return !quest.isCompleted
-    if (activeTab === "overdue") return quest.isOverdue && !quest.isCompleted
+    if (activeTab === "overdue") return quest.isOverdue === true && !quest.isCompleted
     return true
   })
 
@@ -420,6 +515,12 @@ export default function StudyQuest() {
         return "📚"
     }
   }
+
+  // Calculate statistics
+  const totalQuests = quests.length
+  const completedQuests = quests.filter((q) => q && q.isCompleted).length
+  const inProgressQuests = quests.filter((q) => q && q.status === "in_progress").length
+  const overdueQuests = quests.filter((q) => q && q.isOverdue === true && !q.isCompleted).length
 
   return (
     <div className="container mx-auto p-4 space-y-8 bg-[#F3F4F6] max-h-[85dvh] overflow-auto">
@@ -535,54 +636,74 @@ export default function StudyQuest() {
                 <BarChart2 className="w-5 h-5 mr-2" />
                 Total Quests
               </h3>
-              <p className="text-3xl font-bold text-primary">{quests.length}</p>
+              <p className="text-3xl font-bold text-primary">{totalQuests}</p>
             </div>
             <div className="bg-green-100 p-4 rounded-lg">
               <h3 className="text-lg font-semibold mb-2 flex items-center text-green-600">
                 <Star className="w-5 h-5 mr-2" />
                 Completed
               </h3>
-              <p className="text-3xl font-bold text-green-600">{quests.filter((q) => q.isCompleted).length}</p>
+              <p className="text-3xl font-bold text-green-600">{completedQuests}</p>
             </div>
             <div className="bg-blue-100 p-4 rounded-lg">
               <h3 className="text-lg font-semibold mb-2 flex items-center text-blue-600">
                 <Clock className="w-5 h-5 mr-2" />
                 In Progress
               </h3>
-              <p className="text-3xl font-bold text-blue-600">
-                {quests.filter((q) => q.status === "in_progress").length}
-              </p>
+              <p className="text-3xl font-bold text-blue-600">{inProgressQuests}</p>
             </div>
             <div className="bg-red-100 p-4 rounded-lg">
               <h3 className="text-lg font-semibold mb-2 flex items-center text-red-600">
                 <Calendar className="w-5 h-5 mr-2" />
                 Overdue
               </h3>
-              <p className="text-3xl font-bold text-red-600">
-                {quests.filter((q) => q.isOverdue && !q.isCompleted).length}
-              </p>
+              <p className="text-3xl font-bold text-red-600">{overdueQuests}</p>
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {stats.length > 0 && (
-            <div className="mt-6 p-4 bg-white rounded-lg">
-              <h3 className="text-lg font-semibold mb-4">Completion Statistics</h3>
-              <div className="space-y-4">
-                {stats.map((stat, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="capitalize">{stat.status}</span>
-                      <span>{stat.completionRate.toFixed(1)}%</span>
+      <Card className="shadow-sm">
+        <CardHeader>
+          <CardTitle>Upcoming Schedule</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {quests
+              .filter((quest) => quest && !quest.isCompleted && new Date(quest.dueDate) > new Date())
+              .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+              .slice(0, 5)
+              .map((quest) => (
+                <div key={quest._id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${getPriorityColor(quest.priority)}`}>
+                      <span className="text-lg">{getCategoryIcon(quest.category)}</span>
                     </div>
-                    <Progress value={stat.completionRate} className="h-2" />
-                    <div className="text-sm text-muted-foreground">
-                      {stat.totalCompletedHours.toFixed(1)} / {stat.totalTargetHours.toFixed(1)} hours
+                    <div>
+                      <h4 className="font-medium">{quest.title}</h4>
+                      <p className="text-sm text-muted-foreground">{quest.subject}</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                  <div className="text-right">
+                    <p className="font-medium">
+                      {new Date(quest.dueDate).toLocaleDateString("en-US", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {Math.ceil((new Date(quest.dueDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}{" "}
+                      days left
+                    </p>
+                  </div>
+                </div>
+              ))}
+            {quests.filter((quest) => quest && !quest.isCompleted && new Date(quest.dueDate) > new Date()).length ===
+              0 && (
+                <div className="text-center py-6 text-muted-foreground">No upcoming tasks. You&apos;re all caught up!</div>
+              )}
+          </div>
         </CardContent>
       </Card>
 
@@ -601,7 +722,12 @@ export default function StudyQuest() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {filteredQuests.length === 0 ? (
+          {loading && filteredQuests.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-4 text-muted-foreground">Loading quests...</p>
+            </div>
+          ) : filteredQuests.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No quests found. Create a new quest to get started!
             </div>
@@ -670,22 +796,30 @@ export default function StudyQuest() {
                       </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Input
-                        type="number"
-                        value={editingQuest.targetHours}
-                        onChange={(e) =>
-                          setEditingQuest({ ...editingQuest, targetHours: Math.max(0.25, Number(e.target.value)) })
-                        }
-                        className="border-input"
-                        min="0.25"
-                        step="0.25"
-                      />
-                      <Input
-                        type="date"
-                        value={editingQuest.dueDate.split("T")[0]}
-                        onChange={(e) => setEditingQuest({ ...editingQuest, dueDate: e.target.value })}
-                        className="border-input"
-                      />
+                      <div>
+                        <Label htmlFor="edit-targetHours">Target Hours</Label>
+                        <Input
+                          id="edit-targetHours"
+                          type="number"
+                          value={editingQuest.targetHours}
+                          onChange={(e) =>
+                            setEditingQuest({ ...editingQuest, targetHours: Math.max(0.25, Number(e.target.value)) })
+                          }
+                          className="border-input"
+                          min="0.25"
+                          step="0.25"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-dueDate">Due Date</Label>
+                        <Input
+                          id="edit-dueDate"
+                          type="date"
+                          value={editingQuest.dueDate.split("T")[0]}
+                          onChange={(e) => setEditingQuest({ ...editingQuest, dueDate: e.target.value })}
+                          className="border-input"
+                        />
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <Button
@@ -695,8 +829,11 @@ export default function StudyQuest() {
                             errors.forEach((error) => toast.error(error))
                             return
                           }
-                          updateQuest(quest._id, editingQuest)
+
+                          // Make a copy of the quest to avoid reference issues
+                          const questToUpdate = { ...editingQuest }
                           setEditingQuest(null)
+                          updateQuest(quest._id, questToUpdate)
                         }}
                         disabled={loading}
                       >
@@ -744,87 +881,74 @@ export default function StudyQuest() {
                     <p className="text-muted-foreground mb-4">{quest.description}</p>
 
                     <div className="flex flex-wrap gap-2 mb-4">
-                      {quest.tags.map((tag, index) => (
-                        <Badge key={index} variant="outline" className="flex items-center gap-1">
-                          <Tag className="w-3 h-3" />
-                          {tag}
-                          {!quest.isCompleted && (
-                            <button
-                              onClick={() => removeTag(quest._id, tag)}
-                              className="ml-1 text-xs hover:text-destructive"
+                      {quest.tags &&
+                        quest.tags.map((tag, index) => (
+                          <Badge key={index} variant="outline" className="flex items-center gap-1">
+                            <Tag className="w-3 h-3" />
+                            {tag}
+                            {!quest.isCompleted && (
+                              <button
+                                onClick={() => removeTag(quest._id, tag)}
+                                className="ml-1 text-xs hover:text-destructive"
+                                aria-label={`Remove tag ${tag}`}
+                              >
+                                ×
+                              </button>
+                            )}
+                          </Badge>
+                        ))}
+
+                      {!quest.isCompleted &&
+                        (isAddingTag ? (
+                          <div className="flex items-center gap-1">
+                            <Input
+                              value={newTag}
+                              onChange={(e) => setNewTag(e.target.value)}
+                              placeholder="New tag"
+                              className="h-8 w-32"
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                if (newTag.trim()) {
+                                  addTag(quest._id, newTag.trim())
+                                } else {
+                                  setIsAddingTag(false)
+                                }
+                              }}
+                              className="h-8"
+                            >
+                              Add
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setNewTag("")
+                                setIsAddingTag(false)
+                              }}
+                              className="h-8 px-2"
                             >
                               ×
-                            </button>
-                          )}
-                        </Badge>
-                      ))}
-
-                      {!quest.isCompleted && (
-                        <div className="flex items-center gap-1">
-                          <Input
-                            value={newTag}
-                            onChange={(e) => setNewTag(e.target.value)}
-                            placeholder="Add tag"
-                            className="h-8 w-24 text-xs"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                addTag(quest._id, newTag)
-                              }
-                            }}
-                          />
+                            </Button>
+                          </div>
+                        ) : (
                           <Button
-                            size="sm"
                             variant="outline"
-                            onClick={() => addTag(quest._id, newTag)}
-                            className="h-8 text-xs"
+                            size="sm"
+                            onClick={() => setIsAddingTag(true)}
+                            className="flex items-center gap-1 h-7"
                           >
-                            Add
+                            <Plus className="w-3 h-3" />
+                            Add Tag
                           </Button>
-                        </div>
-                      )}
+                        ))}
                     </div>
 
                     <div className="space-y-4">
                       {!quest.isCompleted ? (
                         <>
-                          <div className="flex flex-col gap-2">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium">Progress</span>
-                              <span className="text-sm text-muted-foreground">
-                                {quest.completedHours} / {quest.targetHours}h ({quest.progress}%)
-                              </span>
-                            </div>
-                            <Progress value={quest.progress} className="h-2" />
-
-                            {/* <div className="flex items-center gap-2 mt-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => updateProgress(quest._id, quest.completedHours - 0.25)}
-                                disabled={quest.completedHours <= 0 || loading}
-                              >
-                                -
-                              </Button>
-                              <Input
-                                type="number"
-                                value={quest.completedHours}
-                                onChange={(e) => updateProgress(quest._id, Number(e.target.value))}
-                                className="h-8"
-                                min="0"
-                                max={quest.targetHours}
-                                step="0.25"
-                              />
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => updateProgress(quest._id, quest.completedHours + 0.25)}
-                                disabled={quest.completedHours >= quest.targetHours || loading}
-                              >
-                                +
-                              </Button>
-                            </div> */}
-                          </div>
-
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-4">
                               <span className="text-sm text-muted-foreground">
@@ -843,7 +967,8 @@ export default function StudyQuest() {
                         <div className="flex justify-between items-center bg-green-50 p-4 rounded-lg">
                           <div className="flex flex-col gap-2">
                             <span className="text-sm text-muted-foreground">
-                              Completed on: {new Date(quest.completedAt || "").toLocaleDateString()}
+                              Completed on:{" "}
+                              {quest.completedAt ? new Date(quest.completedAt).toLocaleDateString() : "N/A"}
                             </span>
                             <span className="text-sm font-medium text-green-600">
                               Total Hours: {quest.targetHours}h
@@ -856,11 +981,7 @@ export default function StudyQuest() {
 
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="mt-4 w-full flex items-center gap-2"
-                        // onClick={() => setSelectedQuest(quest)}
-                        >
+                        <Button variant="outline" className="mt-4 w-full flex items-center gap-2">
                           <FileText className="w-4 h-4" />
                           View Notes ({quest.notes?.length || 0})
                         </Button>
@@ -897,7 +1018,7 @@ export default function StudyQuest() {
                               onClick={() => {
                                 addNote(quest._id, newNote)
                               }}
-                              disabled={!newNote.trim()}
+                              disabled={!newNote.trim() || loading}
                             >
                               Add
                             </Button>
