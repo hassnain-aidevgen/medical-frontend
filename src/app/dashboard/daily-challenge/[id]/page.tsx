@@ -60,12 +60,12 @@ export default function DailyChallengePage() {
                 system: "Mixed",
                 topic: "Daily Challenge",
                 subtopics: ["Daily Challenge"],
-                exam_type: "USMLE_STEP1",
+                exam_type: "USMLE_STEP1" as const, // Use a const assertion to fix the type
                 year: new Date().getFullYear(),
-                difficulty: "medium",
+                difficulty: "medium" as const, // Also fix this type
                 specialty: "General",
                 clinical_setting: "Mixed",
-                question_type: "single_best_answer",
+                question_type: "single_best_answer" as const, // And this one
             }))
             setAdaptedQuestions(adapted)
         }
@@ -100,4 +100,3 @@ export default function DailyChallengePage() {
         </div>
     )
 }
-

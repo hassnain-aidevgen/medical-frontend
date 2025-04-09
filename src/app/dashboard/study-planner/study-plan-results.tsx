@@ -25,7 +25,7 @@ import {
   X,
   XCircle,
 } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 // Add this import at the top
 import { jsPDF } from "jspdf"
@@ -42,116 +42,8 @@ import { generateTaskId } from "./utils/task-utils"
 // Add this import at the top with the other component imports
 import { ReviewScheduler } from "./components/review-scheduler"
 
-// Define types for the study plan data
-interface StudyPlanWeeklyGoal {
-  subject: string
-  description: string
-}
-
-interface StudyPlanResource {
-  name: string
-  type?: string
-  description: string
-}
-
-interface StudyPlanTask {
-  subject: string
-  duration: number
-  activity: string
-  resources?: StudyPlanResource[]
-  isReview?: boolean
-}
-
-interface StudyPlanDay {
-  dayOfWeek: string
-  focusAreas?: string[]
-  tasks: StudyPlanTask[]
-}
-
-interface StudyPlanWeek {
-  weekNumber: number
-  theme: string
-  focusAreas?: string[]
-  weeklyGoals?: StudyPlanWeeklyGoal[]
-  days?: StudyPlanDay[]
-}
-
-interface StudyPlanBook {
-  title: string
-  author: string
-  description: string
-  relevantTopics?: string[]
-}
-
-interface StudyPlanVideo {
-  title: string
-  platform: string
-  description: string
-  relevantTopics?: string[]
-}
-
-interface StudyPlanQuestionBank {
-  title: string
-  description: string
-  relevantTopics?: string[]
-}
-
-interface StudyPlanResources {
-  books?: StudyPlanBook[]
-  videos?: StudyPlanVideo[]
-  questionBanks?: StudyPlanQuestionBank[]
-}
-
-interface StudyPlanTip {
-  title: string
-  description: string
-}
-
-interface StudyPlanExamInfo {
-  exam: string
-  targetDate?: string
-  targetScore?: string
-}
-
-interface StudyPlanData {
-  title: string
-  overview: string
-  examInfo?: StudyPlanExamInfo
-  weeklyPlans: StudyPlanWeek[]
-  resources?: StudyPlanResources
-  studyTips?: StudyPlanTip[]
-}
-
-interface StudyPlanMetadata {
-  generatedAt: string
-  model: string
-  examName: string
-  duration: string
-}
-
-interface StudyPlanResponse {
-  plan: StudyPlanData
-  metadata: StudyPlanMetadata
-}
-
-// Define types for the user data
-interface UserData {
-  name: string
-  email: string
-  currentLevel: string
-  targetExam: string
-  examDate: string
-  strongSubjects: string[]
-  weakSubjects: string[]
-  availableHours: number
-  daysPerWeek: number
-  preferredTimeOfDay: string
-  preferredLearningStyle: string
-  targetScore: string
-  specificGoals: string
-  additionalInfo: string
-  previousScores: string
-}
+import type { StudyPlanResponse, StudyPlanResultsProps } from "./types/study-plan-types"
+import { adaptStudyPlanForPerformance } from "./utils/adapter-utils"
 
 // Define type for task performance data
 interface TaskPerformance {
@@ -164,13 +56,6 @@ interface TaskPerformance {
   status: "completed" | "incomplete" | "not-understood" | "skipped"
 }
 
-// Define props for the component
-interface StudyPlanResultsProps {
-  plan: StudyPlanResponse
-  userData: UserData
-  onReset: () => void
-}
-
 const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onReset }) => {
   const [activeTab, setActiveTab] = useState<"overview" | "weekly" | "resources" | "performance">("overview")
   const [activeWeek, setActiveWeek] = useState<number>(1)
@@ -180,16 +65,19 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
   const studyPlanData = studyPlan.plan
   const metadata = studyPlan.metadata
 
-  // Initialize our performance adapter
-  const { initializeWeekTracking, handleTaskStatusChange, getTaskStatus, needsReplanning, applyReplanning } =
-    usePerformanceAdapter(studyPlan, userData, (updatedPlan) => {
-      setStudyPlan(updatedPlan)
-    })
+  // Initialize our performance adapter with the adapted plan
+  const { handleTaskStatusChange, getTaskStatus, needsReplanning, applyReplanning } = usePerformanceAdapter(
+    adaptStudyPlanForPerformance(studyPlan),
+    userData,
+    (updatedPlan) => {
+      setStudyPlan(updatedPlan as unknown as StudyPlanResponse)
+    },
+  )
 
   // Memoize the initializeWeekTracking function with useCallback
-  const memoizedInitializeWeekTracking = useCallback(() => {
-    initializeWeekTracking(activeWeek)
-  }, [initializeWeekTracking, activeWeek])
+  // const memoizedInitializeWeekTracking = useCallback(() => {
+  //   initializeWeekTracking(activeWeek)
+  // }, [initializeWeekTracking, activeWeek])
 
   useEffect(() => {
     // Show a tip when the results first load
@@ -198,16 +86,13 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
       setShowTip(false)
     }, 8000)
 
-    // Initialize tracking for the current week
-    memoizedInitializeWeekTracking()
-
     return () => clearTimeout(tipTimer)
-  }, [memoizedInitializeWeekTracking])
+  }, [])
 
   // Initialize tracking whenever the active week changes
-  useEffect(() => {
-    memoizedInitializeWeekTracking()
-  }, [memoizedInitializeWeekTracking])
+  // useEffect(() => {
+  //   memoizedInitializeWeekTracking()
+  // }, [memoizedInitializeWeekTracking])
 
   const weeklyPlans = studyPlanData.weeklyPlans || []
   const totalWeeks = weeklyPlans.length
@@ -680,7 +565,11 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
               <div className="space-y-4">
                 {day.tasks?.map((task, taskIndex) => {
                   const taskId = generateTaskId(currentWeek.weekNumber, day.dayOfWeek, task.subject, task.activity)
-                  const status = getTaskStatus(currentWeek.weekNumber, day.dayOfWeek, task.subject, task.activity)
+                  const status = getTaskStatus(currentWeek.weekNumber, day.dayOfWeek, task.subject, task.activity) as
+                    | "completed"
+                    | "incomplete"
+                    | "not-understood"
+                    | "skipped"
 
                   return (
                     <div
@@ -731,7 +620,7 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
                         activity={task.activity}
                         weekNumber={currentWeek.weekNumber}
                         dayOfWeek={day.dayOfWeek}
-                        onStatusChange={handleTaskStatusChange}
+                        onStatusChange={handleTaskStatusChangeWrapper}
                         currentStatus={status}
                       />
                     </div>
@@ -946,14 +835,14 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
           <div className="space-y-4">
             {userData.weakSubjects.map((subject) => {
               // Calculate performance for this subject
-              const subjectTasks = Object.values(performanceData.tasks).filter(
-                (task: TaskPerformance) => task.subject === subject,
+              const subjectTasks = Object.values(performanceData.tasks as Record<string, TaskPerformance>).filter(
+                (task) => task.subject === subject,
               )
 
               const totalTasks = subjectTasks.length
               if (totalTasks === 0) return null
 
-              const completedTasks = subjectTasks.filter((task: TaskPerformance) => task.status === "completed").length
+              const completedTasks = subjectTasks.filter((task) => task.status === "completed").length
 
               const completionRate = Math.round((completedTasks / totalTasks) * 100)
 
@@ -977,6 +866,19 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
         </div>
       </div>
     )
+  }
+
+  // Add this wrapper function inside the StudyPlanResults component, before the return statement
+  const handleTaskStatusChangeWrapper = (
+    taskId: string,
+    subject: string,
+    activity: string,
+    weekNumber: number,
+    dayOfWeek: string,
+    status: "completed" | "incomplete" | "not-understood" | "skipped",
+  ) => {
+    // We only need to pass taskId and status to the actual handler
+    handleTaskStatusChange(taskId, status)
   }
 
   return (

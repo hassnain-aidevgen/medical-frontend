@@ -1,4 +1,4 @@
-// Define the study plan data structure types
+// Define types for API response
 export interface StudyPlanWeeklyGoal {
   subject: string;
   description: string;
@@ -20,16 +20,16 @@ export interface StudyPlanTask {
 
 export interface StudyPlanDay {
   dayOfWeek: string;
-  focusAreas?: string[];
+  focusAreas: string[];
   tasks: StudyPlanTask[];
 }
 
 export interface StudyPlanWeek {
   weekNumber: number;
   theme: string;
-  focusAreas?: string[];
-  weeklyGoals?: StudyPlanWeeklyGoal[];
-  days?: StudyPlanDay[];
+  focusAreas: string[];
+  weeklyGoals: StudyPlanWeeklyGoal[];
+  days: StudyPlanDay[];
 }
 
 export interface StudyPlanBook {
@@ -90,7 +90,6 @@ export interface StudyPlanResponse {
   metadata: StudyPlanMetadata;
 }
 
-// Define user data structure
 export interface UserData {
   name: string;
   email: string;
@@ -109,64 +108,8 @@ export interface UserData {
   previousScores: string;
 }
 
-export interface PerformanceData {
-  // Add the fields that your performance data should have
-  overallScore?: number;
-  subjectScores?: {
-    subject: string;
-    score: number;
-  }[];
-  recentAttempts?: {
-    date: string;
-    score: number;
-    subject?: string;
-  }[];
-  strengths?: string[];
-  weaknesses?: string[];
-  improvement?: {
-    subject: string;
-    changePercentage: number;
-  }[];
-  totalQuestionsAttempted?: number;
-  correctAnswers?: number;
-  averageTimePerQuestion?: number;
-  tasks: number;
-}
-
-export interface TaskActionProps {
-  taskId: string | number;
-  onStatusChange: (
-    taskId: string | number,
-    status: "completed" | "not-understood" | "skipped"
-  ) => void;
-  currentStatus?: "completed" | "not-understood" | "skipped";
-  // Uncomment these if you need them
-  // subject?: string
-  // activity?: string
-  // weekNumber?: number
-  // dayOfWeek?: string
-}
-
-// Define performance data structure types
-export interface PerformanceData {
-  // Add the fields that your performance data should have
-  overallScore?: number;
-  subjectScores?: {
-    subject: string;
-    score: number;
-  }[];
-  recentAttempts?: {
-    date: string;
-    score: number;
-    subject?: string;
-  }[];
-  strengths?: string[];
-  weaknesses?: string[];
-  improvement?: {
-    subject: string;
-    changePercentage: number;
-  }[];
-  totalQuestionsAttempted?: number;
-  correctAnswers?: number;
-  averageTimePerQuestion?: number;
+export interface StudyPlanResultsProps {
+  plan: StudyPlanResponse;
+  userData: UserData;
+  onReset: () => void;
 }

@@ -250,8 +250,11 @@ export default function ThemeStatistics({ flashcards, timeframe = "all" }: Theme
   }, [categoryStats])
 
   // Custom active shape for pie chart
-  const renderActiveShape = (props: ActiveShapeProps) => {
-    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } = props
+  // Use a type cast to make TypeScript happy with the function signature
+  const renderActiveShape = (props: unknown) => {
+    // Cast the unknown props to our expected type
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent, value } =
+      props as ActiveShapeProps
 
     return (
       <g>
@@ -812,10 +815,7 @@ export default function ThemeStatistics({ flashcards, timeframe = "all" }: Theme
                           {area.masteredCards} of {area.totalCards} cards mastered
                         </p>
                         <div className="mt-2">
-                          <Progress
-                            value={area.masteredPercentage}
-                            className="h-1.5 bg-green-100"
-                          />
+                          <Progress value={area.masteredPercentage} className="h-1.5 bg-green-100" />
                         </div>
                       </div>
                     ))}

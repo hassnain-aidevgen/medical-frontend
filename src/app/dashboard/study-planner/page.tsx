@@ -30,6 +30,7 @@ import {
 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import StudyPlanResults from "./study-plan-results"
+import type { StudyPlanResponse } from "./types/study-plan-types"
 
 // Add these type definitions at the top of the file, after the imports
 
@@ -69,95 +70,95 @@ interface FormErrors {
 }
 
 // Define types for API response
-interface StudyPlanWeeklyGoal {
-    subject: string
-    description: string
-}
+// interface StudyPlanWeeklyGoal {
+//     subject: string
+//     description: string
+// }
 
-interface StudyPlanResource {
-    name: string
-    type: string
-    description: string
-}
+// interface StudyPlanResource {
+//     name: string
+//     type: string
+//     description: string
+// }
 
-interface StudyPlanTask {
-    subject: string
-    duration: number
-    activity: string
-    resources?: StudyPlanResource[]
-}
+// interface StudyPlanTask {
+//     subject: string
+//     duration: number
+//     activity: string
+//     resources?: StudyPlanResource[]
+// }
 
-interface StudyPlanDay {
-    dayOfWeek: string
-    focusAreas?: string[]
-    tasks: StudyPlanTask[]
-}
+// interface StudyPlanDay {
+//     dayOfWeek: string
+//     focusAreas?: string[]
+//     tasks: StudyPlanTask[]
+// }
 
-interface StudyPlanWeek {
-    weekNumber: number
-    theme: string
-    focusAreas?: string[]
-    weeklyGoals?: StudyPlanWeeklyGoal[]
-    days?: StudyPlanDay[]
-}
+// interface StudyPlanWeek {
+//     weekNumber: number
+//     theme: string
+//     focusAreas?: string[]
+//     weeklyGoals?: StudyPlanWeeklyGoal[]
+//     days?: StudyPlanDay[]
+// }
 
-interface StudyPlanBook {
-    title: string
-    author: string
-    description: string
-    relevantTopics?: string[]
-}
+// interface StudyPlanBook {
+//     title: string
+//     author: string
+//     description: string
+//     relevantTopics?: string[]
+// }
 
-interface StudyPlanVideo {
-    title: string
-    platform: string
-    description: string
-    relevantTopics?: string[]
-}
+// interface StudyPlanVideo {
+//     title: string
+//     platform: string
+//     description: string
+//     relevantTopics?: string[]
+// }
 
-interface StudyPlanQuestionBank {
-    title: string
-    description: string
-    relevantTopics?: string[]
-}
+// interface StudyPlanQuestionBank {
+//     title: string
+//     description: string
+//     relevantTopics?: string[]
+// }
 
-interface StudyPlanResources {
-    books?: StudyPlanBook[]
-    videos?: StudyPlanVideo[]
-    questionBanks?: StudyPlanQuestionBank[]
-}
+// interface StudyPlanResources {
+//     books?: StudyPlanBook[]
+//     videos?: StudyPlanVideo[]
+//     questionBanks?: StudyPlanQuestionBank[]
+// }
 
-interface StudyPlanTip {
-    title: string
-    description: string
-}
+// interface StudyPlanTip {
+//     title: string
+//     description: string
+// }
 
-interface StudyPlanExamInfo {
-    exam: string
-    targetDate?: string
-    targetScore?: string
-}
+// interface StudyPlanExamInfo {
+//     exam: string
+//     targetDate?: string
+//     targetScore?: string
+// }
 
-interface StudyPlanData {
-    title: string
-    overview: string
-    examInfo?: StudyPlanExamInfo
-    weeklyPlans: StudyPlanWeek[]
-    resources?: StudyPlanResources
-    studyTips?: StudyPlanTip[]
-}
+// interface StudyPlanData {
+//     title: string
+//     overview: string
+//     examInfo?: StudyPlanExamInfo
+//     weeklyPlans: StudyPlanWeek[]
+//     resources?: StudyPlanResources
+//     studyTips?: StudyPlanTip[]
+// }
 
-interface StudyPlanMetadata {
-    generatedAt: string
-    model: string
-    examName: string
-    duration: string
-}
+// interface StudyPlanMetadata {
+//     generatedAt: string
+//     model: string
+//     examName: string
+//     duration: string
+// }
 
-interface StudyPlanResponse {
-    plan: StudyPlanData
-    metadata: StudyPlanMetadata
-}
+// interface StudyPlanResponse {
+//     plan: StudyPlanData
+//     metadata: StudyPlanMetadata
+// }
 
 // Define types for component props
 // interface LearningStyle {
@@ -182,14 +183,16 @@ const PlannerForm: React.FC = () => {
     const [hasExistingPlan, setHasExistingPlan] = useState<boolean>(false)
     const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-    const studyTips = useMemo(() => [
-        "Spaced repetition is more effective than cramming",
-        "Teaching concepts to others improves your own understanding",
-        "Taking short breaks every 25-30 minutes can improve focus",
-        "Mixing different subjects in one study session can improve retention",
-        "Sleep is crucial for memory consolidation",
-    ], [])
-
+    const studyTips = useMemo(
+        () => [
+            "Spaced repetition is more effective than cramming",
+            "Teaching concepts to others improves your own understanding",
+            "Taking short breaks every 25-30 minutes can improve focus",
+            "Mixing different subjects in one study session can improve retention",
+            "Sleep is crucial for memory consolidation",
+        ],
+        [],
+    )
 
     useEffect(() => {
         const showRandomTip = () => {
@@ -256,16 +259,16 @@ const PlannerForm: React.FC = () => {
         const email = localStorage.getItem("email")
 
         if (name) {
-            setFormData(prev => ({
+            setFormData((prev) => ({
                 ...prev,
-                name: name
+                name: name,
             }))
         }
 
         if (email) {
-            setFormData(prev => ({
+            setFormData((prev) => ({
                 ...prev,
-                email: email
+                email: email,
             }))
         }
     }, [])
@@ -471,11 +474,15 @@ const PlannerForm: React.FC = () => {
             localStorage.setItem("userData", JSON.stringify(formData))
             const userId = localStorage.getItem("Medical_User_Id")
 
-            const response = await axios.post(`https://medical-backend-loj4.onrender.com/api/test/generatePlan?userId=${userId}`, formData, {
-                headers: {
-                    "Content-Type": "application/json",
+            const response = await axios.post(
+                `https://medical-backend-loj4.onrender.com/api/test/generatePlan?userId=${userId}`,
+                formData,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
                 },
-            })
+            )
 
             const result = response.data
 
@@ -657,7 +664,9 @@ const PlannerForm: React.FC = () => {
                                 {["beginner", "intermediate", "advanced", "expert"].map((level, index) => (
                                     <div
                                         key={level}
-                                        onClick={() => setFormData((prev) => ({ ...prev, currentLevel: level as FormData["currentLevel"] }))}
+                                        onClick={() =>
+                                            setFormData((prev) => ({ ...prev, currentLevel: level as FormData["currentLevel"] }))
+                                        }
                                         className={`cursor-pointer p-3 rounded-lg border-2 transition-all duration-300 ${formData.currentLevel === level
                                             ? "border-blue-500 bg-blue-50 shadow-md"
                                             : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/50"
@@ -1021,7 +1030,9 @@ const PlannerForm: React.FC = () => {
                                 {["morning", "afternoon", "evening", "night", "mixed"].map((time) => (
                                     <div
                                         key={time}
-                                        onClick={() => setFormData((prev) => ({ ...prev, preferredTimeOfDay: time as FormData["preferredTimeOfDay"] }))}
+                                        onClick={() =>
+                                            setFormData((prev) => ({ ...prev, preferredTimeOfDay: time as FormData["preferredTimeOfDay"] }))
+                                        }
                                         className={`cursor-pointer p-2 rounded-md border text-center transition-all duration-300 ${formData.preferredTimeOfDay === time
                                             ? "border-blue-500 bg-blue-50 shadow-sm"
                                             : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/50"
@@ -1051,7 +1062,12 @@ const PlannerForm: React.FC = () => {
                                 ].map((style) => (
                                     <div
                                         key={style.value}
-                                        onClick={() => setFormData((prev) => ({ ...prev, preferredLearningStyle: style.value as FormData["preferredLearningStyle"] }))}
+                                        onClick={() =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                preferredLearningStyle: style.value as FormData["preferredLearningStyle"],
+                                            }))
+                                        }
                                         className={`cursor-pointer p-3 rounded-md border transition-all duration-300 ${formData.preferredLearningStyle === style.value
                                             ? "border-purple-500 bg-purple-50 shadow-sm"
                                             : "border-gray-200 hover:border-purple-300 hover:bg-purple-50/50"
@@ -1564,4 +1580,3 @@ const PlannerForm: React.FC = () => {
 // )
 
 export default PlannerForm
-

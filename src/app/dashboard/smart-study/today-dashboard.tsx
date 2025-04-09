@@ -12,7 +12,7 @@ import {
   PlayCircle,
   RefreshCw,
 } from "lucide-react"
-import { useEffect, useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import toast from "react-hot-toast"
 
 // Add this style to the component
@@ -141,7 +141,7 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
     try {
       // Try to fetch from API
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/questions/daily`, {
+        const response = await axios.get(`http://localhost:5000/api/test/daily-challenge`, {
           params: {
             userId,
             exam: selectedExam,
@@ -189,7 +189,7 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
     try {
       // Try to fetch from API
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/simulations/scheduled`, {
+        const response = await axios.get(`http://localhost:5000/api/test/daily-challenge`, {
           params: {
             userId,
             exam: selectedExam,
@@ -376,9 +376,8 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
       return (
         <button
           onClick={() => handleCompleteTest(item)}
-          className={`${
-            item.completed ? "bg-gray-500" : "bg-green-500"
-          } text-white py-1 px-3 rounded hover:opacity-90 transition-colors text-sm`}
+          className={`${item.completed ? "bg-gray-500" : "bg-green-500"
+            } text-white py-1 px-3 rounded hover:opacity-90 transition-colors text-sm`}
         >
           {item.completed ? "Mark Incomplete" : "Complete"}
         </button>
@@ -476,9 +475,8 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
                     .map((item) => (
                       <div
                         key={item.id}
-                        className={`border-l-4 rounded-md p-3 bg-white shadow-sm ${
-                          item.completed ? "border-gray-300 bg-gray-50" : "border-blue-500"
-                        }`}
+                        className={`border-l-4 rounded-md p-3 bg-white shadow-sm ${item.completed ? "border-gray-300 bg-gray-50" : "border-blue-500"
+                          }`}
                         style={{ borderLeftColor: item.color }}
                       >
                         <div className="flex justify-between items-start">
@@ -515,9 +513,8 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
                     .map((item) => (
                       <div
                         key={item.id}
-                        className={`border-l-4 rounded-md p-3 bg-white shadow-sm ${
-                          item.completed ? "border-gray-300 bg-gray-50" : "border-yellow-500"
-                        }`}
+                        className={`border-l-4 rounded-md p-3 bg-white shadow-sm ${item.completed ? "border-gray-300 bg-gray-50" : "border-yellow-500"
+                          }`}
                         style={{ borderLeftColor: item.color }}
                       >
                         <div className="flex justify-between items-start">

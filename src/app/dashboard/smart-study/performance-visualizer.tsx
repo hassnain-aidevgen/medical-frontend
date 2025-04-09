@@ -107,30 +107,35 @@ const PerformanceVisualizer = ({ tests = [], onPriorityChange }: PerformanceVisu
       // Try to fetch real data from API
       let topicData: TopicWeight[] = []
 
-      try {
-        const response = await axios.get(
-          `https://medical-backend-loj4.onrender.com/api/test/performance/${userId}?exam=${selectedExam}`,
-        )
-        if (response.data && Array.isArray(response.data)) {
-          topicData = response.data
-        } else {
-          throw new Error("Invalid data format")
+      if (userId !== "") {
+
+        try {
+          const response = await axios.get(
+            `http://localhost:5000/api/test/smart-study-performance?userId=${userId}&exam=${selectedExam}`,
+          )
+          if (response.data && Array.isArray(response.data)) {
+            topicData = response.data
+          } else {
+            throw new Error("Invalid data format")
+          }
+        } catch (apiError) {
+          console.log("API error, using mock data:", apiError)
+
+          // Generate mock data if API fails
+          const mockHighYieldData = generateMockHighYieldData(selectedExam)
+
+          topicData = mockHighYieldData.topics.map((topic) => ({
+            topic: topic.topicName,
+            weight: topic.weightage,
+            completedCount: 0,
+            missedCount: 0,
+            upcomingCount: 0,
+            performance: Math.floor(Math.random() * 100), // Random performance score
+          }))
         }
-      } catch (apiError) {
-        console.log("API error, using mock data:", apiError)
 
-        // Generate mock data if API fails
-        const mockHighYieldData = generateMockHighYieldData(selectedExam)
-
-        topicData = mockHighYieldData.topics.map((topic) => ({
-          topic: topic.topicName,
-          weight: topic.weightage,
-          completedCount: 0,
-          missedCount: 0,
-          upcomingCount: 0,
-          performance: Math.floor(Math.random() * 100), // Random performance score
-        }))
       }
+
 
       // Process test data to update counts
       if (tests.length > 0) {

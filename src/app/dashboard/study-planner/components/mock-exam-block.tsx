@@ -1,8 +1,8 @@
 "use client"
 
+import { AlertCircle, Award, BookOpen, CheckCircle, ChevronRight, ClipboardCheck, Clock, X } from "lucide-react"
 import type React from "react"
 import { useState } from "react"
-import { ClipboardCheck, Clock, BookOpen, Award, X, CheckCircle, ChevronRight, AlertCircle } from "lucide-react"
 
 interface MockExamBlockProps {
   weekNumber: number
@@ -23,7 +23,7 @@ export const MockExamBlock: React.FC<MockExamBlockProps> = ({
   weekNumber,
   weekTheme,
   focusAreas,
-//   dayOfWeek,
+  //   dayOfWeek,
   examNumber,
 }) => {
   const [showExam, setShowExam] = useState(false)
@@ -58,7 +58,7 @@ export const MockExamBlock: React.FC<MockExamBlockProps> = ({
       questions.push({
         id: i,
         question: `Question about ${topic}: ${getQuestionForTopic(topic, i)}`,
-        options: getOptionsForTopic(topic, i),
+        options: getOptionsForTopic(topic),
         correctAnswer: Math.floor(Math.random() * 4), // Random correct answer (0-3)
       })
     }
@@ -167,19 +167,17 @@ export const MockExamBlock: React.FC<MockExamBlockProps> = ({
                     <div
                       key={index}
                       onClick={() => handleSelectAnswer(questions[currentQuestionIndex].id, index)}
-                      className={`p-3 border rounded-lg cursor-pointer ${
-                        selectedAnswers[questions[currentQuestionIndex].id] === index
+                      className={`p-3 border rounded-lg cursor-pointer ${selectedAnswers[questions[currentQuestionIndex].id] === index
                           ? "border-indigo-500 bg-indigo-50"
                           : "border-gray-200 hover:border-indigo-300"
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center">
                         <div
-                          className={`w-5 h-5 rounded-full border flex items-center justify-center mr-3 ${
-                            selectedAnswers[questions[currentQuestionIndex].id] === index
+                          className={`w-5 h-5 rounded-full border flex items-center justify-center mr-3 ${selectedAnswers[questions[currentQuestionIndex].id] === index
                               ? "border-indigo-500 bg-indigo-500 text-white"
                               : "border-gray-300"
-                          }`}
+                            }`}
                         >
                           {selectedAnswers[questions[currentQuestionIndex].id] === index && (
                             <div className="w-2 h-2 bg-white rounded-full"></div>
@@ -196,11 +194,10 @@ export const MockExamBlock: React.FC<MockExamBlockProps> = ({
                 <button
                   onClick={handleNextQuestion}
                   disabled={selectedAnswers[questions[currentQuestionIndex].id] === undefined}
-                  className={`px-4 py-2 rounded-md flex items-center ${
-                    selectedAnswers[questions[currentQuestionIndex].id] !== undefined
+                  className={`px-4 py-2 rounded-md flex items-center ${selectedAnswers[questions[currentQuestionIndex].id] !== undefined
                       ? "bg-indigo-600 text-white hover:bg-indigo-700"
                       : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                  }`}
+                    }`}
                 >
                   {currentQuestionIndex < questions.length - 1 ? "Next Question" : "Complete Exam"}
                   <ChevronRight size={16} className="ml-1" />

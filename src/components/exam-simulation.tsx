@@ -97,6 +97,78 @@ const ExamSimulation: React.FC = () => {
     }
   }, [])
 
+  // In the submitSimulation useCallback, remove 'toast' from the dependency array
+  const submitSimulation = useCallback(() => {
+    // Stop the timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+    }
+
+    // Calculate score
+    let correctCount = 0
+    userAnswers.forEach((answer) => {
+      const question = simulationQuestions.find((q) => q._id === answer.questionId)
+      if (question && answer.selectedAnswer) {
+        console.log(question)
+        const selectedAnswerText = answer.selectedAnswer
+        const correctAnswerParts = question.answer //getting undefined on correctAnswer, because it doenst exist
+
+        // Check if the selected answer matches the correct answer
+        if (
+          selectedAnswerText.startsWith(correctAnswerParts || "") ||
+          selectedAnswerText.includes(correctAnswerParts || "")
+        ) {
+          correctCount++
+        }
+      }
+    })
+
+    const timeSpent = examConfig.duration * 60 - timeRemaining
+
+    // Set results
+    const results = {
+      score: correctCount,
+      totalQuestions: simulationQuestions.length,
+      percentage: Math.round((correctCount / simulationQuestions.length) * 100),
+      timeSpent: timeSpent, // in seconds
+    }
+
+    setSimulationResults(results)
+    setIsSimulationComplete(true)
+
+    // Save to history (this would normally be sent to a backend)
+    const historyEntry = {
+      id: Date.now(),
+      date: new Date().toISOString(),
+      examName: selectedExam,
+      score: results.percentage,
+      questionsAnswered: simulationQuestions.length,
+      allQuestions: simulationQuestions,
+      duration: formatTime(timeSpent),
+    }
+
+    const saveToDb = {
+      userId,
+      examName: selectedExam,
+      score: results.percentage,
+      percentage: results.percentage,
+      questionsAnswered: userAnswers.length,
+      totalQuestions: simulationQuestions.length,
+      timeSpent,
+      questions: simulationQuestions,
+    }
+
+    setSimulationHistory((prev) => [historyEntry, ...prev])
+
+    try {
+      axios.post("https://medical-backend-loj4.onrender.com/api/simulation/saveSimulationHistory", saveToDb)
+    } catch (error) {
+      console.error(error)
+    }
+
+    toast.success("Simulation completed!")
+  }, [examConfig.duration, selectedExam, setSimulationHistory, simulationQuestions, timeRemaining, userAnswers, userId]) // Removed 'toast' from the dependency array
+
   // Start simulation function - wrap in useCallback to use in dependency array
   const startTimer = useCallback(() => {
     if (timerRef.current) {
@@ -326,78 +398,6 @@ const ExamSimulation: React.FC = () => {
     })
   }
 
-  // In the submitSimulation useCallback, remove 'toast' from the dependency array
-  const submitSimulation = useCallback(() => {
-    // Stop the timer
-    if (timerRef.current) {
-      clearInterval(timerRef.current)
-    }
-
-    // Calculate score
-    let correctCount = 0
-    userAnswers.forEach((answer) => {
-      const question = simulationQuestions.find((q) => q._id === answer.questionId)
-      if (question && answer.selectedAnswer) {
-        console.log(question)
-        const selectedAnswerText = answer.selectedAnswer
-        const correctAnswerParts = question.answer //getting undefined on correctAnswer, because it doenst exist
-
-        // Check if the selected answer matches the correct answer
-        if (
-          selectedAnswerText.startsWith(correctAnswerParts || "") ||
-          selectedAnswerText.includes(correctAnswerParts || "")
-        ) {
-          correctCount++
-        }
-      }
-    })
-
-    const timeSpent = examConfig.duration * 60 - timeRemaining
-
-    // Set results
-    const results = {
-      score: correctCount,
-      totalQuestions: simulationQuestions.length,
-      percentage: Math.round((correctCount / simulationQuestions.length) * 100),
-      timeSpent: timeSpent, // in seconds
-    }
-
-    setSimulationResults(results)
-    setIsSimulationComplete(true)
-
-    // Save to history (this would normally be sent to a backend)
-    const historyEntry = {
-      id: Date.now(),
-      date: new Date().toISOString(),
-      examName: selectedExam,
-      score: results.percentage,
-      questionsAnswered: simulationQuestions.length,
-      allQuestions: simulationQuestions,
-      duration: formatTime(timeSpent),
-    }
-
-    const saveToDb = {
-      userId,
-      examName: selectedExam,
-      score: results.percentage,
-      percentage: results.percentage,
-      questionsAnswered: userAnswers.length,
-      totalQuestions: simulationQuestions.length,
-      timeSpent,
-      questions: simulationQuestions,
-    }
-
-    setSimulationHistory((prev) => [historyEntry, ...prev])
-
-    try {
-      axios.post("https://medical-backend-loj4.onrender.com/api/simulation/saveSimulationHistory", saveToDb)
-    } catch (error) {
-      console.error(error)
-    }
-
-    toast.success("Simulation completed!")
-  }, [examConfig.duration, selectedExam, setSimulationHistory, simulationQuestions, timeRemaining, userAnswers, userId]) // Removed 'toast' from the dependency array
-
   // Reset simulation state
   const resetSimulation = () => {
     setIsSimulationActive(false)
@@ -594,10 +594,10 @@ const ExamSimulation: React.FC = () => {
                     <div
                       key={question._id}
                       className={`p-4 rounded-lg border ${userAnswer?.selectedAnswer
-                        ? isCorrect
-                          ? "border-green-300 bg-green-50"
-                          : "border-red-300 bg-red-50"
-                        : "border-gray-300"
+                          ? isCorrect
+                            ? "border-green-300 bg-green-50"
+                            : "border-red-300 bg-red-50"
+                          : "border-gray-300"
                         }`}
                     >
                       <div className="flex justify-between">

@@ -5,13 +5,13 @@ import type React from "react"
 import WeeklyStreak from "@/components/weekly-streak"
 import axios from "axios"
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import ExamInterface from "./examInterface"
 import PerformanceVisualizer from "./performance-visualizer"
 import PlannerSyncScheduler from "./planner-sync-scheduler"
 import PriorityIndicator from "./priority-indicator"
-import TestReviewScheduler from "./test-review-scheduler"
+// import TestReviewScheduler from "./test-review-scheduler"
 import TodayDashboard from "./today-dashboard"
 
 // Define the interface for your calendar tests
@@ -56,31 +56,32 @@ const SmartStudyCalendar = () => {
     }
   }, [])
 
-  useEffect(() => {
-    const fetchTests = async () => {
-      if (!userId) return
+  const fetchTests = useCallback(async () => {
+    if (!userId) return
 
-      setIsLoading(true)
-      try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`)
-        if (Array.isArray(response.data)) {
-          setTests(response.data)
-        } else {
-          throw new Error("Invalid data received from server")
-        }
-      } catch (error) {
-        console.error(error)
-        toast.error("Failed to fetch tests. Please try again later.")
-      } finally {
-        setIsLoading(false)
+    setIsLoading(true)
+    try {
+      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`)
+      if (Array.isArray(response.data)) {
+        setTests(response.data)
+      } else {
+        throw new Error("Invalid data received from server")
       }
+    } catch (error) {
+      console.error(error)
+      toast.error("Failed to fetch tests. Please try again later.")
+    } finally {
+      setIsLoading(false)
     }
+  }, [userId])
+
+  useEffect(() => {
 
     console.log(userId)
     if (userId) {
       fetchTests()
     }
-  }, [userId])
+  }, [userId, fetchTests])
 
   // Convert your calendar tests to ExamInterface's expected format
   const getExamTests = (): ExamTest[] => {
@@ -308,11 +309,15 @@ const SmartStudyCalendar = () => {
             _id: test._id,
             subjectName: test.subjectName,
             testTopic: test.testTopic,
-            date: test.date.toISOString(),
+            date: typeof test.date === "string" ? new Date(test.date).toISOString() : test.date.toISOString(),
             color: test.color,
             completed: test.completed,
           }))
           setTests([...tests, ...calendarTests])
+        }}
+        onRefresh={() => {
+          // Refresh calendar data
+          fetchTests();
         }}
       />
 
@@ -407,13 +412,14 @@ const SmartStudyCalendar = () => {
                               : "#ef4444", // red for incomplete
                         }}
                       ></div>
-                      <div className="flex items-center">
-                        <strong>{test.subjectName}</strong>: {test.testTopic}
+                      <div className="items-center">
+                        <strong>{test.subjectName}</strong>
+                        <p>{test.testTopic}</p>
                         <PriorityIndicator subjectName={test.subjectName} />
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-6">
-                      <TestReviewScheduler
+                      {/* <TestReviewScheduler
                         userId={userId}
                         test={{
                           _id: test._id || "",
@@ -436,7 +442,7 @@ const SmartStudyCalendar = () => {
                           }))
                           setTests([...tests, ...calendarTests])
                         }}
-                      />
+                      /> */}
                       <button
                         onClick={() => test._id && handleDeleteTest(test._id)}
                         className="text-red-500 hover:text-red-700"
@@ -558,13 +564,14 @@ const SmartStudyCalendar = () => {
                               : "#ef4444", // red for incomplete
                         }}
                       ></div>
-                      <div className="flex items-center">
-                        <strong>{test.subjectName}</strong>: {test.testTopic}
+                      <div className="items-center">
+                        <strong>{test.subjectName}</strong>:
+                        <p>{test.testTopic}</p>
                         <PriorityIndicator subjectName={test.subjectName} />
                       </div>
                     </div>
                     <div className="flex items-center gap-2 ml-6">
-                      <TestReviewScheduler
+                      {/* <TestReviewScheduler
                         userId={userId}
                         test={{
                           _id: test._id || "",
@@ -587,7 +594,7 @@ const SmartStudyCalendar = () => {
                           }))
                           setTests([...tests, ...calendarTests])
                         }}
-                      />
+                      /> */}
                       <button
                         onClick={() => test._id && handleDeleteTest(test._id)}
                         className="text-red-500 hover:text-red-700"

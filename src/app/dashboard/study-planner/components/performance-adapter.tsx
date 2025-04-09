@@ -28,15 +28,29 @@ interface Week {
   days: Day[]
 }
 
-interface StudyPlan {
+export interface StudyPlan {
   plan: {
     weeklyPlans: Week[]
   }
 }
 
+// Define the task status type
+type TaskStatus = "completed" | "incomplete" | "not-understood" | "skipped"
+
+// Define the task performance data structure
+interface TaskPerformance {
+  subject: string
+  activity: string
+  weekNumber: number
+  dayOfWeek: string
+  taskId: string
+  timestamp: number
+  status: TaskStatus
+}
+
 export const usePerformanceAdapter = (
   studyPlan: StudyPlan | null,
-  userData: { daysPerWeek?: number },
+  userData: { daysPerWeek?: number; weakSubjects?: string[] },
   onPlanUpdate: (plan: StudyPlan) => void,
 ) => {
   const [currentWeekNumber, setCurrentWeekNumber] = useState<number | null>(null)
@@ -44,6 +58,8 @@ export const usePerformanceAdapter = (
   const [tasksForToday, setTasksForToday] = useState<Task[]>([])
   const [weeklyCompletionRate, setWeeklyCompletionRate] = useState(0)
   const [weeklyGoalCompletion, setWeeklyGoalCompletion] = useState<{ [key: string]: boolean }>({})
+  const [taskStatuses, setTaskStatuses] = useState<{ [key: string]: TaskStatus }>({})
+  const [needsReplanning, setNeedsReplanning] = useState(false)
 
   // Function to calculate the current week number
   const getWeekNumber = useCallback(() => {
@@ -173,6 +189,143 @@ export const usePerformanceAdapter = (
     return []
   }
 
+  // Add the missing functions needed by study-plan-results.tsx
+
+  // Function to handle task status change
+  const handleTaskStatusChange = (taskId: string | number, status: TaskStatus) => {
+    // Parse the taskId to get the task details
+    // Assuming taskId format is "week-day-subject-activity"
+    const parts = String(taskId).split("-")
+    if (parts.length >= 4) {
+      const weekNumber = Number.parseInt(parts[0])
+      const dayOfWeek = parts[1]
+      const subject = parts[2]
+      const activity = parts.slice(3).join("-") // In case activity has hyphens
+
+      // Update the task status
+      setTaskStatuses((prev) => ({
+        ...prev,
+        [taskId]: status,
+      }))
+
+      // Save to localStorage for persistence
+      const storedData = localStorage.getItem("studyPlanPerformance")
+      const performanceData = storedData ? JSON.parse(storedData) : { tasks: {}, lastUpdated: Date.now() }
+
+      performanceData.tasks[taskId] = {
+        subject,
+        activity,
+        weekNumber,
+        dayOfWeek,
+        taskId,
+        timestamp: Date.now(),
+        status,
+      }
+
+      localStorage.setItem("studyPlanPerformance", JSON.stringify(performanceData))
+
+      // Update completion status if completed
+      if (status === "completed") {
+        updateTaskCompletion(subject, activity, true)
+      } else {
+        updateTaskCompletion(subject, activity, false)
+      }
+
+      // Check if replanning is needed
+      if (status === "not-understood" || status === "skipped") {
+        setNeedsReplanning(true)
+      }
+    }
+  }
+
+  // Function to get task status
+  const getTaskStatus = (weekNumber: number, dayOfWeek: string, subject: string, activity: string): TaskStatus => {
+    const taskId = `${weekNumber}-${dayOfWeek}-${subject}-${activity}`
+
+    // Check in our state first
+    if (taskStatuses[taskId]) {
+      return taskStatuses[taskId]
+    }
+
+    // Check in localStorage
+    const storedData = localStorage.getItem("studyPlanPerformance")
+    if (storedData) {
+      const performanceData = JSON.parse(storedData)
+      if (performanceData.tasks && performanceData.tasks[taskId]) {
+        return performanceData.tasks[taskId].status
+      }
+    }
+
+    // Default to incomplete
+    return "incomplete"
+  }
+
+  // Function to apply replanning
+  const applyReplanning = () => {
+    if (!studyPlan || !currentWeekNumber) return
+
+    const updatedPlan = { ...studyPlan }
+    const tasksToReplan: TaskPerformance[] = []
+
+    // Get all tasks that need replanning
+    const storedData = localStorage.getItem("studyPlanPerformance")
+    if (storedData) {
+      const performanceData = JSON.parse(storedData)
+
+      // Find all tasks marked as not-understood or skipped
+      Object.values(performanceData.tasks).forEach((task: unknown) => {
+        const taskData = task as TaskPerformance
+        if (taskData.status === "not-understood" || taskData.status === "skipped") {
+          tasksToReplan.push(taskData)
+        }
+      })
+    }
+
+    // Get future weeks
+    const futureWeeks = getFutureWeeks()
+
+    if (futureWeeks.length > 0 && tasksToReplan.length > 0) {
+      // Distribute tasks to replan across future weeks
+      tasksToReplan.forEach((task, index) => {
+        const targetWeekIndex = index % futureWeeks.length
+        const targetWeek = futureWeeks[targetWeekIndex]
+
+        // Find a suitable day to add the task
+        if (targetWeek.days && targetWeek.days.length > 0) {
+          const targetDayIndex = index % targetWeek.days.length
+          const targetDay = targetWeek.days[targetDayIndex]
+
+          // Create a new task based on the one that needs replanning
+          const newTask: Task = {
+            subject: task.subject,
+            activity: `Review: ${task.activity}`,
+            duration: 30, // Default duration for review
+            isReview: true,
+          }
+
+          // Add the task to the target day
+          targetDay.tasks.push(newTask)
+        }
+      })
+
+      // Update the plan
+      onPlanUpdate(updatedPlan)
+
+      // Reset the needs replanning flag
+      setNeedsReplanning(false)
+
+      // Clear the not-understood and skipped tasks from localStorage
+      const performanceData = JSON.parse(storedData!)
+      Object.keys(performanceData.tasks).forEach((taskId) => {
+        const task = performanceData.tasks[taskId]
+        if (task.status === "not-understood" || task.status === "skipped") {
+          task.status = "incomplete" // Reset status
+        }
+      })
+      localStorage.setItem("studyPlanPerformance", JSON.stringify(performanceData))
+    }
+  }
+
   return {
     currentWeekNumber,
     currentDayOfWeek,
@@ -182,5 +335,10 @@ export const usePerformanceAdapter = (
     updateTaskCompletion,
     advanceToNextWeek,
     getFutureWeeks,
+    // Add the missing functions to the return object
+    handleTaskStatusChange,
+    getTaskStatus,
+    needsReplanning,
+    applyReplanning,
   }
 }
