@@ -47,7 +47,7 @@ const AITestSuggestions: React.FC<AITestSuggestionsProps> = ({ mode }) => {
     try {
       // Call the API to generate AI test suggestions
       // Using the hardcoded API endpoint instead of a prop
-      const apiUrl = 'http://localhost:5000/api/test/ai-test-suggestions';
+      const apiUrl = 'https://medical-backend-loj4.onrender.com/api/test/ai-test-suggestions';
       const { data } = await axios.post(apiUrl, {
         topic: topic.trim(),
         questionCount: count,

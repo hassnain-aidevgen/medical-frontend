@@ -141,7 +141,7 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
     try {
       // Try to fetch from API
       try {
-        const response = await axios.get(`http://localhost:5000/api/test/daily-challenge`, {
+        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/daily-challenge`, {
           params: {
             userId,
             exam: selectedExam,
@@ -189,7 +189,7 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
     try {
       // Try to fetch from API
       try {
-        const response = await axios.get(`http://localhost:5000/api/test/daily-challenge`, {
+        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/daily-challenge`, {
           params: {
             userId,
             exam: selectedExam,

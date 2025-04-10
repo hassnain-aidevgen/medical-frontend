@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Lightbulb, Brain, AlertCircle, CheckCircle, Loader2 } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import apiService, { type Flashcard } from "@/services/api-service"
 import type { MissedQuestion } from "@/services/missed-questions-service"
+import { AlertCircle, Brain, CheckCircle, Lightbulb, Loader2 } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
 import toast from "react-hot-toast"
 
 // Replace the existing missedQuestionsService import with a direct axios import
@@ -68,7 +68,7 @@ export default function AutoFlashcardGenerator({ userId, onFlashcardsGenerated }
     setIsLoading(true)
     try {
       // Use the recommendations2 endpoint to get wrongly answered questions
-      const response = await axios.get(`http://localhost:5000/api/test/recommendations2/${userId}`)
+      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations2/${userId}`)
 
       // Transform the recommendations data into the format needed for missed questions
       const wrongQuestions = response.data.recommendations.map((item: { questionText: string; correctAnswer: string; topic?: string }, index: number) => ({

@@ -239,7 +239,7 @@ export default function CreateTest() {
 
   // Use environment variable or fallback to a relative path for API
   const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test/create-test"
-  const API_BASE_URL_LOCAL = "http://localhost:5000/api/test/create-test"
+  const API_BASE_URL_LOCAL = "https://medical-backend-loj4.onrender.com/api/test/create-test"
 
   // // Older one
   // const fetchRecommendations = useCallback(async () => {
@@ -276,7 +276,7 @@ export default function CreateTest() {
       }
 
       // Update the URL to point to your new endpoint on localhost
-      const { data } = await axios.get(`http://localhost:5000/api/test/recommendations2/${userId}`)
+      const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations2/${userId}`)
       console.log("Recommendation data received:", data) // For debugging
 
       setRecommendations(data.recommendations)

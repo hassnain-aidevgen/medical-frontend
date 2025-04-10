@@ -114,7 +114,7 @@ const PlannerSyncScheduler = ({ userId, onTestsAdded, onSyncComplete, onRefresh 
     }
 
     try {
-      const response = await axios.post("http://localhost:5000/api/test/calender", {
+      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/calender", {
         userId: test.userId,
         subjectName: test.subjectName,
         testTopic: test.testTopic,
@@ -142,7 +142,7 @@ const PlannerSyncScheduler = ({ userId, onTestsAdded, onSyncComplete, onRefresh 
     }
 
     try {
-      const response = await axios.delete(`http://localhost:5000/api/test/calender/${testId}`)
+      const response = await axios.delete(`https://medical-backend-loj4.onrender.com/api/test/calender/${testId}`)
 
       if (response.status !== 200) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -207,7 +207,7 @@ const PlannerSyncScheduler = ({ userId, onTestsAdded, onSyncComplete, onRefresh 
     // If not in localStorage, try to fetch from backend
     if (userId) {
       try {
-        const response = await axios.get(`http://localhost:5000/api/test/study-plan/${userId}`)
+        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/study-plan/${userId}`)
         if (response.data?.studyPlan) {
           console.log("Study plan data:", response.data.studyPlan)
 

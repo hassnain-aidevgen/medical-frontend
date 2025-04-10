@@ -73,7 +73,7 @@ export function DailyChallengeProvider({ children }: { children: ReactNode }) {
         try {
             setLoading(true)
             const userId = localStorage.getItem("Medical_User_Id")
-            const response = await axios.get(`http://localhost:5000/api/test/daily-challenge?userId=${userId}&hit=test`)
+            const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/daily-challenge?userId=${userId}&hit=test`)
 
             if (response.status === 200) {
                 const data = response.data
@@ -108,7 +108,7 @@ export function DailyChallengeProvider({ children }: { children: ReactNode }) {
             setLoading(true)
             const userId = localStorage.getItem("Medical_User_Id")
             const response = await axios.get(
-                `http://localhost:5000/api/test/daily-challenge/results?userId=${userId}&challengeId=${challenge._id}`,
+                `https://medical-backend-loj4.onrender.com/api/test/daily-challenge/results?userId=${userId}&challengeId=${challenge._id}`,
             )
 
             if (response.status === 200) {

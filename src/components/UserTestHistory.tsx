@@ -1,14 +1,14 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, CheckCircle, Clock, BarChart3, Brain, AlertCircle, BookOpen, RefreshCw } from "lucide-react"
-import axios from "axios"
-import { format } from "date-fns"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Button } from "@/components/ui/button"
+import axios from "axios"
+import { format } from "date-fns"
+import { AlertCircle, BarChart3, BookOpen, Brain, Calendar, CheckCircle, Clock, RefreshCw } from "lucide-react"
+import React, { useEffect, useState } from "react"
 
 type TestResult = {
   _id: string
@@ -41,7 +41,7 @@ const UserTestHistory: React.FC<UserTestHistoryProps> = ({ limit = 5 }) => {
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date())
-  
+
   // Calculate if we should limit the displayed tests
   const displayedTests = limit > 0 ? testHistory.slice(0, limit) : testHistory
 
@@ -52,28 +52,28 @@ const UserTestHistory: React.FC<UserTestHistoryProps> = ({ limit = 5 }) => {
     } else {
       setIsRefreshing(true)
     }
-    
+
     setError(null)
-    
+
     try {
       const userId = localStorage.getItem("Medical_User_Id")
-      
+
       if (!userId) {
         setError("User ID not found. Please log in again.")
         setIsLoading(false)
         setIsRefreshing(false)
         return
       }
-      
+
       // Add timestamp to prevent caching
       const timestamp = new Date().getTime()
-      
+
       // Use the new sorted endpoint we created
       const response = await axios.get(
-        `http://localhost:5000/api/test/user-tests-sorted/${userId}?t=${timestamp}`,
+        `https://medical-backend-loj4.onrender.com/api/test/user-tests-sorted/${userId}?t=${timestamp}`,
         { headers: { 'Cache-Control': 'no-cache' } }
       )
-      
+
       if (response.data && Array.isArray(response.data)) {
         // No need to sort here since backend is already sorting
         setTestHistory(response.data)
@@ -89,24 +89,24 @@ const UserTestHistory: React.FC<UserTestHistoryProps> = ({ limit = 5 }) => {
       setIsRefreshing(false)
     }
   }
-  
+
   // Fetch on initial mount
   useEffect(() => {
     fetchTestHistory()
   }, [])
-  
+
   // Handle manual refresh
   const handleRefresh = () => {
     fetchTestHistory(false)
   }
-  
+
   // Function to get color based on score percentage
   const getScoreColor = (percentage: number) => {
     if (percentage >= 80) return "text-green-600"
     if (percentage >= 60) return "text-amber-600"
     return "text-red-600"
   }
-  
+
   // Function to render loading skeletons
   const renderSkeletons = () => {
     return Array(3).fill(0).map((_, index) => (
@@ -124,7 +124,7 @@ const UserTestHistory: React.FC<UserTestHistoryProps> = ({ limit = 5 }) => {
       </Card>
     ))
   }
-  
+
   // Function to get test type badge
   const getTestTypeBadge = (test: TestResult) => {
     if (test.isAIGenerated) {
@@ -135,7 +135,7 @@ const UserTestHistory: React.FC<UserTestHistoryProps> = ({ limit = 5 }) => {
         </Badge>
       )
     }
-    
+
     if (test.isRecommendedTest) {
       return (
         <Badge variant="outline" className="bg-purple-50 text-purple-800 border-purple-200 flex items-center">
@@ -144,7 +144,7 @@ const UserTestHistory: React.FC<UserTestHistoryProps> = ({ limit = 5 }) => {
         </Badge>
       )
     }
-    
+
     return (
       <Badge variant="outline" className="bg-gray-50 text-gray-800 border-gray-200 flex items-center">
         <BookOpen size={14} className="mr-1" />
@@ -152,13 +152,13 @@ const UserTestHistory: React.FC<UserTestHistoryProps> = ({ limit = 5 }) => {
       </Badge>
     )
   }
-  
+
   // Function to get test topics string
   const getTopicsString = (test: TestResult) => {
     if (test.isAIGenerated && test.aiTopic) {
       return test.aiTopic
     }
-    
+
     // Get unique topics from questions
     const topics = new Set<string>()
     if (test.questions && Array.isArray(test.questions)) {
@@ -167,11 +167,11 @@ const UserTestHistory: React.FC<UserTestHistoryProps> = ({ limit = 5 }) => {
         else if (q.subject) topics.add(q.subject)
       })
     }
-    
-    return Array.from(topics).slice(0, 3).join(", ") + 
+
+    return Array.from(topics).slice(0, 3).join(", ") +
       (topics.size > 3 ? ` and ${topics.size - 3} more` : "")
   }
-  
+
   // Helper function to format date without parseISO
   const formatDate = (dateString: string) => {
     try {
@@ -190,8 +190,8 @@ const UserTestHistory: React.FC<UserTestHistoryProps> = ({ limit = 5 }) => {
             <BarChart3 className="mr-2" size={20} />
             Recent Tests
           </CardTitle>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing}
@@ -210,7 +210,7 @@ const UserTestHistory: React.FC<UserTestHistoryProps> = ({ limit = 5 }) => {
           )}
         </CardDescription>
       </CardHeader>
-      
+
       <CardContent>
         {isLoading ? (
           renderSkeletons()
@@ -239,12 +239,12 @@ const UserTestHistory: React.FC<UserTestHistoryProps> = ({ limit = 5 }) => {
                     {getTestTypeBadge(test)}
                   </div>
                   <CardTitle className="text-base">
-                    {test.isAIGenerated ? `${test.aiTopic} Test` : 
-                     test.isRecommendedTest ? "Recommended Test" : 
-                     "Standard Test"}
+                    {test.isAIGenerated ? `${test.aiTopic} Test` :
+                      test.isRecommendedTest ? "Recommended Test" :
+                        "Standard Test"}
                   </CardTitle>
                 </CardHeader>
-                
+
                 <CardContent className="pt-0 pb-4">
                   <div className="flex justify-between items-center mb-2">
                     <div>
@@ -260,12 +260,12 @@ const UserTestHistory: React.FC<UserTestHistoryProps> = ({ limit = 5 }) => {
                       {Math.floor(test.totalTime / 60)}m {test.totalTime % 60}s
                     </div>
                   </div>
-                  
-                  <Progress 
-                    value={test.percentage} 
-                    className="h-2 mb-3" 
+
+                  <Progress
+                    value={test.percentage}
+                    className="h-2 mb-3"
                   />
-                  
+
                   <div className="text-xs text-gray-600 truncate">
                     Topics: {getTopicsString(test)}
                   </div>

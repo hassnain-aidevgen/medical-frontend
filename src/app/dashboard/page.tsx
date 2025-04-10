@@ -168,7 +168,7 @@ export default function DashboardPage() {
       setDailyStatsLoading(true)
       try {
         const response = await axios.get(
-          `http://localhost:5000/api/test/daily-question-stats?userId=${userId}`,
+          `https://medical-backend-loj4.onrender.com/api/test/daily-question-stats?userId=${userId}`,
         )
         console.log("DailyQuestionStat: ", response.data)
         if (response.data) {

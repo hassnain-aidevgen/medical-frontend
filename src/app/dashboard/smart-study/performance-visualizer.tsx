@@ -111,7 +111,7 @@ const PerformanceVisualizer = ({ tests = [], onPriorityChange }: PerformanceVisu
 
         try {
           const response = await axios.get(
-            `http://localhost:5000/api/test/smart-study-performance?userId=${userId}&exam=${selectedExam}`,
+            `https://medical-backend-loj4.onrender.com/api/test/smart-study-performance?userId=${userId}&exam=${selectedExam}`,
           )
           if (response.data && Array.isArray(response.data)) {
             topicData = response.data

@@ -66,7 +66,7 @@ const initialNewQuest: Partial<Quest> = {
 
 // Create API instance with base URL from environment variable
 const api = axios.create({
-  baseURL: "http://localhost:5000/api/",
+  baseURL: "https://medical-backend-loj4.onrender.com/api/",
   withCredentials: true,
 })
 
