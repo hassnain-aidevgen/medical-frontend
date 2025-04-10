@@ -63,7 +63,7 @@ export default function ChallengeModeSession() {
     try {
       setLoading(true)
       // Use the same API endpoint as regular review sessions
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/reviews/random`)
+      const response = await axios.get(`http://localhost:5000/api/reviews/random`)
 
       // For demo purposes, if the API isn't implemented yet, we'll use mock data
       const mockSession = {

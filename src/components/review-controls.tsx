@@ -1,9 +1,9 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { CheckCircle2, Clock, Star, XCircle } from "lucide-react"
 import { useState } from "react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface ReviewControlsProps {
   onMarkKnown: () => Promise<void>
