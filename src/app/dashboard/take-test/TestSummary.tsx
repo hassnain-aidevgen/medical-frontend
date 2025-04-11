@@ -115,12 +115,56 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     }
   }, [questions, selectedAnswers, questionTimes, score, totalTime, percentage, isAIGenerated, aiTopic])
 
+  // const handleSubmitResults = async () => {
+  //   setLoading(true)
+  //   setError(null)
+
+  //   const testData = {
+  //     userId: localStorage.getItem("Medical_User_Id"), // Ensure this is set when user logs in
+  //     questions: questions.map((q, index) => ({
+  //       questionId: q._id,
+  //       questionText: q.question,
+  //       correctAnswer: q.answer,
+  //       userAnswer: selectedAnswers[index] || "",
+  //       timeSpent: questionTimes[index] || 0,
+  //     })),
+  //     score,
+  //     totalTime,
+  //     percentage,
+  //     isRecommendedTest, // Include flag to indicate if this was a recommended test
+  //     isAIGenerated, // Add flag for AI-generated tests
+  //     aiTopic, // Include the AI topic when applicable
+  //   }
+
+  //   try {
+  //     const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test", testData, {
+  //       headers: { "Content-Type": "application/json" },
+  //     })
+
+  //     if (response.status !== 201) {
+  //       throw new Error("Failed to submit test results")
+  //     }
+
+  //     toast.success("Test Saved Successfully! 🎉")
+
+  //     setTimeout(() => {
+  //       router.push("/dashboard")
+  //     }, 4500)
+  //   } catch (err) {
+  //     console.error("Error submitting test results:", err)
+  //     setError(err instanceof Error ? err.message : "An unexpected error occurred.")
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }
   const handleSubmitResults = async () => {
     setLoading(true)
     setError(null)
-
+  
+    const userId = localStorage.getItem("Medical_User_Id")
+    
     const testData = {
-      userId: localStorage.getItem("Medical_User_Id"), // Ensure this is set when user logs in
+      userId: userId, // Ensure this is set when user logs in
       questions: questions.map((q, index) => ({
         questionId: q._id,
         questionText: q.question,
@@ -135,18 +179,29 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       isAIGenerated, // Add flag for AI-generated tests
       aiTopic, // Include the AI topic when applicable
     }
-
+  
     try {
       const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test", testData, {
         headers: { "Content-Type": "application/json" },
       })
-
+  
       if (response.status !== 201) {
         throw new Error("Failed to submit test results")
       }
-
+  
+      // After successfully saving test data, update the streak
+      if (userId) {
+        try {
+          await axios.post(`http://localhost:5000/api/test/update-streak/${userId}`)
+          console.log("Test streak updated successfully")
+        } catch (streakError) {
+          // Don't fail the entire process if streak update fails
+          console.error("Error updating streak:", streakError)
+        }
+      }
+  
       toast.success("Test Saved Successfully! 🎉")
-
+  
       setTimeout(() => {
         router.push("/dashboard")
       }, 4500)

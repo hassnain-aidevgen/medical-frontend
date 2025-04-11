@@ -35,7 +35,8 @@ export default function WeeklyStreak() {
 
       setIsLoading(true)
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/streak/${userId}`)
+        // const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/streak/${userId}`)
+        const response = await axios.get(`http://localhost:5000/api/test/streak/${userId}`)
         console.log("Streak data response:", response.data)
 
         if (response.data && Array.isArray(response.data.streakData)) {

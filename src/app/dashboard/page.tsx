@@ -5,13 +5,16 @@ import { BarChart2, BookOpen, CheckCircle, Clock, Dna, Pause, Play, Settings, Us
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { PiRankingDuotone } from "react-icons/pi"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import ChallengeButton from "@/components/challenge-button"
 import DailyChallengeButton from "@/components/daily-challenge-button"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-
+import WeeklyPerformance from "@/components/weekly-performance"
+import RecentTest from "@/components/recent-test"
+import DashboardStudyPlan from "@/components/DashboardStudyPlan"
 const featureCards = [
   { name: "Create Test", icon: BookOpen, href: "/dashboard/create-test", color: "bg-blue-500" },
   { name: "Flash Cards", icon: Users, href: "/dashboard/flash-cards", color: "bg-green-500" },
@@ -23,14 +26,7 @@ const featureCards = [
   { name: "Pomodoro", icon: Clock, href: "/dashboard/pomodoro-timer", color: "bg-orange-500" },
 ]
 
-interface LeaderboardEntry {
-  _id: string
-  userId: string
-  name: string
-  score: number
-  totalTime: number
-  rank?: number
-}
+
 
 interface Goal {
   _id: string
@@ -43,6 +39,8 @@ interface Goal {
   level: number
 }
 
+type TimeFrame = "weekly" | "monthly" | "all-time"
+
 export default function DashboardPage() {
   const router = useRouter()
   const [userId, setUserId] = useState<string | null>(null)
@@ -51,9 +49,17 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
 
   // Leaderboard states
-  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([])
-  const [userRank, setUserRank] = useState<number | null>(null)
-  const [leaderboardLoading, setLeaderboardLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<TimeFrame>("all-time")
+  const [userRanks, setUserRanks] = useState<Record<TimeFrame, number | null>>({
+    weekly: null,
+    monthly: null,
+    "all-time": null
+  })
+  const [rankLoading, setRankLoading] = useState<Record<TimeFrame, boolean>>({
+    weekly: false,
+    monthly: false,
+    "all-time": false
+  })
 
   // Weekly goals states
   const [goals, setGoals] = useState<Goal[]>([])
@@ -72,6 +78,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedUserId = localStorage.getItem("Medical_User_Id")
+      console.log("Dashboard - User ID from localStorage:", storedUserId)
       setUserId(storedUserId)
     }
   }, [])
@@ -82,14 +89,14 @@ export default function DashboardPage() {
 
       setIsLoading(true)
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/streak/${userId}`)
+        // const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/streak/${userId}`)
+        const response = await axios.get(`http://localhost:5000/api/test/streak/${userId}`)
 
         if (response.data && typeof response.data.currentStreak === "number") {
           setCurrentStreak(response.data.currentStreak || 0)
         } else {
           console.error("Invalid streak data format:", response.data)
           setError("Invalid data format received from server")
-          console.log(leaderboardData)
         }
       } catch (error) {
         console.error("Error fetching streak data:", error)
@@ -102,40 +109,35 @@ export default function DashboardPage() {
     if (userId) {
       fetchStreakData()
     }
-  }, [userId, leaderboardData])
+  }, [userId])
 
-  // Fetch leaderboard data
+  // Fetch leaderboard rank data for the current time frame
   useEffect(() => {
-    const fetchLeaderboardData = async () => {
-      if (!userId) return
+    const fetchUserRank = async () => {
+      if (!userId || rankLoading[activeTab]) return;
 
-      setLeaderboardLoading(true)
+      setRankLoading(prev => ({ ...prev, [activeTab]: true }));
+      
       try {
-        const [leaderboardRes, userStatsRes] = await Promise.all([
-          fetch("https://medical-backend-loj4.onrender.com/api/test/leaderboard"),
-          fetch(`https://medical-backend-loj4.onrender.com/api/test/leaderboard/player/${userId}`),
-        ])
+        const response = await axios.get(
+          `https://medical-backend-loj4.onrender.com/api/test/leaderboard/player/${userId}?timeFrame=${activeTab}`
+        );
 
-        const leaderboardData = await leaderboardRes.json()
-        const userStatsData = await userStatsRes.json()
-
-        if (leaderboardData.success) {
-          setLeaderboardData(leaderboardData.data.leaderboard.slice(0, 3)) // Get top 3
-        }
-        if (userStatsData.success) {
-          setUserRank(userStatsData.data.rank)
+        if (response.data && response.data.success) {
+          setUserRanks(prev => ({
+            ...prev,
+            [activeTab]: response.data.data.rank || null
+          }));
         }
       } catch (error) {
-        console.error("Error fetching leaderboard data:", error)
+        console.error(`Error fetching ${activeTab} rank:`, error);
       } finally {
-        setLeaderboardLoading(false)
+        setRankLoading(prev => ({ ...prev, [activeTab]: false }));
       }
-    }
+    };
 
-    if (userId) {
-      fetchLeaderboardData()
-    }
-  }, [userId])
+    fetchUserRank();
+  }, [userId, activeTab]);
 
   // Fetch weekly goals data
   useEffect(() => {
@@ -271,7 +273,7 @@ export default function DashboardPage() {
   }
 
   const navigateToLeaderboard = () => {
-    router.push("/dashboard/leaderboard")
+    router.push(`/dashboard/leaderboard?tab=${activeTab}`)
   }
 
   const navigateToWeeklyGoals = () => {
@@ -282,6 +284,14 @@ export default function DashboardPage() {
   const totalQuests = goals.length
   const completedQuests = goals.filter((goal) => goal.isCompleted).length
   const goalProgressPercentage = totalQuests > 0 ? Math.round((completedQuests / totalQuests) * 100) : 0
+
+  const getTimeFrameLabel = (timeFrame: TimeFrame) => {
+    switch (timeFrame) {
+      case "weekly": return "Weekly"
+      case "monthly": return "Monthly" 
+      case "all-time": return "All-Time"
+    }
+  }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:pl-8 md:pr-8">
@@ -392,15 +402,32 @@ export default function DashboardPage() {
             <PiRankingDuotone className="h-6 w-6 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            {leaderboardLoading ? (
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TimeFrame)} className="w-full mb-2">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="weekly">Weekly</TabsTrigger>
+                <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                <TabsTrigger value="all-time">All-Time</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            
+            {rankLoading[activeTab] ? (
               <div className="text-2xl font-bold">Loading...</div>
             ) : (
               <>
-                <div className="text-2xl font-bold">#{userRank || " "}</div>
+                <div className="text-2xl font-bold">#{userRanks[activeTab] || "—"}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {getTimeFrameLabel(activeTab)} ranking
+                </p>
               </>
             )}
           </CardContent>
         </Card>
+      </div>
+      
+      <div className="my-4">
+        <RecentTest />
+        <WeeklyPerformance />
+        <DashboardStudyPlan />
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
