@@ -81,7 +81,7 @@ export function InfographicSuggestions() {
       try {
         // Try to fetch from API
         const response = await axios.get(
-          `https://medical-backend-loj4.onrender.com/api/reviews/difficult-topics?userId=${userId}`,
+          `http://localhost:5000/api/reviews/difficult-topics?userId=${userId}`,
         )
         setDifficultTopics(response.data?.topics || mockDifficultTopics)
       } catch {

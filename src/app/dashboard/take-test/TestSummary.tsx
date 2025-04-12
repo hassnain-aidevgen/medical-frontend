@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import axios from "axios"
 import { ArcElement, Chart as ChartJS, Legend, Tooltip } from "chart.js"
-import { AlertCircle, Brain, CheckCircle, Clock, Loader2, Share2, Sparkles } from "lucide-react"
+import { AlertCircle, Brain, CheckCircle, Clock, Loader2, Share2, Sparkles } from 'lucide-react'
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Doughnut } from "react-chartjs-2"
@@ -115,80 +115,65 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     }
   }, [questions, selectedAnswers, questionTimes, score, totalTime, percentage, isAIGenerated, aiTopic])
 
-  // const handleSubmitResults = async () => {
-  //   setLoading(true)
-  //   setError(null)
-
-  //   const testData = {
-  //     userId: localStorage.getItem("Medical_User_Id"), // Ensure this is set when user logs in
-  //     questions: questions.map((q, index) => ({
-  //       questionId: q._id,
-  //       questionText: q.question,
-  //       correctAnswer: q.answer,
-  //       userAnswer: selectedAnswers[index] || "",
-  //       timeSpent: questionTimes[index] || 0,
-  //     })),
-  //     score,
-  //     totalTime,
-  //     percentage,
-  //     isRecommendedTest, // Include flag to indicate if this was a recommended test
-  //     isAIGenerated, // Add flag for AI-generated tests
-  //     aiTopic, // Include the AI topic when applicable
-  //   }
-
-  //   try {
-  //     const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test", testData, {
-  //       headers: { "Content-Type": "application/json" },
-  //     })
-
-  //     if (response.status !== 201) {
-  //       throw new Error("Failed to submit test results")
-  //     }
-
-  //     toast.success("Test Saved Successfully! 🎉")
-
-  //     setTimeout(() => {
-  //       router.push("/dashboard")
-  //     }, 4500)
-  //   } catch (err) {
-  //     console.error("Error submitting test results:", err)
-  //     setError(err instanceof Error ? err.message : "An unexpected error occurred.")
-  //   } finally {
-  //     setLoading(false)
-  //   }
-  // }
   const handleSubmitResults = async () => {
     setLoading(true)
     setError(null)
-  
+
     const userId = localStorage.getItem("Medical_User_Id")
     
-    const testData = {
-      userId: userId, // Ensure this is set when user logs in
-      questions: questions.map((q, index) => ({
-        questionId: q._id,
+    // Create test data object
+    let testData;
+    if (isAIGenerated) {
+      console.log("Original AI questions:", questions)
+      // For AI-generated tests, format to match what the backend expects
+      const formattedQuestions = questions.map((q, index) => ({
+        questionId: q._id || `ai${Date.now()}${index}`, // Remove hyphens as they might cause issues
         questionText: q.question,
         correctAnswer: q.answer,
         userAnswer: selectedAnswers[index] || "",
         timeSpent: questionTimes[index] || 0,
-      })),
-      score,
-      totalTime,
-      percentage,
-      isRecommendedTest, // Include flag to indicate if this was a recommended test
-      isAIGenerated, // Add flag for AI-generated tests
-      aiTopic, // Include the AI topic when applicable
+      }));
+      console.log("Formatted AI questions:", formattedQuestions)
+      
+      // Make the structure EXACTLY the same as normal tests
+      testData = {
+        userId,
+        questions: formattedQuestions,
+        score,
+        totalTime,
+        percentage,
+        isRecommendedTest: false // Include this field to match normal tests
+      };
     }
-  
+    
+    else {
+      // For normal tests, use the existing structure exactly as before
+      testData = {
+        userId,
+        questions: questions.map((q, index) => ({
+          questionId: q._id,
+          questionText: q.question,
+          correctAnswer: q.answer,
+          userAnswer: selectedAnswers[index] || "",
+          timeSpent: questionTimes[index] || 0,
+        })),
+        score,
+        totalTime,
+        percentage,
+        isRecommendedTest
+      };
+    }
+    console.log("Final test data being sent:", JSON.stringify(testData, null, 2))
+
     try {
       const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test", testData, {
         headers: { "Content-Type": "application/json" },
       })
-  
+
       if (response.status !== 201) {
         throw new Error("Failed to submit test results")
       }
-  
+
       // After successfully saving test data, update the streak
       if (userId) {
         try {
@@ -199,9 +184,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({
           console.error("Error updating streak:", streakError)
         }
       }
-  
+
       toast.success("Test Saved Successfully! 🎉")
-  
+
       setTimeout(() => {
         router.push("/dashboard")
       }, 4500)
