@@ -15,6 +15,9 @@ import { Progress } from "@/components/ui/progress"
 import WeeklyPerformance from "@/components/weekly-performance"
 import RecentTest from "@/components/recent-test"
 import DashboardStudyPlan from "@/components/DashboardStudyPlan"
+import DashboardToday from "@/components/dashboard-today"
+import DashboardNextReview from "@/components/dashboard-next-review"
+
 const featureCards = [
   { name: "Create Test", icon: BookOpen, href: "/dashboard/create-test", color: "bg-blue-500" },
   { name: "Flash Cards", icon: Users, href: "/dashboard/flash-cards", color: "bg-green-500" },
@@ -25,8 +28,6 @@ const featureCards = [
   { name: "Error Notebook", icon: Users, href: "/dashboard/digital-error-notebook", color: "bg-red-500" },
   { name: "Pomodoro", icon: Clock, href: "/dashboard/pomodoro-timer", color: "bg-orange-500" },
 ]
-
-
 
 interface Goal {
   _id: string
@@ -53,12 +54,12 @@ export default function DashboardPage() {
   const [userRanks, setUserRanks] = useState<Record<TimeFrame, number | null>>({
     weekly: null,
     monthly: null,
-    "all-time": null
+    "all-time": null,
   })
   const [rankLoading, setRankLoading] = useState<Record<TimeFrame, boolean>>({
     weekly: false,
     monthly: false,
-    "all-time": false
+    "all-time": false,
   })
 
   // Weekly goals states
@@ -114,30 +115,30 @@ export default function DashboardPage() {
   // Fetch leaderboard rank data for the current time frame
   useEffect(() => {
     const fetchUserRank = async () => {
-      if (!userId || rankLoading[activeTab]) return;
+      if (!userId || rankLoading[activeTab]) return
 
-      setRankLoading(prev => ({ ...prev, [activeTab]: true }));
-      
+      setRankLoading((prev) => ({ ...prev, [activeTab]: true }))
+
       try {
         const response = await axios.get(
-          `https://medical-backend-loj4.onrender.com/api/test/leaderboard/player/${userId}?timeFrame=${activeTab}`
-        );
+          `https://medical-backend-loj4.onrender.com/api/test/leaderboard/player/${userId}?timeFrame=${activeTab}`,
+        )
 
         if (response.data && response.data.success) {
-          setUserRanks(prev => ({
+          setUserRanks((prev) => ({
             ...prev,
-            [activeTab]: response.data.data.rank || null
-          }));
+            [activeTab]: response.data.data.rank || null,
+          }))
         }
       } catch (error) {
-        console.error(`Error fetching ${activeTab} rank:`, error);
+        console.error(`Error fetching ${activeTab} rank:`, error)
       } finally {
-        setRankLoading(prev => ({ ...prev, [activeTab]: false }));
+        setRankLoading((prev) => ({ ...prev, [activeTab]: false }))
       }
-    };
+    }
 
-    fetchUserRank();
-  }, [userId, activeTab]);
+    fetchUserRank()
+  }, [userId, activeTab])
 
   // Fetch weekly goals data
   useEffect(() => {
@@ -287,9 +288,12 @@ export default function DashboardPage() {
 
   const getTimeFrameLabel = (timeFrame: TimeFrame) => {
     switch (timeFrame) {
-      case "weekly": return "Weekly"
-      case "monthly": return "Monthly" 
-      case "all-time": return "All-Time"
+      case "weekly":
+        return "Weekly"
+      case "monthly":
+        return "Monthly"
+      case "all-time":
+        return "All-Time"
     }
   }
 
@@ -396,37 +400,44 @@ export default function DashboardPage() {
             <p className="text-xs text-muted-foreground">{isActive ? "Timer running" : "Click to start"}</p>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer lg:col-span-4" onClick={navigateToLeaderboard}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Leaderboard Rank</CardTitle>
-            <PiRankingDuotone className="h-6 w-6 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TimeFrame)} className="w-full mb-2">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="weekly">Weekly</TabsTrigger>
-                <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                <TabsTrigger value="all-time">All-Time</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            
-            {rankLoading[activeTab] ? (
-              <div className="text-2xl font-bold">Loading...</div>
-            ) : (
-              <>
-                <div className="text-2xl font-bold">#{userRanks[activeTab] || "—"}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {getTimeFrameLabel(activeTab)} ranking
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
       </div>
-      
+
+      {/* Today's Dashboard Component */}
+      <DashboardToday />
+
+      {/* Weekly Performance Component */}
+      <WeeklyPerformance />
+
+      {/* Next Review Component */}
+      <DashboardNextReview />
+
+      <Card className="cursor-pointer lg:col-span-4" onClick={navigateToLeaderboard}>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium">Leaderboard Rank</CardTitle>
+          <PiRankingDuotone className="h-6 w-6 text-yellow-500" />
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TimeFrame)} className="w-full mb-2">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="weekly">Weekly</TabsTrigger>
+              <TabsTrigger value="monthly">Monthly</TabsTrigger>
+              <TabsTrigger value="all-time">All-Time</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {rankLoading[activeTab] ? (
+            <div className="text-2xl font-bold">Loading...</div>
+          ) : (
+            <>
+              <div className="text-2xl font-bold">#{userRanks[activeTab] || "—"}</div>
+              <p className="text-xs text-muted-foreground mt-1">{getTimeFrameLabel(activeTab)} ranking</p>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="my-4">
         <RecentTest />
-        <WeeklyPerformance />
         <DashboardStudyPlan />
       </div>
 
