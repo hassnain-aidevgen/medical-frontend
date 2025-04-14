@@ -5,10 +5,10 @@ import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Award, Crown, Medal, Share2, Star, Timer, Trophy, User, Target } from "lucide-react"
+import { Award, Crown, Medal, Share2, Star, Timer, Trophy, User, Target } from 'lucide-react'
 import { useCallback, useEffect, useState } from "react"
 import SpecialtyFilters from "./specialty-filters"
-import CountryLeaderboard from "./country-leaderboard"
+// import CountryLeaderboard from "./country-leaderboard"
 import StreakLeaderboard from "./streak-leaderboard"
 import ExamLeaderboard from "./exam-leaderboard"
 import UserBadges from "./user-badges"
@@ -792,7 +792,7 @@ export default function GamifiedLeaderboard() {
             <TabsTrigger value="monthly">Monthly</TabsTrigger>
             <TabsTrigger value="all-time">All Time</TabsTrigger>
             <TabsTrigger value="specialty">Specialty</TabsTrigger>
-            <TabsTrigger value="country">Country</TabsTrigger>
+            {/* <TabsTrigger value="country">Country</TabsTrigger> */}
             <TabsTrigger value="streaks">Streaks</TabsTrigger>
             <TabsTrigger value="exams">Exams</TabsTrigger>
           </TabsList>
@@ -971,13 +971,13 @@ export default function GamifiedLeaderboard() {
             </div>
           )}
 
-          {activeTab === "country" && (
+          {/* {activeTab === "country" && (
             <CountryLeaderboard
               timeFrame="all-time"
               loggedInUserId={loggedInUserId}
               globalLeaderboard={leaderboardData["all-time"]}
             />
-          )}
+          )} */}
 
           {activeTab === "streaks" && (
             <StreakLeaderboard
@@ -995,4 +995,3 @@ export default function GamifiedLeaderboard() {
     </div>
   )
 }
-

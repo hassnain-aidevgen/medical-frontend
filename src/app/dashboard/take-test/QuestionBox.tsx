@@ -23,6 +23,7 @@ type QuestionBoxProps = {
     options: string[]
     answer: string
     explanation: string
+    targetExam: string // Added targetExam property
   }
   selectedAnswer: string | undefined
   onAnswerSelect: (answer: string) => void

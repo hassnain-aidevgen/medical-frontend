@@ -200,9 +200,10 @@ export default function CreateTest() {
   // const [questions, setQuestions] = useState<Question[]>([])
   // Update the state declarations to include the new "All" options
   // Replace the existing state declarations for examType, difficulty, and questionType with:
-  const [examType, setExamType] = useState<"USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3" | "ALL_USMLE_TYPES">(
-    "ALL_USMLE_TYPES",
-  )
+  const [examType, setExamType] = useState<
+    "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3" | "ALL_USMLE_TYPES" | 
+    "NEET" | "PLAB" | "MCAT" | "NCLEX" | "COMLEX"
+  >("ALL_USMLE_TYPES")
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | "ALL_DIFFICULTY_LEVELS">("ALL_DIFFICULTY_LEVELS")
   const [questionType, setQuestionType] = useState<
     "case_based" | "single_best_answer" | "extended_matching" | "ALL_QUESTION_TYPES"
@@ -240,30 +241,6 @@ export default function CreateTest() {
   // Use environment variable or fallback to a relative path for API
   const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test/create-test"
   const API_BASE_URL_LOCAL = "https://medical-backend-loj4.onrender.com/api/test/create-test"
-
-  // // Older one
-  // const fetchRecommendations = useCallback(async () => {
-  //   setIsLoadingRecommendations(true)
-  //   try {
-  //     const userId = localStorage.getItem("Medical_User_Id")
-  //     if (!userId) {
-  //       console.log("No user ID found in localStorage")
-  //       return
-  //     }
-
-  //     const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations/${userId}`)
-  //     setRecommendations(data.recommendations)
-
-  //     // If we got recommendations, show the section
-  //     if (data.recommendations && data.recommendations.length > 0) {
-  //       setShowRecommendations(true)
-  //     }
-  //   } catch (error) {
-  //     console.error("Error fetching recommendations:", error)
-  //   } finally {
-  //     setIsLoadingRecommendations(false)
-  //   }
-  // }, [])
 
   // Update this function in your create-test page
   const fetchRecommendations = useCallback(async () => {
@@ -387,7 +364,21 @@ export default function CreateTest() {
   }, [API_BASE_URL, selectedSubjects, selectedSubsections, examType, difficulty, questionType, year, totalQuestions])
 
   useEffect(() => {
-    fetchData()
+    // Load saved exam settings from localStorage
+    const savedExam = localStorage.getItem("selectedExam");
+    const savedDate = localStorage.getItem("examDate");
+    
+    if (savedExam) {
+      setSelectedExam(savedExam);
+      // Also update the examType filter to match the saved exam
+      setExamType(savedExam as "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3" | "ALL_USMLE_TYPES" | "NEET" | "PLAB" | "MCAT" | "NCLEX" | "COMLEX");
+    }
+    
+    if (savedDate) {
+      setExamDate(savedDate);
+    }
+    
+    fetchData();
   }, [fetchData])
 
   // Fetch questions whenever filters change
@@ -598,6 +589,9 @@ export default function CreateTest() {
         difficulty: difficulty,
         question_type: questionType,
         year: year,
+        // Add these new parameters to pass target exam info
+        targetExam: selectedExam || "",
+        examDate: examDate || ""
       })
 
       // If we have recommended questions to add, append them
@@ -634,6 +628,9 @@ export default function CreateTest() {
       const params = new URLSearchParams({
         mode,
         isRecommendedTest: "true",
+        // Add these new parameters to pass target exam info
+        targetExam: selectedExam || "",
+        examDate: examDate || ""
       })
 
       // Add the recommendations with a uniqueId to ensure they're processed correctly
@@ -768,13 +765,26 @@ export default function CreateTest() {
         <TargetExamSelector
           selectedExam={selectedExam}
           onExamChange={(exam) => {
-            setSelectedExam(exam)
-            localStorage.setItem("selectedExam", exam) // optional
+            setSelectedExam(exam);
+            localStorage.setItem("selectedExam", exam);
+            
+            // Update examType based on selection when user changes the target exam
+            if (exam) {
+              setExamType(exam as "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3" | "ALL_USMLE_TYPES" | "NEET" | "PLAB" | "MCAT" | "NCLEX" | "COMLEX");
+              
+              // Reset filters to ensure compatibility with the selected exam type
+              setDifficulty("ALL_DIFFICULTY_LEVELS");
+              setQuestionType("ALL_QUESTION_TYPES");
+              setYear("ALL_YEARS");
+            } else {
+              // If no exam is selected, revert to default
+              setExamType("ALL_USMLE_TYPES");
+            }
           }}
           examDate={examDate}
           onDateChange={(date) => {
-            setExamDate(date)
-            localStorage.setItem("examDate", date) // optional
+            setExamDate(date);
+            localStorage.setItem("examDate", date);
           }}
         />
         {/* Add ExamSimulation component at the top for quick tests */}
@@ -952,7 +962,7 @@ export default function CreateTest() {
                 <Select
                   value={examType}
                   onValueChange={(value: typeof examType) => handleFilterChange(value, setExamType)}
-                  disabled={isFilterLoading}
+                  disabled={isFilterLoading || !!selectedExam} // Disable when target exam is selected
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select exam type" />
@@ -962,8 +972,18 @@ export default function CreateTest() {
                     <SelectItem value="USMLE_STEP1">USMLE STEP 1</SelectItem>
                     <SelectItem value="USMLE_STEP2">USMLE STEP 2</SelectItem>
                     <SelectItem value="USMLE_STEP3">USMLE STEP 3</SelectItem>
+                    <SelectItem value="NEET">NEET</SelectItem>
+                    <SelectItem value="PLAB">PLAB</SelectItem>
+                    <SelectItem value="MCAT">MCAT</SelectItem>
+                    <SelectItem value="NCLEX">NCLEX</SelectItem>
+                    <SelectItem value="COMLEX">COMLEX</SelectItem>
                   </SelectContent>
                 </Select>
+                {selectedExam && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Using target exam: {selectedExam.replace('_', ' ')}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -1193,4 +1213,3 @@ export default function CreateTest() {
     </div>
   )
 }
-

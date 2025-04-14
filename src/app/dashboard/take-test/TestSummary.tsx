@@ -9,11 +9,22 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import axios from "axios"
 import { ArcElement, Chart as ChartJS, Legend, Tooltip } from "chart.js"
-import { AlertCircle, Brain, CheckCircle, Clock, Loader2, Share2, Sparkles } from 'lucide-react'
+import {
+  AlertCircle,
+  Brain,
+  Calendar,
+  CheckCircle,
+  Clock,
+  GraduationCap,
+  Loader2,
+  Share2,
+  Sparkles,
+} from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Doughnut } from "react-chartjs-2"
 import toast, { Toaster } from "react-hot-toast"
+import TargetedExamBlueprint from "@/components/targeted-exam-blueprint"
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
@@ -23,6 +34,7 @@ type TestSummaryProps = {
     question: string
     answer: string
     explanation?: string
+    targetExam: string
     subject?: string
     subsection?: string
   }[]
@@ -32,16 +44,20 @@ type TestSummaryProps = {
   totalTime: number
   isAIGenerated?: boolean
   aiTopic?: string
+  targetExam?: string
+  examDate?: string
 }
 
-const TestSummary: React.FC<TestSummaryProps> = ({ 
-  questions, 
-  selectedAnswers, 
-  questionTimes, 
-  score, 
+const TestSummary: React.FC<TestSummaryProps> = ({
+  questions,
+  selectedAnswers,
+  questionTimes,
+  score,
   totalTime,
   isAIGenerated = false,
-  aiTopic = ""
+  aiTopic = "",
+  targetExam = "",
+  examDate = "",
 }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -71,6 +87,12 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     ],
   }
 
+  // Helper function to format exam name for display
+  const formatExamName = (examType: string) => {
+    if (!examType) return ""
+    return examType.replace("_", " ").replace(/USMLE/g, "USMLE ").trim()
+  }
+
   // Fetch AI feedback when component mounts
   useEffect(() => {
     const fetchAIFeedback = async () => {
@@ -86,18 +108,19 @@ const TestSummary: React.FC<TestSummaryProps> = ({
             correctAnswer: q.answer,
             userAnswer: selectedAnswers[index] || "",
             timeSpent: questionTimes[index] || 0,
-            topic: isAIGenerated ? aiTopic : (q.subsection || q.subject || "")
+            topic: isAIGenerated ? aiTopic : q.subsection || q.subject || "",
           })),
           score,
           totalTime,
           percentage,
-          topic: isAIGenerated ? aiTopic : "" // Include AI topic when applicable
+          topic: isAIGenerated ? aiTopic : "", // Include AI topic when applicable
+          targetExam: targetExam || "", // Include target exam in feedback request
         }
 
         // Call the new AI feedback endpoint
         const response = await axios.post(
           "https://medical-backend-loj4.onrender.com/api/test/ai-report-feedback",
-          feedbackData
+          feedbackData,
         )
 
         setAiFeedback(response.data.feedback)
@@ -113,16 +136,16 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     if (questions.length > 0) {
       fetchAIFeedback()
     }
-  }, [questions, selectedAnswers, questionTimes, score, totalTime, percentage, isAIGenerated, aiTopic])
+  }, [questions, selectedAnswers, questionTimes, score, totalTime, percentage, isAIGenerated, aiTopic, targetExam])
 
   const handleSubmitResults = async () => {
     setLoading(true)
     setError(null)
 
     const userId = localStorage.getItem("Medical_User_Id")
-    
+
     // Create test data object
-    let testData;
+    let testData
     if (isAIGenerated) {
       console.log("Original AI questions:", questions)
       // For AI-generated tests, format to match what the backend expects
@@ -132,9 +155,9 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         correctAnswer: q.answer,
         userAnswer: selectedAnswers[index] || "",
         timeSpent: questionTimes[index] || 0,
-      }));
+      }))
       console.log("Formatted AI questions:", formattedQuestions)
-      
+
       // Make the structure EXACTLY the same as normal tests
       testData = {
         userId,
@@ -142,11 +165,11 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         score,
         totalTime,
         percentage,
-        isRecommendedTest: false // Include this field to match normal tests
-      };
-    }
-    
-    else {
+        isRecommendedTest: false, // Include this field to match normal tests
+        targetExam: targetExam || "", // Include target exam
+        examDate: examDate || "", // Include exam date
+      }
+    } else {
       // For normal tests, use the existing structure exactly as before
       testData = {
         userId,
@@ -160,13 +183,19 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         score,
         totalTime,
         percentage,
-        isRecommendedTest
-      };
+        isRecommendedTest,
+        targetExam: targetExam || "", // Include target exam
+        examDate: examDate || "", // Include exam date
+      }
     }
     console.log("Final test data being sent:", JSON.stringify(testData, null, 2))
 
     try {
-      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test", testData, {
+      // OLD ONE WITHOUT THE EXAM TYPE
+      // const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test", testData, {
+      //   headers: { "Content-Type": "application/json" },
+      // })
+      const response = await axios.post("http://localhost:5000/api/test/take-test/submit-test/v2", testData, {
         headers: { "Content-Type": "application/json" },
       })
 
@@ -202,10 +231,28 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     <div className="container mx-auto px-4 py-8">
       <Toaster position="top-right" />
       <h1 className="text-3xl font-bold mb-8">
-        {isAIGenerated ? `AI-Generated Test Results: ${aiTopic}` : 
-         isRecommendedTest ? "Recommended Test Results" : 
-         "Test Results"}
+        {isAIGenerated
+          ? `AI-Generated Test Results: ${aiTopic}`
+          : isRecommendedTest
+            ? "Recommended Test Results"
+            : "Test Results"}
       </h1>
+
+      {/* Target Exam Info Display */}
+      {targetExam && (
+        <div className="bg-green-50 p-4 rounded-lg mb-6 border border-green-200">
+          <h2 className="text-lg font-semibold text-green-800 flex items-center">
+            <GraduationCap className="mr-2" size={20} />
+            Exam: {formatExamName(targetExam)}
+          </h2>
+          {examDate && (
+            <p className="text-sm text-green-600 flex items-center mt-1">
+              <Calendar className="mr-1" size={16} />
+              Exam Date: {new Date(examDate).toLocaleDateString()}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* AI Generated Test Banner */}
       {isAIGenerated && (
@@ -265,7 +312,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       </div>
 
       {/* AI Feedback Card */}
-      <Card className={`mb-8 border-t-4 ${isAIGenerated ? 'border-t-blue-500' : 'border-t-purple-500'}`}>
+      <Card className={`mb-8 border-t-4 ${isAIGenerated ? "border-t-blue-500" : "border-t-purple-500"}`}>
         <CardHeader className="pb-2">
           <div className="flex items-center">
             {isAIGenerated ? (
@@ -274,13 +321,15 @@ const TestSummary: React.FC<TestSummaryProps> = ({
               <Sparkles className="mr-2 h-5 w-5 text-purple-500" />
             )}
             <CardTitle>
-              {isAIGenerated 
+              {isAIGenerated
                 ? `AI Analysis: ${aiTopic} Performance`
-                : "AI Feedback on Your Performance"}
+                : targetExam
+                  ? `AI Feedback on Your ${formatExamName(targetExam)} Performance`
+                  : "AI Feedback on Your Performance"}
             </CardTitle>
           </div>
           <CardDescription>
-            {isAIGenerated 
+            {isAIGenerated
               ? `Personalized insights on your ${aiTopic} knowledge`
               : "Personalized insights and recommendations"}
           </CardDescription>
@@ -288,7 +337,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
         <CardContent>
           {isLoadingFeedback ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className={`h-8 w-8 animate-spin ${isAIGenerated ? 'text-blue-500' : 'text-purple-500'}`} />
+              <Loader2 className={`h-8 w-8 animate-spin ${isAIGenerated ? "text-blue-500" : "text-purple-500"}`} />
               <span className="ml-3 text-gray-600">Generating your personalized feedback...</span>
             </div>
           ) : feedbackError ? (
@@ -300,7 +349,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
           ) : (
             <div className="prose prose-sm max-w-none whitespace-pre-line">
               {aiFeedback ? (
-                <div dangerouslySetInnerHTML={{ __html: aiFeedback.replace(/\n/g, '<br/>') }} />
+                <div dangerouslySetInnerHTML={{ __html: aiFeedback.replace(/\n/g, "<br/>") }} />
               ) : (
                 <p>No feedback available at this time.</p>
               )}
@@ -308,6 +357,21 @@ const TestSummary: React.FC<TestSummaryProps> = ({
           )}
         </CardContent>
       </Card>
+
+      {/* Target Exam Blueprint */}
+      {targetExam && (
+        <TargetedExamBlueprint
+          testResult={{
+            score: score,
+            totalQuestions: questions.length,
+            correctAnswers: score,
+            incorrectAnswers: questions.length - score,
+            totalTime: totalTime,
+            targetExam: targetExam,
+          }}
+          className="mb-8"
+        />
+      )}
 
       {error && (
         <Alert variant="destructive" className="mb-6">

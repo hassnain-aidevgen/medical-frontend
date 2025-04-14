@@ -9,7 +9,17 @@ interface TargetExamSelectorProps {
   onDateChange: (date: string) => void
 }
 
-const availableExams = ["USMLE Step 1", "NEET", "PLAB", "MCAT", "NCLEX", "COMLEX"]
+// Updated to include the actual exam types used in the application
+const availableExams = [
+  { name: "USMLE Step 1", value: "USMLE_STEP1" },
+  { name: "USMLE Step 2", value: "USMLE_STEP2" },
+  { name: "USMLE Step 3", value: "USMLE_STEP3" },
+  { name: "NEET", value: "NEET" },
+  { name: "PLAB", value: "PLAB" },
+  { name: "MCAT", value: "MCAT" },
+  { name: "NCLEX", value: "NCLEX" },
+  { name: "COMLEX", value: "COMLEX" }
+]
 
 const TargetExamSelector: React.FC<TargetExamSelectorProps> = ({
   selectedExam,
@@ -19,7 +29,7 @@ const TargetExamSelector: React.FC<TargetExamSelectorProps> = ({
 }) => {
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-      <h2 className="text-xl font-semibold mb-4">Filter by Exam Type (NBF)</h2>
+      <h2 className="text-xl font-semibold mb-4">Target Exam Settings</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
         {/* Exam Selection */}
@@ -35,8 +45,8 @@ const TargetExamSelector: React.FC<TargetExamSelectorProps> = ({
           >
             <option value="">-- Select an Exam --</option>
             {availableExams.map((exam) => (
-              <option key={exam} value={exam}>
-                {exam}
+              <option key={exam.name} value={exam.value}>
+                {exam.name}
               </option>
             ))}
           </select>
