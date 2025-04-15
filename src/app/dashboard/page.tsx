@@ -17,6 +17,7 @@ import RecentTest from "@/components/recent-test"
 import DashboardStudyPlan from "@/components/DashboardStudyPlan"
 import DashboardToday from "@/components/dashboard-today"
 import DashboardNextReview from "@/components/dashboard-next-review"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 const featureCards = [
   { name: "Create Test", icon: BookOpen, href: "/dashboard/create-test", color: "bg-blue-500" },
@@ -298,20 +299,22 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:pl-8 md:pr-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Welcome back, Student!</h2>
+    <div className="flex-1 p-4 md:p-6 lg:p-8 bg-background">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6">
+        <h2 className="text-3xl font-bold tracking-tight mb-4 sm:mb-0">Welcome back, Student!</h2>
         <div className="flex space-x-2">
           <ChallengeButton />
           <DailyChallengeButton />
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      {/* Top Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card className="overflow-hidden border-l-4 border-l-blue-500">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Student&apos;s current Study Streak</CardTitle>
-            <Dna className="h-6 w-6 text-blue-500" />
+            <CardTitle className="text-sm font-medium">Current Study Streak</CardTitle>
+            <Dna className="h-5 w-5 text-blue-500" />
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -328,10 +331,11 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
-        <Card className="cursor-pointer" onClick={navigateToWeeklyGoals}>
+
+        <Card className="cursor-pointer overflow-hidden border-l-4 border-l-green-500" onClick={navigateToWeeklyGoals}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Weekly Goal Progress</CardTitle>
-            <Settings className="h-6 w-6 text-green-500" />
+            <Settings className="h-5 w-5 text-green-500" />
           </CardHeader>
           <CardContent>
             {goalsLoading ? (
@@ -347,10 +351,11 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
-        <Card>
+
+        <Card className="overflow-hidden border-l-4 border-l-emerald-500">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Today&apos;s Questions</CardTitle>
-            <CheckCircle className="h-6 w-6 text-emerald-500" />
+            <CheckCircle className="h-5 w-5 text-emerald-500" />
           </CardHeader>
           <CardContent>
             {dailyStatsLoading ? (
@@ -379,10 +384,14 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
-        <Card className="cursor-pointer group" onClick={navigateToPomodoro}>
+
+        <Card
+          className="cursor-pointer group overflow-hidden border-l-4 border-l-orange-500"
+          onClick={navigateToPomodoro}
+        >
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Pomodoro Timer</CardTitle>
-            <Clock className="h-6 w-6 text-orange-500" />
+            <Clock className="h-5 w-5 text-orange-500" />
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
@@ -402,71 +411,90 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Today's Dashboard Component */}
-      <DashboardToday />
+      {/* Main Content with 2:1 Ratio */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Side (2/3 width) */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Today's Dashboard Component */}
+          <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
+            <DashboardToday />
+          </div>
 
-      {/* Weekly Performance Component */}
-      <WeeklyPerformance />
+          {/* Weekly Performance Component */}
+          <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
+            <WeeklyPerformance />
+          </div>
 
-      {/* Next Review Component */}
-      <DashboardNextReview />
+          {/* Recent Test Component */}
+          <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
+            <RecentTest />
+          </div>
 
-      <Card className="cursor-pointer lg:col-span-4" onClick={navigateToLeaderboard}>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium">Leaderboard Rank</CardTitle>
-          <PiRankingDuotone className="h-6 w-6 text-yellow-500" />
-        </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TimeFrame)} className="w-full mb-2">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="weekly">Weekly</TabsTrigger>
-              <TabsTrigger value="monthly">Monthly</TabsTrigger>
-              <TabsTrigger value="all-time">All-Time</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {/* Study Plan */}
+          <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
+            <DashboardStudyPlan />
+          </div>
+        </div>
 
-          {rankLoading[activeTab] ? (
-            <div className="text-2xl font-bold">Loading...</div>
-          ) : (
-            <>
-              <div className="text-2xl font-bold">#{userRanks[activeTab] || "—"}</div>
-              <p className="text-xs text-muted-foreground mt-1">{getTimeFrameLabel(activeTab)} ranking</p>
-            </>
-          )}
-        </CardContent>
-      </Card>
+        {/* Right Side (1/3 width) */}
+        <div className="space-y-6">
+          {/* Next Review Component */}
+         
 
-      <div className="my-4">
-        <RecentTest />
-        <DashboardStudyPlan />
-      </div>
+          {/* Leaderboard Card */}
+          <Card className="h-[210px] flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 flex-shrink-0">
+              <CardTitle className="text-sm font-medium">Leaderboard Rank</CardTitle>
+              <PiRankingDuotone className="h-6 w-6 text-yellow-500" />
+            </CardHeader>
+            <CardContent className="flex-grow overflow-hidden">
+              <ScrollArea className="h-full w-full pr-4">
+                {rankLoading["all-time"] ? (
+                  <div className="text-2xl font-bold">Loading...</div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <div className="text-3xl font-bold mb-2">#{userRanks["all-time"] || "—"}</div>
+                    <p className="text-sm text-muted-foreground mb-4">All-Time Ranking</p>
+                    <Button variant="outline" size="sm" onClick={navigateToLeaderboard} className="w-full">
+                      Detailed Rankings
+                    </Button>
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+          <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border max-h-[400px] overflow-y-auto">
+            <DashboardNextReview />
+          </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="col-span-4 md:col-span-4">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Access key features</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {featureCards.map((feature) => (
-                <Button
-                  key={feature.name}
-                  variant="outline"
-                  className="h-24 w-full flex flex-col items-center justify-center text-center p-2"
-                  asChild
-                >
-                  <a href={feature.href}>
-                    <div className={`${feature.color} rounded-full p-3 mb-2`}>
-                      <feature.icon className="h-8 w-8 text-white" />
-                    </div>
-                    <span className="text-xs font-medium">{feature.name}</span>
-                  </a>
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+              <CardDescription>Access key features</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3">
+                {featureCards.map((feature) => (
+                  <Button
+                    key={feature.name}
+                    variant="outline"
+                    className="h-20 w-full flex flex-col items-center justify-center text-center p-2 hover:bg-muted/50 transition-all hover:scale-105"
+                    asChild
+                  >
+                    <a href={feature.href}>
+                      <div className={`${feature.color} rounded-full p-2 mb-1.5`}>
+                        <feature.icon className="h-4 w-4 text-white" />
+                      </div>
+                      <span className="text-xs font-medium">{feature.name}</span>
+                    </a>
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )

@@ -28,6 +28,7 @@ type Question = {
     state_specific?: string
     clinical_setting: string
     question_type: "case_based" | "single_best_answer" | "extended_matching"
+    targetExam: string 
 }
 
 const TestComponent = () => {
