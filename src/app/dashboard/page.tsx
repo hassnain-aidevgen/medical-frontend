@@ -5,19 +5,18 @@ import { BarChart2, BookOpen, CheckCircle, Clock, Dna, Pause, Play, Settings, Us
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { PiRankingDuotone } from "react-icons/pi"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
+import DashboardStudyPlan from "@/components/DashboardStudyPlan"
 import ChallengeButton from "@/components/challenge-button"
 import DailyChallengeButton from "@/components/daily-challenge-button"
+import DashboardNextReview from "@/components/dashboard-next-review"
+import DashboardToday from "@/components/dashboard-today"
+import RecentTest from "@/components/recent-test"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import WeeklyPerformance from "@/components/weekly-performance"
-import RecentTest from "@/components/recent-test"
-import DashboardStudyPlan from "@/components/DashboardStudyPlan"
-import DashboardToday from "@/components/dashboard-today"
-import DashboardNextReview from "@/components/dashboard-next-review"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import WeeklyPerformance from "@/components/weekly-performance"
 
 const featureCards = [
   { name: "Create Test", icon: BookOpen, href: "/dashboard/create-test", color: "bg-blue-500" },
@@ -39,6 +38,24 @@ interface Goal {
   dueDate: string
   isCompleted: boolean
   level: number
+}
+
+// Add this interface after the Goal interface and before the TimeFrame type
+interface Flashcard {
+  _id: string
+  question: string
+  answer: string
+  hint?: string
+  category: string
+  subsection?: string
+  userId: string
+  difficulty: "easy" | "medium" | "hard"
+  tags: string[]
+  lastReviewed?: Date
+  reviewCount: number
+  mastery: number
+  createdAt: Date
+  updatedAt: Date
 }
 
 type TimeFrame = "weekly" | "monthly" | "all-time"
@@ -76,6 +93,10 @@ export default function DashboardPage() {
   // Add a new state for daily questions stats
   const [dailyStats, setDailyStats] = useState({ completedQuestions: 0, totalQuestions: 0 })
   const [dailyStatsLoading, setDailyStatsLoading] = useState(true)
+
+  // Replace the existing flashcards state with proper typing
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([])
+  const [flashcardsLoading, setFlashcardsLoading] = useState(true)
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -148,7 +169,7 @@ export default function DashboardPage() {
 
       setGoalsLoading(true)
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/quest?userId=${userId}`)
+        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/quest?userId=${userId}`)
         if (response.data && response.data.data) {
           setGoals(response.data.data)
         }
@@ -190,6 +211,35 @@ export default function DashboardPage() {
 
     if (userId) {
       fetchDailyStats()
+    }
+  }, [userId])
+
+  // Update the fetchFlashcards function to filter for cards with reviewCount > 0
+  useEffect(() => {
+    const fetchFlashcards = async () => {
+      if (!userId) return
+
+      setFlashcardsLoading(true)
+      try {
+        // Change this URL to your actual API endpoint and add filter for reviewCount > 0
+        const response = await axios.get<Flashcard[]>(
+          `https://medical-backend-loj4.onrender.com/api/v2/flashcards?userId=${userId}&numFlashcards=10`,
+        )
+
+        if (response.data) {
+          // Filter flashcards to only include those with reviewCount > 0
+          const reviewFlashcards = response.data.filter((card) => card.reviewCount > 0)
+          setFlashcards(reviewFlashcards)
+        }
+      } catch (error) {
+        console.error("Error fetching flashcards:", error)
+      } finally {
+        setFlashcardsLoading(false)
+      }
+    }
+
+    if (userId) {
+      fetchFlashcards()
     }
   }, [userId])
 
@@ -282,21 +332,26 @@ export default function DashboardPage() {
     router.push("/dashboard/custom-weekly-goals")
   }
 
+  // Add a navigation function for flashcards after the navigateToWeeklyGoals function
+  const navigateToFlashcards = () => {
+    router.push("/dashboard/flash-cards")
+  }
+
   // Calculate weekly goals progress
   const totalQuests = goals.length
   const completedQuests = goals.filter((goal) => goal.isCompleted).length
   const goalProgressPercentage = totalQuests > 0 ? Math.round((completedQuests / totalQuests) * 100) : 0
 
-  const getTimeFrameLabel = (timeFrame: TimeFrame) => {
-    switch (timeFrame) {
-      case "weekly":
-        return "Weekly"
-      case "monthly":
-        return "Monthly"
-      case "all-time":
-        return "All-Time"
-    }
-  }
+  // const getTimeFrameLabel = (timeFrame: TimeFrame) => {
+  //   switch (timeFrame) {
+  //     case "weekly":
+  //       return "Weekly"
+  //     case "monthly":
+  //       return "Monthly"
+  //     case "all-time":
+  //       return "All-Time"
+  //   }
+  // }
 
   return (
     <div className="flex-1 p-4 md:p-6 lg:p-8 bg-background">
@@ -439,7 +494,6 @@ export default function DashboardPage() {
         {/* Right Side (1/3 width) */}
         <div className="space-y-6">
           {/* Next Review Component */}
-         
 
           {/* Leaderboard Card */}
           <Card className="h-[210px] flex flex-col">
@@ -467,6 +521,51 @@ export default function DashboardPage() {
             <DashboardNextReview />
           </div>
 
+          {/* Flashcards Preview */}
+          {flashcards.length > 0 && (
+            <Card className="flex flex-col">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 flex-shrink-0">
+                <CardTitle className="text-md font-medium">Flashcards For Review</CardTitle>
+                <BookOpen className="h-5 w-5 text-green-500" />
+              </CardHeader>
+              <CardContent className="flex-grow overflow-hidden">
+                <ScrollArea className="h-[200px] w-full pr-4">
+                  {flashcardsLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-sm">Loading flashcards...</div>
+                    </div>
+                  ) : flashcards.length === 0 ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-sm text-muted-foreground">No flashcards marked for review</div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {flashcards.slice(0, 5).map((card) => (
+                        <div
+                          key={card._id}
+                          className="p-3 border rounded-md cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={navigateToFlashcards}
+                        >
+                          <div className="font-medium line-clamp-1">{card.question}</div>
+                          <div className="flex justify-between items-center mt-1">
+                            <div className="text-xs text-muted-foreground">
+                              {card.category} • {card.difficulty}
+                            </div>
+                            <div className="text-xs bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full">
+                              {card.reviewCount} {card.reviewCount === 1 ? "review" : "reviews"}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+                <Button variant="outline" size="sm" onClick={navigateToFlashcards} className="w-full mt-3">
+                  View All Review Cards
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Quick Actions */}
           <Card>

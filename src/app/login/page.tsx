@@ -10,7 +10,8 @@ import { motion } from "framer-motion"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { toast } from "react-hot-toast"
 import { FcGoogle } from "react-icons/fc"
 
 const LoginPage = () => {
@@ -18,6 +19,10 @@ const LoginPage = () => {
   const [formData, setFormData] = useState({ email: "", password: "", role: "user" })
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
+  useEffect(() => {
+    toast.dismiss()
+  }, [])
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData((prevData) => ({
