@@ -5,6 +5,7 @@ import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Timer, XCircle } f
 import type React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import toast from "react-hot-toast"
+import TargetExamSelector from "@/components/TargetExamSelector"
 
 // Types definitions
 interface SimulationQuestion {
@@ -53,7 +54,7 @@ const ExamSimulation: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [examConfig, setExamConfig] = useState<SimulationConfig>(examConfigs["DEFAULT"])
   const [userId, setUserId] = useState<string>("")
-  const [selectedExam, setSelectedExam] = useState<string>("")
+  // const [selectedExam, setSelectedExam] = useState<string>("")
   const [simulationResults, setSimulationResults] = useState<{
     score: number
     totalQuestions: number
@@ -71,6 +72,8 @@ const ExamSimulation: React.FC = () => {
 
   const [simulationHistory, setSimulationHistory] = useState<SimulationHistoryEntry[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [selectedExam, setSelectedExam] = useState<string>("")
+  const [examDate, setExamDate] = useState<string>("")
 
   // Timer ref for cleanup
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -346,14 +349,14 @@ const ExamSimulation: React.FC = () => {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedUserId = localStorage.getItem("Medical_User_Id")
-      const storedExam = localStorage.getItem("selectedExam")
+      // const storedExam = localStorage.getItem("selectedExam")
 
       setUserId(storedUserId || "")
 
-      if (storedExam) {
-        setSelectedExam(storedExam)
-        setExamConfig(examConfigs[storedExam] || examConfigs["DEFAULT"])
-      }
+      // if (storedExam) {
+      //   setSelectedExam(storedExam)
+      //   setExamConfig(examConfigs[storedExam] || examConfigs["DEFAULT"])
+      // }
     }
 
     // Optionally fetch simulation history if you implement that feature
@@ -366,6 +369,17 @@ const ExamSimulation: React.FC = () => {
       }
     }
   }, [fetchSimulationHistory])
+
+
+  const handleExamChange = (exam: string) => {
+    setSelectedExam(exam)
+    setExamConfig(examConfigs[exam] || examConfigs["DEFAULT"])
+  }
+
+  // Handle exam date changes
+  const handleExamDateChange = (date: string) => {
+    setExamDate(date)
+  }
 
   // Navigation functions
   const goToNextQuestion = () => {
@@ -460,6 +474,15 @@ const ExamSimulation: React.FC = () => {
           <button onClick={() => setShowHistory(!showHistory)} className="text-blue-600 hover:underline">
             {showHistory ? "Hide History" : "View History"}
           </button>
+        </div>
+        
+        <div className="mb-6">
+          <TargetExamSelector
+            selectedExam={selectedExam}
+            onExamChange={handleExamChange}
+            examDate={examDate}
+            onDateChange={handleExamDateChange}
+          />
         </div>
 
         {showHistory && (

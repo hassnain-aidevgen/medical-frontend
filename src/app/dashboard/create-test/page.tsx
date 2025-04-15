@@ -762,7 +762,7 @@ export default function CreateTest() {
             mode={mode}
           />
         </div>
-        <TargetExamSelector
+        {/* <TargetExamSelector
           selectedExam={selectedExam}
           onExamChange={(exam) => {
             setSelectedExam(exam);
@@ -786,7 +786,7 @@ export default function CreateTest() {
             setExamDate(date);
             localStorage.setItem("examDate", date);
           }}
-        />
+        /> */}
         {/* Add ExamSimulation component at the top for quick tests */}
         <div className="mb-8">
           <ExamSimulation />

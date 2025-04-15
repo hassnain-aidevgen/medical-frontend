@@ -7,3 +7,5 @@ export const setAuthToken = (token: string | null): void => {
     }
   }
 };
+
+

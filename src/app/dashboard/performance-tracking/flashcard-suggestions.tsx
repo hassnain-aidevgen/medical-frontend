@@ -1,444 +1,331 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import toast, { Toaster } from "react-hot-toast"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import axios from "axios"
-import { motion } from "framer-motion"
-import { BookOpen, Brain, FileText, Info, Lightbulb, Sparkles, Star } from 'lucide-react'
-import { useEffect, useState } from "react"
+import { Card, CardContent } from "@/components/ui/card"
+import StudyTab from "../flash-cards/study-tab"
+import ReviewsTab from "../flash-cards/reviews-tab"
+import apiService, { type Flashcard } from "@/services/api-service"
 
-interface Question {
-  questionId: string
-  questionText: string
-  userAnswer: string
-  correctAnswer: string
-  timeSpent: number
-}
+export default function FlashcardSuggestions() {
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([])
+  const [filteredCards, setFilteredCards] = useState<Flashcard[]>([])
+  const [reviewCards, setReviewCards] = useState<Flashcard[]>([])
+  const [currentCard, setCurrentCard] = useState(0)
+  const [currentReviewCard, setCurrentReviewCard] = useState(0)
 
-interface TestResult {
-  userId: string
-  questions: Question[]
-  score: number
-  totalTime: number
-  percentage: number
-  createdAt: string
-}
+  // Filters state
+  const [categoryFilter, setCategoryFilter] = useState<string>("")
+  const [difficultyFilter, setDifficultyFilter] = useState<string>("")
+  const [tagFilter, setTagFilter] = useState<string>("")
+  const [searchQuery, setSearchQuery] = useState("")
 
-interface Flashcard {
-  _id: string
-  question: string
-  answer: string
-  hint: string
-  category: string
-  difficulty: string
-  mastery: number
-}
+  // UI state
+  const [activeTab, setActiveTab] = useState("study")
+  const [studyProgress, setStudyProgress] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isReviewLoading, setIsReviewLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [reviewError, setReviewError] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string>("")
 
-interface FlashcardSuggestionsProps {
-  performanceData: TestResult[]
-  isLoading?: boolean
-  className?: string
-}
-
-export default function FlashcardSuggestions({
-  performanceData,
-  isLoading: initialLoading = false,
-  className = "",
-}: FlashcardSuggestionsProps) {
-  const [activeTab, setActiveTab] = useState("flashcards")
-  const [isLoading, setIsLoading] = useState(initialLoading)
-  const [flashcardsByCategory, setFlashcardsByCategory] = useState<Record<string, Flashcard[]>>({})
-  const [availableCategories, setAvailableCategories] = useState<string[]>([])
-  const [loadingCategories, setLoadingCategories] = useState<Record<string, boolean>>({})
-
-  // Fetch all available categories
+  // Initialize user ID from localStorage
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await axios.get('https://medical-backend-loj4.onrender.com/api/flashcard-topics');
-        setAvailableCategories(response.data);
-      } catch (error) {
-        console.error("Error fetching flashcard categories:", error);
-      }
-    };
-
-    fetchCategories();
-  }, []);
-
-  // Fetch flashcards for all available categories
-  useEffect(() => {
-    const fetchAllFlashcards = async () => {
-      setIsLoading(true);
-      
-      // Fetch flashcards for each category
-      const promises = availableCategories.map(category => fetchFlashcardsForCategory(category));
-      
-      await Promise.all(promises);
-      setIsLoading(false);
-    };
-    
-    if (availableCategories.length > 0) {
-      fetchAllFlashcards();
+    const storedUserId = localStorage.getItem("Medical_User_Id")
+    if (storedUserId) {
+      setUserId(storedUserId)
+    } else {
+      toast.error("User ID not found. Please log in again.")
     }
-  }, [availableCategories]);
+  }, [])
 
-  // Fetch flashcards for a specific category
-  const fetchFlashcardsForCategory = async (category: string) => {
-    if (flashcardsByCategory[category] || loadingCategories[category]) return;
-    
-    setLoadingCategories(prev => ({ ...prev, [category]: true }));
-    
+  // Extract unique categories from flashcards
+  const uniqueCategories = useMemo(() => {
+    const categorySet = new Set<string>()
+    flashcards.forEach((card) => {
+      if (card && card.category) categorySet.add(card.category)
+    })
+    return Array.from(categorySet)
+  }, [flashcards])
+
+  // Extract unique tags from flashcards
+  const uniqueTags = useMemo(() => {
+    const tagSet = new Set<string>()
+    flashcards.forEach((card) => {
+      if (card && card.tags && Array.isArray(card.tags)) {
+        card.tags.forEach((tag) => {
+          if (tag) tagSet.add(tag)
+        })
+      }
+    })
+    return Array.from(tagSet)
+  }, [flashcards])
+
+  // Fetch flashcards based on selected filters
+  const fetchFlashcards = useCallback(async () => {
+    if (!userId) return
+
+    setIsLoading(true)
+    setError(null)
+
     try {
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/flashcards-by-topic/${category}`, {
-        params: { limit: 8 } // Get up to 8 flashcards per category
-      });
-      
-      setFlashcardsByCategory(prev => ({
-        ...prev,
-        [category]: response.data
-      }));
-    } catch (error) {
-      console.error(`Error fetching flashcards for category ${category}:`, error);
-    } finally {
-      setLoadingCategories(prev => ({ ...prev, [category]: false }));
-    }
-  };
+      // Prepare filter parameters
+      const params: Record<string, string> = {}
 
-  // Get related concepts for a category from flashcard hints
-  const getRelatedConceptsForCategory = (category: string): string[] => {
-    const flashcards = flashcardsByCategory[category] || [];
-    
-    // Extract concepts from flashcard hints
-    const concepts = new Set<string>();
-    
-    // Use hints as concepts if available
-    flashcards.forEach(flashcard => {
-      if (flashcard.hint) {
-        concepts.add(flashcard.hint);
+      if (categoryFilter) {
+        params.category = categoryFilter
       }
-    });
-    
-    // If we don't have enough concepts, add some from the questions
-    if (concepts.size < 5) {
-      flashcards.forEach(flashcard => {
-        // Extract meaningful phrases from questions
-        const phrases = flashcard.question
-          .split(/[.,;:]/)
-          .map(phrase => phrase.trim())
-          .filter(phrase => phrase.length > 10 && phrase.length < 40);
-        
-        phrases.forEach(phrase => {
-          if (concepts.size < 5) {
-            concepts.add(phrase);
-          }
-        });
-      });
+
+      if (difficultyFilter) {
+        params.difficulty = difficultyFilter
+      }
+
+      if (tagFilter) {
+        params.tag = tagFilter
+      }
+
+      const response = await apiService.getFlashcards(params)
+      setFlashcards(response.data)
+      setFilteredCards(response.data)
+      setCurrentCard(0)
+    } catch (error) {
+      console.error("Error fetching flashcards:", error)
+
+      if (error && typeof error === "object" && "message" in error) {
+        setError((error as Error).message || "Failed to load flashcards")
+      } else {
+        setError("Failed to load flashcards. Please try again later.")
+      }
+
+      setFlashcards([])
+      setFilteredCards([])
+    } finally {
+      setIsLoading(false)
     }
-    
-    return Array.from(concepts).slice(0, 5);
-  };
+  }, [categoryFilter, difficultyFilter, tagFilter, userId])
 
-  // Calculate the number of missed questions for each category based on flashcard categories
-  const calculateCategoryMissedCounts = () => {
-    // Default to 0 for all categories
-    const counts: Record<string, number> = {};
-    availableCategories.forEach(category => {
-      counts[category] = 0;
-    });
-    
-    // For simplicity, just evenly distribute missed questions among available categories
-    // In a real implementation, you would analyze the question content to match with categories
-    let totalIncorrect = 0;
-    
-    performanceData.forEach(test => {
-      test.questions.forEach(question => {
-        if (question.userAnswer !== question.correctAnswer) {
-          totalIncorrect++;
-        }
-      });
-    });
-    
-    // Distribute incorrect count among categories
-    if (totalIncorrect > 0 && availableCategories.length > 0) {
-      const baseCount = Math.floor(totalIncorrect / availableCategories.length);
-      const remainder = totalIncorrect % availableCategories.length;
-      
-      availableCategories.forEach((category, index) => {
-        counts[category] = baseCount + (index < remainder ? 1 : 0);
-      });
+  // Fetch cards that need review (mastery < 30%)
+  const fetchReviewCards = useCallback(async () => {
+    if (!userId) return
+
+    setIsReviewLoading(true)
+    setReviewError(null)
+
+    try {
+      // Get all flashcards for the user
+      const response = await apiService.getFlashcards({ userId })
+
+      // Filter cards with low mastery (marked for review)
+      const cardsForReview = response.data.filter((card: Flashcard) => card.mastery < 30 && card.reviewCount > 0)
+
+      setReviewCards(cardsForReview)
+      setCurrentReviewCard(0)
+    } catch (error) {
+      console.error("Error fetching review cards:", error)
+
+      if (error && typeof error === "object" && "message" in error) {
+        setReviewError((error as Error).message || "Failed to load review cards")
+      } else {
+        setReviewError("Failed to load review cards. Please try again later.")
+      }
+
+      setReviewCards([])
+    } finally {
+      setIsReviewLoading(false)
     }
-    
-    return counts;
-  };
+  }, [userId])
 
-  const categoryMissedCounts = calculateCategoryMissedCounts();
-  
-  // Sort categories by number of missed questions
-  const sortedCategories = availableCategories
-    .filter(category => categoryMissedCounts[category] > 0)
-    .sort((a, b) => categoryMissedCounts[b] - categoryMissedCounts[a]);
+  // Initial data load
+  useEffect(() => {
+    if (userId) {
+      fetchFlashcards()
+    }
+  }, [fetchFlashcards, userId])
 
-  if (isLoading) {
-    return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle>Flashcard & Review Suggestions</CardTitle>
-          <CardDescription>Loading your personalized study materials...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-[200px]">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-          </div>
-        </CardContent>
-      </Card>
-    )
+  // Load review cards when the reviews tab is selected
+  useEffect(() => {
+    if (activeTab === "reviews" && userId) {
+      fetchReviewCards()
+    }
+  }, [activeTab, fetchReviewCards, userId])
+
+  // Filter cards when search query changes
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredCards(flashcards)
+    } else {
+      const lowercaseQuery = searchQuery.toLowerCase()
+
+      const filtered = flashcards.filter((card) => {
+        const questionMatch = card.question && card.question.toLowerCase().includes(lowercaseQuery)
+        const answerMatch = card.answer && card.answer.toLowerCase().includes(lowercaseQuery)
+        const tagsMatch =
+          card.tags &&
+          Array.isArray(card.tags) &&
+          card.tags.some((tag) => tag && tag.toLowerCase().includes(lowercaseQuery))
+        const categoryMatch = card.category && card.category.toLowerCase().includes(lowercaseQuery)
+
+        return questionMatch || answerMatch || tagsMatch || categoryMatch
+      })
+
+      setFilteredCards(filtered)
+      setCurrentCard(0)
+    }
+  }, [searchQuery, flashcards])
+
+  // Calculate overall study progress
+  useEffect(() => {
+    if (filteredCards.length > 0) {
+      const totalMastery = filteredCards.reduce((sum, card) => sum + (card.mastery || 0), 0)
+      const progress = totalMastery / filteredCards.length
+      setStudyProgress(progress)
+    } else {
+      setStudyProgress(0)
+    }
+  }, [filteredCards])
+
+  // Study progress tracking
+  const markCardAsKnown = async (card: Flashcard) => {
+    try {
+      // Calculate new mastery level (increase by 10-20% based on current level)
+      const masteryIncrease = card.mastery < 50 ? 20 : 10
+      const newMastery = Math.min(100, card.mastery + masteryIncrease)
+
+      const updatedCard = {
+        ...card,
+        mastery: newMastery,
+        reviewCount: card.reviewCount + 1,
+        lastReviewed: new Date(),
+      }
+
+      if (!card.id) {
+        throw new Error("Card ID is missing")
+      }
+
+      const response = await apiService.updateFlashcard(card.id, updatedCard)
+
+      // Update the cards in state
+      setFlashcards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+      setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+
+      // Remove from review cards if mastery is now above threshold
+      if (newMastery >= 30) {
+        setReviewCards((prevCards) => prevCards.filter((c) => c.id !== response.data.id))
+      } else {
+        setReviewCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+      }
+
+      // Update overall study progress
+      const totalMastery = filteredCards.reduce((sum, c) => {
+        return sum + (c.id === card.id ? newMastery : c.mastery)
+      }, 0)
+
+      const newProgress = totalMastery / filteredCards.length
+      setStudyProgress(newProgress)
+
+      toast.success("Card marked as known")
+      return true
+    } catch (error) {
+      apiService.handleApiError(error, "Failed to update card progress")
+      return false
+    }
   }
 
-  if (sortedCategories.length === 0) {
-    return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle>Flashcard & Review Suggestions</CardTitle>
-          <CardDescription>We&apos;ll generate personalized study materials based on your test results</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center h-[200px] text-center">
-            <Lightbulb className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground mb-2">No study materials available yet</p>
-            <p className="text-sm text-muted-foreground max-w-md">
-              Take more tests to receive personalized flashcard and review material suggestions based on your performance
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    )
+  const markCardForReview = async (card: Flashcard) => {
+    try {
+      // Set mastery to a low value to mark for review (below 30%)
+      const newMastery = Math.min(25, card.mastery)
+
+      const updatedCard = {
+        ...card,
+        mastery: newMastery,
+        reviewCount: card.reviewCount + 1,
+        lastReviewed: new Date(),
+      }
+
+      if (!card.id) {
+        throw new Error("Card ID is missing")
+      }
+
+      const response = await apiService.updateFlashcard(card.id, updatedCard)
+
+      // Update the cards in state
+      setFlashcards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+      setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+
+      // Add to review cards if not already there
+      if (!reviewCards.some((c) => c.id === response.data.id)) {
+        setReviewCards((prevCards) => [...prevCards, response.data])
+      } else {
+        setReviewCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+      }
+
+      // Update overall study progress
+      const totalMastery = filteredCards.reduce((sum, c) => {
+        return sum + (c.id === card.id ? newMastery : c.mastery)
+      }, 0)
+
+      const newProgress = totalMastery / filteredCards.length
+      setStudyProgress(newProgress)
+
+      toast("Card marked for review", { icon: "📝" })
+      return true
+    } catch (error) {
+      apiService.handleApiError(error, "Failed to update card progress")
+      return false
+    }
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className={className}
-    >
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                Flashcard & Review Suggestions
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-sm">
-                      <p>
-                        Focus on these topics to improve your understanding of key medical concepts.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </CardTitle>
-              <CardDescription>
-                Study materials for your medical education journey
-              </CardDescription>
-            </div>
+    <Card className="w-full shadow-md border-0">
+      <CardContent className="p-6">
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-center mb-6 text-primary">Review & Flashcard Suggestions</h2>
+          <div className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-8">
+                <TabsTrigger value="study" className="text-base py-2.5">
+                  Study
+                </TabsTrigger>
+                <TabsTrigger value="reviews" className="text-base py-2.5">
+                  Reviews
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="study" className="mt-6 focus-visible:outline-none focus-visible:ring-0">
+                <StudyTab
+                  filteredCards={filteredCards}
+                  currentCard={currentCard}
+                  studyProgress={studyProgress}
+                  isLoading={isLoading}
+                  error={error}
+                  setCurrentCard={setCurrentCard}
+                  fetchFlashcards={fetchFlashcards}
+                  markCardAsKnown={markCardAsKnown}
+                  markCardForReview={markCardForReview} setIsNewCardDialogOpen={function (isOpen: boolean): void {
+                    throw new Error("Function not implemented.")
+                  } }                />
+              </TabsContent>
+
+              <TabsContent value="reviews" className="mt-6 focus-visible:outline-none focus-visible:ring-0">
+                <ReviewsTab
+                  reviewCards={reviewCards}
+                  currentReviewCard={currentReviewCard}
+                  isReviewLoading={isReviewLoading}
+                  reviewError={reviewError}
+                  setCurrentReviewCard={setCurrentReviewCard}
+                  setActiveTab={setActiveTab}
+                  fetchReviewCards={fetchReviewCards}
+                  markCardAsKnown={markCardAsKnown}
+                  markCardForReview={markCardForReview}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="flashcards" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="flashcards">
-                <Brain className="h-4 w-4 mr-2" />
-                Flashcards
-              </TabsTrigger>
-              <TabsTrigger value="resources">
-                <BookOpen className="h-4 w-4 mr-2" />
-                Review Resources
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="flashcards" className="space-y-4">
-              <div className="bg-muted/30 p-4 rounded-lg">
-                <h3 className="text-sm font-medium mb-2">Top Categories</h3>
-                <div className="flex flex-wrap gap-2">
-                  {sortedCategories.slice(0, 5).map((category, index) => (
-                    <div
-                      key={index}
-                      className="px-3 py-1.5 text-xs rounded-full bg-primary/10 text-primary flex items-center gap-1"
-                    >
-                      <span className="capitalize">{category}</span>
-                      <span className="bg-primary/20 rounded-full px-1.5 py-0.5 text-xs">
-                        {categoryMissedCounts[category]}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <ScrollArea className="h-[400px] pr-4">
-                <div className="space-y-4">
-                  {sortedCategories.map((category, catIndex) => {
-                    const flashcardsForCategory = flashcardsByCategory[category] || [];
-                    const isLoadingCategory = loadingCategories[category] || false;
-                    
-                    return (
-                      <motion.div
-                        key={catIndex}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: catIndex * 0.1 }}
-                      >
-                        <h3 className="font-medium text-lg mb-2 capitalize">{category} Flashcards</h3>
-                        
-                        {isLoadingCategory ? (
-                          <div className="flex items-center justify-center h-[100px]">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                          </div>
-                        ) : flashcardsForCategory.length > 0 ? (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {flashcardsForCategory.slice(0, 4).map((flashcard, fIndex) => (
-                              <div
-                                key={fIndex}
-                                className="bg-white dark:bg-gray-800 border rounded-lg shadow-sm overflow-hidden"
-                              >
-                                <div className="p-4 border-b bg-blue-50 dark:bg-blue-900/20">
-                                  <div className="flex justify-between items-center mb-1">
-                                    <span className="text-xs text-muted-foreground">Front</span>
-                                    <Star className="h-3 w-3 text-yellow-500" />
-                                  </div>
-                                  <p className="font-medium">{flashcard.question}</p>
-                                </div>
-                                <div className="p-4">
-                                  <div className="flex justify-between items-center mb-1">
-                                    <span className="text-xs text-muted-foreground">Back</span>
-                                  </div>
-                                  <p className="text-sm">{flashcard.answer}</p>
-                                  {flashcard.hint && (
-                                    <p className="text-xs text-muted-foreground mt-2 italic">
-                                      Hint: {flashcard.hint}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="bg-muted/30 p-4 rounded-lg text-center">
-                            <p className="text-sm text-muted-foreground">
-                              No flashcards available for this category. We&apos;re working on adding more content!
-                            </p>
-                          </div>
-                        )}
-                        
-                        {flashcardsForCategory.length > 4 && (
-                          <div className="mt-2 text-center">
-                            <Button variant="ghost" size="sm">
-                              View all {flashcardsForCategory.length} {category} flashcards
-                            </Button>
-                          </div>
-                        )}
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-
-              <div className="flex justify-end">
-                <Button>
-                  Export All Flashcards
-                </Button>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="resources" className="space-y-4">
-              <ScrollArea className="h-[400px] pr-4">
-                <div className="space-y-6">
-                  {sortedCategories.map((category, catIndex) => {
-                    const relatedConcepts = getRelatedConceptsForCategory(category);
-                    
-                    return (
-                      <motion.div
-                        key={catIndex}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: catIndex * 0.1 }}
-                        className="bg-white dark:bg-gray-800 border rounded-lg p-4"
-                      >
-                        <div className="flex items-start gap-3 mb-3">
-                          <div className="p-2 rounded-full bg-primary/10">
-                            <BookOpen className="h-5 w-5 text-primary" />
-                          </div>
-                          <div>
-                            <h3 className="font-medium text-lg capitalize">{category}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {categoryMissedCounts[category]} questions in this category
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="ml-10 space-y-3">
-                          <div>
-                            <h4 className="text-sm font-medium mb-2">Key Concepts to Review</h4>
-                            <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                              {relatedConcepts.map((concept, cIndex) => (
-                                <li key={cIndex} className="flex items-center gap-2">
-                                  <div className="p-1 rounded-full bg-blue-100 dark:bg-blue-900/20">
-                                    <Brain className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                                  </div>
-                                  <span className="text-sm">{concept}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-
-                          <div>
-                            <h4 className="text-sm font-medium mb-2">Recommended Resources</h4>
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors">
-                                <FileText className="h-4 w-4 text-primary" />
-                                <span className="text-sm font-medium capitalize">{category} Study Guide</span>
-                                <span className="text-xs bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full ml-auto">
-                                  PDF
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors">
-                                <BookOpen className="h-4 w-4 text-primary" />
-                                <span className="text-sm font-medium capitalize">{category} Chapter Review</span>
-                                <span className="text-xs bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full ml-auto">
-                                  Article
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors">
-                                <Sparkles className="h-4 w-4 text-primary" />
-                                <span className="text-sm font-medium capitalize">Practice Questions: {category}</span>
-                                <span className="text-xs bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 px-2 py-0.5 rounded-full ml-auto">
-                                  Quiz
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex justify-end">
-                            <Button variant="outline" size="sm">
-                              View All Resources
-                            </Button>
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
+        </div>
+        <Toaster position="bottom-right" />
+      </CardContent>
+    </Card>
+  )
 }

@@ -1159,7 +1159,7 @@ export default function AnalyticsDashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.5 }}
             >
-              <FlashcardSuggestions performanceData={performanceData} isLoading={loading.performance} />
+              <FlashcardSuggestions />
             </motion.div>
           </TabsContent>
 
@@ -1675,14 +1675,14 @@ export default function AnalyticsDashboard() {
               </motion.div>
 
               {/* Add FlashcardSuggestions component here */}
-              <motion.div
+              {/* <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="lg:col-span-3"
               >
                 <FlashcardSuggestions performanceData={performanceData} isLoading={loading.performance} />
-              </motion.div>
+              </motion.div> */}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 lg:col-span-3">
                 <NextTaskCTA
