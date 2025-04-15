@@ -45,6 +45,7 @@ interface Mentor {
     rating: number
     totalSessions: number
     reviews: { reviewer: string; comment: string; rating: number }[]
+    mentorships: { _id: string; price: number }[]
 }
 
 export default function MentorsPage() {
@@ -60,7 +61,7 @@ export default function MentorsPage() {
 
     const fetchMentors = async () => {
         try {
-            const response = await axios.get("https://medical-backend-loj4.onrender.com/api/mentor", {
+            const response = await axios.get("http://localhost:5000/api/mentor", {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
@@ -89,7 +90,7 @@ export default function MentorsPage() {
         if (!mentorToDelete) return
 
         try {
-            await axios.delete(`https://medical-backend-loj4.onrender.com/api/mentor/${mentorToDelete._id}`, {
+            await axios.delete(`http://localhost:5000/api/mentor/${mentorToDelete._id}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
@@ -165,15 +166,29 @@ export default function MentorsPage() {
                             {filteredMentors.map((mentor) => (
                                 <TableRow key={mentor._id}>
                                     <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <Avatar>
-                                                <AvatarImage src={mentor.avatar || "/placeholder.svg"} alt={mentor.name} />
-                                                <AvatarFallback>{mentor.name.charAt(0)}</AvatarFallback>
-                                            </Avatar>
-                                            <div>
-                                                <div className="font-medium">{mentor.name}</div>
-                                                <div className="text-sm text-muted-foreground">
-                                                    {mentor.title} at {mentor.company}
+                                        <div className="flex flex-col">
+                                            <div className="flex items-center">
+                                                <Avatar>
+                                                    <AvatarImage src={mentor.avatar || "/placeholder.svg"} alt={mentor.name} />
+                                                    <AvatarFallback>{mentor.name.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="ml-3">
+                                                    <div className="font-medium">{mentor.name}</div>
+                                                    <div className="text-sm text-muted-foreground">
+                                                        {mentor.title} at {mentor.company}
+                                                    </div>
+                                                    {mentor.mentorships?.length > 0 && (
+                                                        <div className="text-xs text-muted-foreground mt-1">
+                                                            {mentor.mentorships.length} mentorship{mentor.mentorships.length !== 1 ? "s" : ""}{" "}
+                                                            available
+                                                            {mentor.mentorships.some((m) => m.price > 0) && (
+                                                                <span className="ml-1">
+                                                                    (${Math.min(...mentor.mentorships.map((m) => m.price || 0)).toFixed(2)} - $
+                                                                    {Math.max(...mentor.mentorships.map((m) => m.price || 0)).toFixed(2)})
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -261,4 +276,3 @@ export default function MentorsPage() {
         </div>
     )
 }
-

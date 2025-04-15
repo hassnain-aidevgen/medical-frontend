@@ -57,16 +57,17 @@ export default function EditMentorPage() {
         newAvailabilityDate: "",
         newAvailabilitySlot: "",
         isActive: true,
-        mentorships: [] as { title: string; description: string }[],
+        mentorships: [] as { title: string; description: string; price?: number }[],
         newMentorshipTitle: "",
         newMentorshipDescription: "",
+        newMentorshipPrice: "",
     })
 
     // Update the useEffect to populate all fields from the fetched mentor
     useEffect(() => {
         const fetchMentor = async () => {
             try {
-                const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/mentor/${params.id}`, {
+                const response = await axios.get(`http://localhost:5000/api/mentor/${params.id}`, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("token")}`,
                     },
@@ -92,6 +93,7 @@ export default function EditMentorPage() {
                     mentorships: mentor.mentorships || [],
                     newMentorshipTitle: "",
                     newMentorshipDescription: "",
+                    newMentorshipPrice: "",
                 })
 
                 setLoading(false)
@@ -192,10 +194,12 @@ export default function EditMentorPage() {
                     {
                         title: prev.newMentorshipTitle.trim(),
                         description: prev.newMentorshipDescription.trim(),
+                        price: Number.parseFloat(formData.newMentorshipPrice) || 0,
                     },
                 ],
                 newMentorshipTitle: "",
                 newMentorshipDescription: "",
+                newMentorshipPrice: "",
             }))
         }
     }
@@ -215,7 +219,7 @@ export default function EditMentorPage() {
         try {
             // Update mentor profile with all schema fields
             await axios.put(
-                `https://medical-backend-loj4.onrender.com/api/mentor/${params.id}`,
+                `http://localhost:5000/api/mentor/${params.id}`,
                 {
                     name: formData.name,
                     email: formData.email,
@@ -487,7 +491,12 @@ export default function EditMentorPage() {
                                 {formData.mentorships.map((mentorship, index) => (
                                     <div key={index} className="border rounded-md p-3 w-full">
                                         <div className="flex justify-between">
-                                            <h4 className="font-medium">{mentorship.title}</h4>
+                                            <div>
+                                                <h4 className="font-medium">{mentorship.title}</h4>
+                                                <div className="text-sm font-medium text-primary mt-1">
+                                                    ${mentorship.price ? mentorship.price.toFixed(2) : "0.00"}
+                                                </div>
+                                            </div>
                                             <Button
                                                 type="button"
                                                 variant="ghost"
@@ -523,6 +532,17 @@ export default function EditMentorPage() {
                                         onChange={handleChange}
                                         placeholder="Describe what this mentorship offers"
                                         rows={3}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="newMentorshipPrice">Price</Label>
+                                    <Input
+                                        id="newMentorshipPrice"
+                                        name="newMentorshipPrice"
+                                        type="number"
+                                        value={formData.newMentorshipPrice}
+                                        onChange={handleChange}
+                                        placeholder="e.g. 99.99"
                                     />
                                 </div>
                                 <Button
@@ -606,4 +626,3 @@ export default function EditMentorPage() {
         </div>
     )
 }
-

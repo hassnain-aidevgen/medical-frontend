@@ -34,9 +34,10 @@ export default function NewMentorPage() {
         newAvailabilityDate: "",
         newAvailabilitySlot: "",
         isActive: true,
-        mentorships: [] as { title: string; description: string }[],
+        mentorships: [] as { title: string; description: string; price: number }[],
         newMentorshipTitle: "",
         newMentorshipDescription: "",
+        newMentorshipPrice: 0,
     })
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -63,7 +64,11 @@ export default function NewMentorPage() {
 
     // Add a function to handle adding mentorships
     const handleAddMentorship = () => {
-        if (formData.newMentorshipTitle.trim() && formData.newMentorshipDescription.trim()) {
+        if (
+            formData.newMentorshipTitle.trim() &&
+            formData.newMentorshipDescription.trim() &&
+            formData.newMentorshipPrice > 0
+        ) {
             setFormData((prev) => ({
                 ...prev,
                 mentorships: [
@@ -71,10 +76,12 @@ export default function NewMentorPage() {
                     {
                         title: prev.newMentorshipTitle.trim(),
                         description: prev.newMentorshipDescription.trim(),
+                        price: formData.newMentorshipPrice,
                     },
                 ],
                 newMentorshipTitle: "",
                 newMentorshipDescription: "",
+                newMentorshipPrice: 0,
             }))
         }
     }
@@ -95,7 +102,7 @@ export default function NewMentorPage() {
         try {
             // Create the mentor profile with all schema fields
             await axios.post(
-                "https://medical-backend-loj4.onrender.com/api/mentor",
+                "http://localhost:5000/api/mentor",
                 {
                     name: formData.name,
                     email: formData.email,
@@ -412,7 +419,10 @@ export default function NewMentorPage() {
                                 {formData.mentorships.map((mentorship, index) => (
                                     <div key={index} className="border rounded-md p-3 w-full">
                                         <div className="flex justify-between">
-                                            <h4 className="font-medium">{mentorship.title}</h4>
+                                            <div>
+                                                <h4 className="font-medium">{mentorship.title}</h4>
+                                                <div className="text-sm font-medium text-primary mt-1">${mentorship.price.toFixed(2)}</div>
+                                            </div>
                                             <Button
                                                 type="button"
                                                 variant="ghost"
@@ -450,11 +460,26 @@ export default function NewMentorPage() {
                                         rows={3}
                                     />
                                 </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="newMentorshipPrice">Price</Label>
+                                    <Input
+                                        id="newMentorshipPrice"
+                                        name="newMentorshipPrice"
+                                        type="number"
+                                        value={formData.newMentorshipPrice}
+                                        onChange={handleChange}
+                                        placeholder="e.g. 99.99"
+                                    />
+                                </div>
                                 <Button
                                     type="button"
                                     variant="outline"
                                     onClick={handleAddMentorship}
-                                    disabled={!formData.newMentorshipTitle.trim() || !formData.newMentorshipDescription.trim()}
+                                    disabled={
+                                        !formData.newMentorshipTitle.trim() ||
+                                        !formData.newMentorshipDescription.trim() ||
+                                        !formData.newMentorshipPrice
+                                    }
                                     className="w-full"
                                 >
                                     <Plus className="h-4 w-4 mr-1" />
@@ -487,4 +512,3 @@ export default function NewMentorPage() {
         </div>
     )
 }
-
