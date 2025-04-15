@@ -45,7 +45,7 @@ export default function RecentTest() {
       setIsLoading(true)
       try {
         // Use localhost for testing, change to production URL for deployment
-        const response = await axios.get(`http://localhost:5000/api/test/recent-test/${userId}`)
+        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recent-test/${userId}`)
         
         if (response.data && response.data.success) {
           setRecentTest(response.data.data)

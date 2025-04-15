@@ -58,7 +58,7 @@ export default function FlashcardSuggestions({
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/flashcard-topics');
+        const response = await axios.get('https://medical-backend-loj4.onrender.com/api/flashcard-topics');
         setAvailableCategories(response.data);
       } catch (error) {
         console.error("Error fetching flashcard categories:", error);
@@ -92,7 +92,7 @@ export default function FlashcardSuggestions({
     setLoadingCategories(prev => ({ ...prev, [category]: true }));
     
     try {
-      const response = await axios.get(`http://localhost:5000/api/flashcards-by-topic/${category}`, {
+      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/flashcards-by-topic/${category}`, {
         params: { limit: 8 } // Get up to 8 flashcards per category
       });
       

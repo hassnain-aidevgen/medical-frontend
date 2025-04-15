@@ -419,7 +419,7 @@ export default function AnalyticsDashboard() {
         // Fetch topic mastery data
         try {
           const topicMasteryResponse = await axios.get<TopicMasteryMetrics>(
-            `http://localhost:5000/api/test/topic-mastery-v2/${userId}`,
+            `https://medical-backend-loj4.onrender.com/api/test/topic-mastery-v2/${userId}`,
           )
           setTopicMasteryData(topicMasteryResponse.data)
         } catch (err) {

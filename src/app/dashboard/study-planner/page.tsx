@@ -241,7 +241,7 @@ const PlannerForm: React.FC = () => {
     setIsLoadingPerformanceData(true)
 
     try {
-      const response = await axios.get(`http://localhost:5000/api/test/topic-mastery-v2/${userId}`)
+      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/topic-mastery-v2/${userId}`)
 
       if (response.data && response.data.weakestTopics) {
         setWeakTopics(response.data.weakestTopics)

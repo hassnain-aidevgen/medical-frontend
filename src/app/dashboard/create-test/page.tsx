@@ -254,7 +254,7 @@ export default function CreateTest() {
 
       // Update the URL to point to your new endpoint on localhost
       const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations2/${userId}`)
-      // const { data } = await axios.get(`http://localhost:5000/api/test/recommendations2/${userId}`)
+
       console.log("Recommendation data received:", data) // For debugging
 
       setRecommendations(data.recommendations)

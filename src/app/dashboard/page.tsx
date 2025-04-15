@@ -113,7 +113,7 @@ export default function DashboardPage() {
       setIsLoading(true)
       try {
         // const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/streak/${userId}`)
-        const response = await axios.get(`http://localhost:5000/api/test/streak/${userId}`)
+        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/streak/${userId}`)
 
         if (response.data && typeof response.data.currentStreak === "number") {
           setCurrentStreak(response.data.currentStreak || 0)

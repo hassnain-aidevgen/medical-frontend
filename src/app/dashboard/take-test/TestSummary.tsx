@@ -195,7 +195,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       // const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test", testData, {
       //   headers: { "Content-Type": "application/json" },
       // })
-      const response = await axios.post("http://localhost:5000/api/test/take-test/submit-test/v2", testData, {
+      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test/v2", testData, {
         headers: { "Content-Type": "application/json" },
       })
 
@@ -206,7 +206,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       // After successfully saving test data, update the streak
       if (userId) {
         try {
-          await axios.post(`http://localhost:5000/api/test/update-streak/${userId}`)
+          await axios.post(`https://medical-backend-loj4.onrender.com/api/test/update-streak/${userId}`)
           console.log("Test streak updated successfully")
         } catch (streakError) {
           // Don't fail the entire process if streak update fails

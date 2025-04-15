@@ -32,7 +32,7 @@ export default function WeeklyPerformance() {
       setIsLoading(true)
       try {
         // Use localhost for testing, change to production URL for deployment
-        const response = await axios.get(`http://localhost:5000/api/test/streak/${userId}`)
+        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/streak/${userId}`)
         
         if (response.data && Array.isArray(response.data.streakData)) {
           const activityData: { date: string; count: number }[] = response.data.streakData

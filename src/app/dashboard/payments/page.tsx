@@ -32,7 +32,7 @@ import { Suspense } from 'react';
 // import ReferralSection from "./components/ReferralSection" // <-- the new component
 import ReferralSection from "./RefferalPage"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+const API_BASE_URL = "https://medical-backend-loj4.onrender.com"
 
 const plans = [
   {
