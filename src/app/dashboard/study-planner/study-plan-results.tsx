@@ -25,8 +25,7 @@ import {
   X,
   XCircle,
 } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
-
+import { useEffect, useState, useRef } from "react"
 // Add this import at the top
 import { jsPDF } from "jspdf"
 
@@ -55,6 +54,8 @@ interface TaskPerformance {
   timestamp: number
   status: "completed" | "incomplete" | "not-understood" | "skipped"
 }
+
+
 
 const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onReset }) => {
   const [activeTab, setActiveTab] = useState<"overview" | "weekly" | "resources" | "performance">("overview")

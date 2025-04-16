@@ -19,16 +19,8 @@ interface TestReviewSchedulerProps {
   onReviewsAdded?: (reviews: Test[]) => void
 }
 
-// Define CalendarTest interface
-// interface CalendarTest {
-//   subjectName: string
-//   testTopic: string
-//   date: string
-// }
-
 const TestReviewScheduler = ({ userId, test, onReviewsAdded }: TestReviewSchedulerProps) => {
   const [isScheduling, setIsScheduling] = useState(false)
-
 
   // Update the addTestToCalendar function to work with Test objects
   const addTestToCalendar = async (test: Test): Promise<Test | null> => {
@@ -143,4 +135,3 @@ const TestReviewScheduler = ({ userId, test, onReviewsAdded }: TestReviewSchedul
 }
 
 export default TestReviewScheduler
-

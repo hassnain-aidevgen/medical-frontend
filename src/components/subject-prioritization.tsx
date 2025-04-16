@@ -67,51 +67,55 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
   // Fetch exam blueprint and user tests
   useEffect(() => {
     if (!selectedExam || !userId) return;
-
+  
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-
+  
       try {
         // Calculate days to exam if exam date is provided
         if (examDate) {
           const days = getDaysToExam(examDate);
           setDaysToExam(days);
         }
-
-        // Fetch exam blueprint
-        let blueprintData: ExamBlueprint[] = [];
+  
+        // Fetch exam blueprint with error handling
+        let blueprintData = [];
         try {
-          const blueprintResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/exams/blueprint/${selectedExam}`);
-
+          // Use the same base URL for both API calls
+          // const baseUrl = "https://medical-backend-loj4.onrender.com"; // Or use process.env.REACT_APP_API_URL
+          const baseUrl = "http://localhost:5000"; // Or use process.env.REACT_APP_API_URL
+          
+          const blueprintResponse = await axios.get(
+            `${baseUrl}/api/test/exams/blueprint/${encodeURIComponent(selectedExam)}/${userId}`
+          );
+  
           if (blueprintResponse.data && Array.isArray(blueprintResponse.data)) {
             blueprintData = blueprintResponse.data;
+            console.log("Successfully fetched blueprint data:", blueprintData);
+          } else if (blueprintResponse.data && blueprintResponse.data.blueprint) {
+            // Handle case where response is wrapped in a blueprint property
+            blueprintData = blueprintResponse.data.blueprint;
+            console.log("Successfully fetched blueprint data from wrapper:", blueprintData);
           } else {
             throw new Error("Invalid blueprint data format");
           }
         } catch (blueprintError) {
           console.error("Error fetching blueprint:", blueprintError);
           toast.error("Failed to fetch exam blueprint data");
-
+  
           // Fallback blueprint data
           blueprintData = getFallbackBlueprintData(selectedExam);
         }
-
-        // Mark high-yield subjects (subjects with higher than average percentage)
-        const averagePercentage = blueprintData.reduce((sum, item) => sum + item.percentage, 0) / blueprintData.length;
-        const highYieldThreshold = Math.max(averagePercentage * 1.2, 20); // 20% minimum or 20% above average
-
-        const enhancedBlueprint = blueprintData.map(subject => ({
-          ...subject,
-          isHighYield: subject.percentage >= highYieldThreshold
-        }));
-
-        setExamBlueprint(enhancedBlueprint);
-
+  
+        // Process the blueprint data
+        setExamBlueprint(blueprintData);
+  
         // Fetch user tests
         try {
-          const testsResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`);
-
+          const baseUrl = "https://medical-backend-loj4.onrender.com"; // Keep same base URL
+          const testsResponse = await axios.get(`${baseUrl}/api/test/calender/${userId}`);
+  
           if (Array.isArray(testsResponse.data)) {
             setTests(testsResponse.data);
           } else {
@@ -122,7 +126,7 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
           toast.error("Failed to fetch user test data");
           setTests([]);
         }
-
+  
       } catch (error) {
         console.error("Error in data fetching:", error);
         setError(typeof error === 'object' && error !== null && 'message' in error
@@ -133,7 +137,7 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
         setLoading(false);
       }
     };
-
+  
     fetchData();
   }, [selectedExam, userId, examDate]);
 
