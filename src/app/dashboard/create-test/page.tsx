@@ -3,7 +3,6 @@
 import AITestSuggestions from "@/components/AITestSuggestions"
 import ExamSimulation from "@/components/exam-simulation"
 import SyllabusCoverageIndicator from "@/components/syllabus-coverage-indicator"
-import TargetExamSelector from "@/components/TargetExamSelector"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import axios from "axios"
 import { Book, BookOpen, Brain, Clock, Lightbulb } from "lucide-react"
@@ -165,12 +164,13 @@ const RecentTests: React.FC<{ performanceData: TestResult[]; isLoading: boolean 
                         </p>
                       </div>
                       <div
-                        className={`w-2 h-10 rounded-full ${test.percentage >= 70
-                          ? "bg-green-500"
-                          : test.percentage >= 50
-                            ? "bg-yellow-500"
-                            : "bg-red-500"
-                          }`}
+                        className={`w-2 h-10 rounded-full ${
+                          test.percentage >= 70
+                            ? "bg-green-500"
+                            : test.percentage >= 50
+                              ? "bg-yellow-500"
+                              : "bg-red-500"
+                        }`}
                       ></div>
                     </div>
                   </div>
@@ -201,10 +201,11 @@ export default function CreateTest() {
   // Update the state declarations to include the new "All" options
   // Replace the existing state declarations for examType, difficulty, and questionType with:
   const [examType, setExamType] = useState<
-    "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3" | "ALL_USMLE_TYPES" | 
-    "NEET" | "PLAB" | "MCAT" | "NCLEX" | "COMLEX"
+    "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3" | "ALL_USMLE_TYPES" | "NEET" | "PLAB" | "MCAT" | "NCLEX" | "COMLEX"
   >("ALL_USMLE_TYPES")
-  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | "ALL_DIFFICULTY_LEVELS">("ALL_DIFFICULTY_LEVELS")
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | "ALL_DIFFICULTY_LEVELS">(
+    "ALL_DIFFICULTY_LEVELS",
+  )
   const [questionType, setQuestionType] = useState<
     "case_based" | "single_best_answer" | "extended_matching" | "ALL_QUESTION_TYPES"
   >("ALL_QUESTION_TYPES")
@@ -310,7 +311,29 @@ export default function CreateTest() {
     }
   }, [API_BASE_URL, API_BASE_URL_LOCAL])
 
-  // Update the fetchFilteredQuestions callback to handle the "All" options
+  // Modify the handleFilterChange function to NOT update selectedExam when examType changes
+  // This will keep the exam type selection for filtering separate from the target exam label
+  const handleFilterChange = <T extends string>(value: T, setter: React.Dispatch<React.SetStateAction<T>>) => {
+    setter(value)
+    setError(null)
+
+    // Remove the code that was setting selectedExam and examDate here
+  }
+
+  // Add a new useEffect to set the selectedExam and examDate when the form is submitted
+  // This will ensure the target exam label is set without affecting question filtering
+  useEffect(() => {
+    // Set the selected exam based on the current examType
+    // This is just for labeling purposes and doesn't affect filtering
+    setSelectedExam(examType)
+
+    // Set current date in the format YYYY-MM-DD
+    const today = new Date()
+    const formattedDate = today.toISOString().split("T")[0]
+    setExamDate(formattedDate)
+  }, [examType])
+
+  // Fix the fetchFilteredQuestions function to ensure it's not using selectedExam for filtering
   // Replace the existing fetchFilteredQuestions function with this updated version:
   const fetchFilteredQuestions = useCallback(async () => {
     if (selectedSubjects.length === 0 || selectedSubsections.length === 0) {
@@ -365,20 +388,31 @@ export default function CreateTest() {
 
   useEffect(() => {
     // Load saved exam settings from localStorage
-    const savedExam = localStorage.getItem("selectedExam");
-    const savedDate = localStorage.getItem("examDate");
-    
+    const savedExam = localStorage.getItem("selectedExam")
+    const savedDate = localStorage.getItem("examDate")
+
     if (savedExam) {
-      setSelectedExam(savedExam);
+      setSelectedExam(savedExam)
       // Also update the examType filter to match the saved exam
-      setExamType(savedExam as "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3" | "ALL_USMLE_TYPES" | "NEET" | "PLAB" | "MCAT" | "NCLEX" | "COMLEX");
+      setExamType(
+        savedExam as
+          | "USMLE_STEP1"
+          | "USMLE_STEP2"
+          | "USMLE_STEP3"
+          | "ALL_USMLE_TYPES"
+          | "NEET"
+          | "PLAB"
+          | "MCAT"
+          | "NCLEX"
+          | "COMLEX",
+      )
     }
-    
+
     if (savedDate) {
-      setExamDate(savedDate);
+      setExamDate(savedDate)
     }
-    
-    fetchData();
+
+    fetchData()
   }, [fetchData])
 
   // Fetch questions whenever filters change
@@ -449,13 +483,7 @@ export default function CreateTest() {
     setError(null)
   }
 
-  const handleFilterChange = <T extends string>(value: T, setter: React.Dispatch<React.SetStateAction<T>>) => {
-    setter(value)
-    setError(null)
-  }
-
-  // Add function to toggle recommendation selection
-  // Updated function for individual "Add to Test" buttons
+  // Modify the handleFilterChange function to update selectedExam when examType changes
   const addRecommendedQuestion = (recommendation: Recommendation) => {
     setSelectedRecommendations((prev) => {
       if (prev.includes(recommendation.questionText)) {
@@ -591,7 +619,7 @@ export default function CreateTest() {
         year: year,
         // Add these new parameters to pass target exam info
         targetExam: selectedExam || "",
-        examDate: examDate || ""
+        examDate: examDate || "",
       })
 
       // If we have recommended questions to add, append them
@@ -630,7 +658,7 @@ export default function CreateTest() {
         isRecommendedTest: "true",
         // Add these new parameters to pass target exam info
         targetExam: selectedExam || "",
-        examDate: examDate || ""
+        examDate: examDate || "",
       })
 
       // Add the recommendations with a uniqueId to ensure they're processed correctly
@@ -762,6 +790,7 @@ export default function CreateTest() {
             mode={mode}
           />
         </div>
+        {/* Keep the TargetExamSelector component commented out */}
         {/* <TargetExamSelector
           selectedExam={selectedExam}
           onExamChange={(exam) => {
@@ -801,16 +830,18 @@ export default function CreateTest() {
               <div className="flex space-x-4">
                 <button
                   type="button"
-                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${mode === "tutor" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                    mode === "tutor" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
                   onClick={() => setMode("tutor")}
                 >
                   Tutor Mode
                 </button>
                 <button
                   type="button"
-                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${mode === "timer" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                    mode === "timer" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
                   onClick={() => setMode("timer")}
                 >
                   Timer Mode
@@ -834,10 +865,11 @@ export default function CreateTest() {
                       type="button"
                       onClick={handleCreateRecommendedTest}
                       disabled={isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 shadow ${isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest
-                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                        : "bg-amber-500 text-white hover:bg-amber-600"
-                        }`}
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 shadow ${
+                        isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest
+                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          : "bg-amber-500 text-white hover:bg-amber-600"
+                      }`}
                     >
                       {isCreatingRecommendedTest ? (
                         "Creating..."
@@ -871,10 +903,11 @@ export default function CreateTest() {
                             <button
                               type="button"
                               onClick={() => addRecommendedQuestion(recommendation)}
-                              className={`ml-2 px-3 py-1 text-xs font-medium rounded-full transition-colors ${selectedRecommendations.includes(recommendation.questionText)
-                                ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                : "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                                }`}
+                              className={`ml-2 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                                selectedRecommendations.includes(recommendation.questionText)
+                                  ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                  : "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                              }`}
                             >
                               {selectedRecommendations.includes(recommendation.questionText)
                                 ? "Added ✓"
@@ -980,9 +1013,7 @@ export default function CreateTest() {
                   </SelectContent>
                 </Select>
                 {selectedExam && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Using target exam: {selectedExam.replace('_', ' ')}
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Using target exam: {selectedExam.replace("_", " ")}</p>
                 )}
               </div>
 
@@ -1101,12 +1132,13 @@ export default function CreateTest() {
                   }))
                 }}
                 disabled={isFilterLoading || maxQuestions === 0}
-                className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:outline-none transition-colors duration-200 ${maxQuestions === 0
-                  ? "bg-gray-100 text-gray-400 border-gray-200"
-                  : validation.questionCount.isValid
-                    ? "border-green-400 focus:border-green-500 focus:ring-green-200"
-                    : "border-red-400 focus:border-red-500 focus:ring-red-200"
-                  }`}
+                className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:outline-none transition-colors duration-200 ${
+                  maxQuestions === 0
+                    ? "bg-gray-100 text-gray-400 border-gray-200"
+                    : validation.questionCount.isValid
+                      ? "border-green-400 focus:border-green-500 focus:ring-green-200"
+                      : "border-red-400 focus:border-red-500 focus:ring-red-200"
+                }`}
                 placeholder="Enter number of questions"
                 aria-label="Total number of questions"
                 aria-describedby="questions-hint"
@@ -1189,13 +1221,14 @@ export default function CreateTest() {
                 selectedSubjects.length === 0 ||
                 selectedSubsections.length === 0 // Explicitly check for selections
               }
-              className={`w-full py-3 px-6 rounded-lg text-lg font-semibold transition-colors duration-200 shadow-md ${isLoading ||
+              className={`w-full py-3 px-6 rounded-lg text-lg font-semibold transition-colors duration-200 shadow-md ${
+                isLoading ||
                 isFilterLoading ||
                 (!validation.overall.isValid && recommendedQuestionsToAdd.length === 0) ||
                 (selectedSubjects.length === 0 || selectedSubsections.length === 0)
-                ? "bg-gray-400 text-gray-200 cursor-not-allowed"
-                : "bg-primary text-white hover:bg-primary-dark"
-                }`}
+                  ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                  : "bg-primary text-white hover:bg-primary-dark"
+              }`}
             >
               {isLoading || isFilterLoading
                 ? "Loading..."

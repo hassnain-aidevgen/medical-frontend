@@ -850,7 +850,7 @@ export default function AnalyticsDashboard() {
             </div>
 
             {/* Streak Tracker Component */}
-            <StreakTracker performanceData={performanceData} isLoading={loading.performance} />
+            <StreakTracker userId={localStorage.getItem("Medical_User_Id") || ""} performanceData={performanceData} isLoading={loading.performance} />
 
             {/* History Timeline Component */}
             <HistoryTimeline performanceData={performanceData} isLoading={loading.performance} />

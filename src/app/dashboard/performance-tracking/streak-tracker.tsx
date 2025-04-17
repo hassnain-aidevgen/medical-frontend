@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { motion } from "framer-motion"
 import { Award, Calendar, CheckCircle2, Flame, Info, Star, Trophy } from "lucide-react"
 import { useEffect, useState } from "react"
+import axios from "axios"
 
 interface TestResult {
   userId: string
@@ -24,6 +25,7 @@ interface TestResult {
 }
 
 interface StreakTrackerProps {
+  userId: string
   performanceData: TestResult[]
   isLoading?: boolean
 }
@@ -49,13 +51,60 @@ export default function StreakTracker({ performanceData, isLoading = false }: St
     streakCalendar: [],
   })
   const [calendarView, setCalendarView] = useState<"week" | "month">("week")
+  const [userId, setUserId] = useState<string | null>(null)
 
-  // Calculate streak data from performance data
+  // Get userId from localStorage
   useEffect(() => {
-    if (!performanceData || performanceData.length === 0) {
+    if (typeof window !== "undefined") {
+      const storedUserId = localStorage.getItem("Medical_User_Id")
+      setUserId(storedUserId)
+    }
+  }, [])
+
+  // Fetch streak data from API and use performanceData for calendar
+  useEffect(() => {
+    if (!userId || !performanceData || performanceData.length === 0) {
       return
     }
 
+    const fetchStreakData = async () => {
+      try {
+        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/streak/${userId}`)
+
+        if (response.data) {
+          // Extract dates from performance data for calendar visualization
+          const testDates = performanceData.map((test) => {
+            const date = new Date(test.createdAt)
+            return date.toISOString().split("T")[0]
+          })
+
+          // Remove duplicates (in case multiple tests were taken on the same day)
+          const uniqueDates = Array.from(new Set(testDates)).sort()
+
+          // Generate calendar data for visualization
+          const calendar = generateCalendarData(uniqueDates, response.data.currentStreak || 0, calendarView)
+
+          setStreakData({
+            currentStreak: response.data.currentStreak || 0,
+            longestStreak: response.data.longestStreak || 0,
+            lastActive: response.data.lastActive || null,
+            streakDates: uniqueDates,
+            streakCalendar: calendar,
+          })
+        }
+      } catch (error) {
+        console.error("Error fetching streak data:", error)
+
+        // Fallback to calculating from performance data if API fails
+        calculateStreakFromPerformanceData()
+      }
+    }
+
+    fetchStreakData()
+  }, [userId, performanceData, calendarView])
+
+  // Fallback function to calculate streak from performance data
+  const calculateStreakFromPerformanceData = () => {
     // Extract dates from performance data and format them as YYYY-MM-DD
     const testDates = performanceData.map((test) => {
       const date = new Date(test.createdAt)
@@ -82,7 +131,6 @@ export default function StreakTracker({ performanceData, isLoading = false }: St
       currentStreak = 0
     } else {
       // Calculate current streak by checking consecutive days backwards
-    //   const lastActiveDate = new Date(lastActive!)
       const checkDate = isActiveToday ? new Date() : new Date(Date.now() - 86400000)
 
       while (true) {
@@ -129,7 +177,7 @@ export default function StreakTracker({ performanceData, isLoading = false }: St
       streakDates: uniqueDates,
       streakCalendar: calendar,
     })
-  }, [performanceData, calendarView])
+  }
 
   // Generate calendar data for visualization
   const generateCalendarData = (activeDates: string[], currentStreak: number, view: "week" | "month") => {
@@ -478,4 +526,3 @@ export default function StreakTracker({ performanceData, isLoading = false }: St
     </motion.div>
   )
 }
-

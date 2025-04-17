@@ -54,7 +54,7 @@ export default function SyllabusCoverageIndicator({
     }
 
     // Get exam type label for display
-    let examTypeLabel = "USMLE"
+    let examTypeLabel = "Overall"
     if (examType === "USMLE_STEP1") examTypeLabel = "USMLE Step 1"
     else if (examType === "USMLE_STEP2") examTypeLabel = "USMLE Step 2"
     else if (examType === "USMLE_STEP3") examTypeLabel = "USMLE Step 3"
