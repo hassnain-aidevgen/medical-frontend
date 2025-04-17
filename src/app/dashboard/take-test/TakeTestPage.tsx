@@ -29,6 +29,8 @@ interface AIGeneratedQuestion {
 }
 
 type Question = {
+    subsectionDisplay: any
+    subjectDisplay: any
     _id: string
     question: string
     options: string[]
@@ -57,11 +59,11 @@ const TakeTestPage = () => {
     const subsectionsParam = searchParams.get("subsections") || ""
     const countParam = searchParams.get("count") || "10"
     const examTypeParam = searchParams.get("exam_type") || "ALL_USMLE_TYPES"
-    
+
     // Get target exam parameters from URL
     const targetExamParam = searchParams.get("targetExam") || ""
     const examDateParam = searchParams.get("examDate") || ""
-    
+
     // Add parameters for AI-generated tests
     const isAIGenerated = searchParams.get("isAIGenerated") === "true"
     const aiTopic = searchParams.get("topic") || ""
@@ -89,178 +91,79 @@ const TakeTestPage = () => {
         setIsLoading(true)
         setError(null)
         
-        // Handle recommended questions test if present
-        if (isRecommendedTest && recommendedQuestionsParam) {
-            try {
-                const parsedQuestions = JSON.parse(recommendedQuestionsParam) as RecommendedQuestion[];
-                
-                // Format recommended questions to match Question type
-                const formattedQuestions = parsedQuestions.map((q, index) => ({
-                    _id: q._id || `rec-q-${index}`,
-                    question: q.questionText,
-                    options: ["A", "B", "C", "D"], // Placeholder options
-                    answer: "A", // Placeholder answer
-                    explanation: "This is a recommended question based on your previous tests.",
-                    subject: "Recommended",
-                    subsection: q.topic || "General",
-                    system: "Recommendations",
-                    topic: q.topic || "General",
-                    subtopics: [q.topic || "General"],
-                    exam_type: (targetExamParam as any) || "USMLE_STEP1", // Use target exam if available
-                    year: new Date().getFullYear(),
-                    difficulty: "medium" as const,
-                    specialty: "General",
-                    clinical_setting: "Various",
-                    question_type: "single_best_answer" as const,
-                }));
-                
-                setQuestions(formattedQuestions);
-                setStartTime(Date.now());
-                if (mode === "timer") {
-                    setTimeLeft(formattedQuestions.length * 60); // 60 seconds per question
-                }
-                setIsLoading(false);
-                return;
-            } catch (err) {
-                console.error("Error parsing recommended questions:", err);
-                setError("Failed to load recommended questions. Please try again.");
-                setIsLoading(false);
-                return;
-            }
-        }
-        
-        // Handle AI-generated questions if present
-        if (isAIGenerated && aiGeneratedQuestionsParam) {
-            try {
-                const parsedQuestions = JSON.parse(aiGeneratedQuestionsParam) as AIGeneratedQuestion[];
-                
-                // Format AI-generated questions to match your Question type
-                const formattedQuestions = parsedQuestions.map((q, index) => ({
-                    _id: `ai-q-${index}`,
-                    question: q.questionText,
-                    options: q.options.map(opt => opt.substring(3).trim()), // Remove "A. ", "B. ", etc.
-                    answer: q.correctAnswer.charAt(0), // Extract just the letter (A, B, C, etc.)
-                    explanation: q.explanation,
-                    subject: aiTopic,
-                    subsection: q.topic || aiTopic,
-                    system: "AI Generated",
-                    topic: q.topic || aiTopic,
-                    subtopics: [q.topic || aiTopic],
-                    exam_type: (targetExamParam as any) || "USMLE_STEP1", // Use target exam if available
-                    year: new Date().getFullYear(),
-                    difficulty: q.difficulty as any || "medium",
-                    specialty: "General",
-                    clinical_setting: "Various",
-                    question_type: "single_best_answer" as const,
-                }));
-                
-                setQuestions(formattedQuestions);
-                setStartTime(Date.now());
-                if (mode === "timer") {
-                    setTimeLeft(formattedQuestions.length * 60); // 60 seconds per question
-                }
-                setIsLoading(false);
-                return;
-            } catch (err) {
-                console.error("Error parsing AI questions:", err);
-                setError("Failed to load AI-generated questions. Please try again.");
-                setIsLoading(false);
-                return;
-            }
-        }
-        
-        // Handle individual recommended questions if present
-        if (hasRecommendedParam && recommendedQuestionsParam) {
-            try {
-                const parsedRecommendations = JSON.parse(recommendedQuestionsParam) as RecommendedQuestion[];
-                
-                // Fetch regular questions from API
-                try {
-                    const response = await axios.get("https://medical-backend-loj4.onrender.com/api/test/take-test/questions", {
-                        params: {
-                            subjects: subjectsParam,
-                            subsections: subsectionsParam,
-                            count: totalQuestions,
-                            exam_type: targetExamParam || examTypeParam, // Use target exam if available
-                        },
-                    });
-                    
-                    // Format recommended questions to match Question type
-                    const formattedRecommendations = parsedRecommendations.map((q, index) => ({
-                        _id: q._id || `rec-q-${index}`,
-                        question: q.questionText,
-                        options: ["A", "B", "C", "D"], // Placeholder options
-                        answer: "A", // Placeholder answer
-                        explanation: "This is a recommended question based on your previous tests.",
-                        subject: "Recommended",
-                        subsection: q.topic || "General",
-                        system: "Recommendations",
-                        topic: q.topic || "General",
-                        subtopics: [q.topic || "General"],
-                        exam_type: (targetExamParam as any) || "USMLE_STEP1", // Use target exam if available
-                        year: new Date().getFullYear(),
-                        difficulty: "medium" as const,
-                        specialty: "General",
-                        clinical_setting: "Various",
-                        question_type: "single_best_answer" as const,
-                    }));
-                    
-                    // Combine regular questions with recommended questions
-                    setQuestions([...response.data, ...formattedRecommendations]);
-                    setStartTime(Date.now());
-                    if (mode === "timer") {
-                        setTimeLeft((response.data.length + formattedRecommendations.length) * 60); // 60 seconds per question
-                    }
-                    setIsLoading(false);
-                } catch (err) {
-                    console.error("Error fetching questions:", err);
-                    setError("Failed to fetch questions. Please try again.");
-                    setIsLoading(false);
-                }
-                
-                return;
-            } catch (err) {
-                console.error("Error parsing recommended questions:", err);
-                // Continue with regular question fetching if there's an error
-            }
-        }
-        
         // Regular question fetching logic
         try {
-            const response = await axios.get("https://medical-backend-loj4.onrender.com/api/test/take-test/questions", {
-                params: {
-                    subjects: subjectsParam,
-                    subsections: subsectionsParam,
-                    count: totalQuestions,
-                    exam_type: targetExamParam || examTypeParam, // Use target exam if available
-                },
+          console.log("Fetching questions with params:", {
+            subjects: subjectsParam,
+            subsections: subsectionsParam,
+            count: totalQuestions,
+            exam_type: targetExamParam || examTypeParam, 
+          });
+          
+          const response = await axios.get("http://localhost:5000/api/test/take-test/questions", {
+            params: {
+              subjects: subjectsParam,
+              subsections: subsectionsParam,
+              count: totalQuestions,
+              exam_type: targetExamParam || examTypeParam, // Use target exam if available
+            },
+          });
+          
+          // Check if we received the questions properly
+          if (response.data && response.data.length > 0) {
+            console.log(`Received ${response.data.length} questions`);
+            // Process the data to ensure we have string representations for subject/subsection
+            const processedQuestions = response.data.map((q: { subjectName: any; subject: { name: any; $oid: any }; subsectionName: any; subsection: { name: any; $oid: any } }) => {
+                const extractFieldValue = (field: { name: any; $oid: any }) => {
+                    if (!field) return 'Unknown';
+                    
+                    // If it's a string, use it directly
+                    if (typeof field === 'string') return field;
+                    
+                    // If it has a name property (from enriched backend data)
+                    if (field.name) return field.name;
+                    
+                    // If it's an object with $oid (MongoDB ObjectId)
+                    if (typeof field === 'object' && field.$oid) return field.$oid;
+                    
+                    // If none of above, convert to string
+                    return String(field);
+                  };
+              // Convert ObjectId to string if needed
+              return {
+                ...q,
+                // Create readable fields for UI display
+                subjectDisplay: q.subjectName || extractFieldValue(q.subject),
+                subsectionDisplay: q.subsectionName || extractFieldValue(q.subsection),
+                // Keep original fields too
+                subject: q.subject,
+                subsection: q.subsection
+              };
             });
-            
-            setQuestions(response.data);
-            setStartTime(Date.now());
-            if (mode === "timer") {
-                setTimeLeft(totalQuestions * 60); // 60 seconds per question
-            }
+            setQuestions(processedQuestions);
+          } else {
+            console.warn("No questions returned from API");
+            setError("No questions found with the given criteria. Please try different filters.");
+          }
+          
+          setStartTime(Date.now());
+          if (mode === "timer") {
+            setTimeLeft(totalQuestions * 60); // 60 seconds per question
+          }
         } catch (err) {
-            setError("Failed to fetch questions. Please try again.");
-            console.error("Error fetching questions:", err);
+          setError("Failed to fetch questions. Please try again.");
+          console.error("Error fetching questions:", err);
         } finally {
-            setIsLoading(false);
+          setIsLoading(false);
         }
-    }, [
+      }, [
         subjectsParam, 
         subsectionsParam, 
         totalQuestions, 
-        mode, 
-        isAIGenerated, 
-        aiGeneratedQuestionsParam, 
-        aiTopic, 
-        hasRecommendedParam, 
-        recommendedQuestionsParam, 
-        isRecommendedTest,
+        mode,
         targetExamParam,
         examTypeParam
-    ])
+      ])
 
     useEffect(() => {
         fetchQuestions()
@@ -272,7 +175,7 @@ const TakeTestPage = () => {
             [currentQuestionIndex]: answer,
         }))
     }
-    
+
     const handleFinishTest = useCallback(() => {
         const currentTime = Date.now()
         const timeSpent = startTime ? Math.round((currentTime - startTime) / 1000) : 0
@@ -286,7 +189,7 @@ const TakeTestPage = () => {
     // Add the timer useEffect AFTER handleFinishTest is defined
     useEffect(() => {
         let timerId: NodeJS.Timeout;
-        
+
         if (mode === "timer" && timeLeft > 0 && !showResults && !isLoading) {
             timerId = setInterval(() => {
                 setTimeLeft((prevTime) => {
@@ -299,7 +202,7 @@ const TakeTestPage = () => {
                 });
             }, 1000);
         }
-    
+
         // Clear the interval when component unmounts or when test ends
         return () => {
             if (timerId) clearInterval(timerId);
@@ -385,6 +288,7 @@ const TakeTestPage = () => {
                 aiTopic={aiTopic}
                 targetExam={targetExamParam}
                 examDate={examDateParam}
+                isRecommendedTest={isRecommendedTest}
             />
         )
     }
@@ -401,7 +305,7 @@ const TakeTestPage = () => {
             <h1 className="text-3xl font-bold mb-8">
                 {isAIGenerated ? `AI-Generated Medical Test: ${aiTopic}` : "Medical Test"}
             </h1>
-            
+
             {/* Target Exam Info Display */}
             {targetExamParam && (
                 <div className="bg-green-50 p-4 rounded-lg mb-6 border border-green-200">
@@ -417,7 +321,7 @@ const TakeTestPage = () => {
                     )}
                 </div>
             )}
-            
+
             {/* AI Test banner when applicable */}
             {isAIGenerated && (
                 <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
@@ -440,21 +344,29 @@ const TakeTestPage = () => {
 
             {questions.length > 0 && (
                 <QuestionBox
-                    question={{
-                        _id: questions[currentQuestionIndex]._id,
-                        question: questions[currentQuestionIndex].question,
-                        options: questions[currentQuestionIndex].options,
-                        answer: questions[currentQuestionIndex].answer,
-                        explanation: questions[currentQuestionIndex].explanation,
-                        targetExam: targetExamParam // Pass the targetExam parameter directly
-                    }}
-                    selectedAnswer={selectedAnswers[currentQuestionIndex]}
-                    onAnswerSelect={handleAnswerSelect}
-                    questionNumber={currentQuestionIndex + 1}
-                    totalQuestions={questions.length}
-                    showCorrectAnswer={submittedAnswers[currentQuestionIndex]}
-                    onSubmit={handleAnswerSubmit}
-                />
+                question={{
+                  _id: questions[currentQuestionIndex]._id,
+                  question: questions[currentQuestionIndex].question,
+                  options: questions[currentQuestionIndex].options,
+                  answer: questions[currentQuestionIndex].answer,
+                  explanation: questions[currentQuestionIndex].explanation,
+                  subject: questions[currentQuestionIndex].subject,
+                  subsection: questions[currentQuestionIndex].subsection,
+                  // Use our new display fields
+                  subjectDisplay: questions[currentQuestionIndex].subjectDisplay,
+                  subsectionDisplay: questions[currentQuestionIndex].subsectionDisplay,
+                  exam_type: questions[currentQuestionIndex].exam_type,
+                  difficulty: questions[currentQuestionIndex].difficulty,
+                  topic: questions[currentQuestionIndex].topic,
+                  targetExam: targetExamParam
+                }}
+                selectedAnswer={selectedAnswers[currentQuestionIndex]}
+                onAnswerSelect={handleAnswerSelect}
+                questionNumber={currentQuestionIndex + 1}
+                totalQuestions={questions.length}
+                showCorrectAnswer={submittedAnswers[currentQuestionIndex]}
+                onSubmit={handleAnswerSubmit}
+              />
             )}
 
             <div className="flex gap-5 mt-6">

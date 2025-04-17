@@ -10,25 +10,49 @@ import { useCallback, useEffect, useState } from "react"
 import QuestionBox from "./QuestionBox"
 import TestSummary from "./TestSummary"
 
-type Question = {
-    _id: string
-    question: string
-    options: string[]
+// type Question = {
+//     _id: string
+//     question: string
+//     options: string[]
+//     answer: string
+//     explanation: string
+//     subject: string
+//     subsection: string
+//     system: string
+//     topic: string
+//     subtopics: string[]
+//     exam_type: "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3"
+//     year: number
+//     difficulty: "easy" | "medium" | "hard"
+//     specialty: string
+//     state_specific?: string
+//     clinical_setting: string
+//     question_type: "case_based" | "single_best_answer" | "extended_matching"
+//     targetExam: string 
+// }
+type Question =  {
     answer: string
-    explanation: string
-    subject: string
-    subsection: string
-    system: string
-    topic: string
-    subtopics: string[]
-    exam_type: "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3"
-    year: number
-    difficulty: "easy" | "medium" | "hard"
-    specialty: string
-    state_specific?: string
-    clinical_setting: string
-    question_type: "case_based" | "single_best_answer" | "extended_matching"
-    targetExam: string 
+    question: {
+        _id: string
+        question: string
+        options: string[]
+        answer: string
+        explanation: string
+        subject: string | { $oid: string }
+        subsection: string | { $oid: string }
+        subjectDisplay: string
+        subsectionDisplay: string
+        exam_type?: string
+        difficulty?: 'easy' | 'medium' | 'hard'
+        topic?: string
+        targetExam?: string
+      }
+      selectedAnswer: string | undefined
+      onAnswerSelect: (answer: string) => void
+      questionNumber: number
+      totalQuestions: number
+      showCorrectAnswer: boolean
+      onSubmit: () => void
 }
 
 const TestComponent = () => {
@@ -57,7 +81,7 @@ const TestComponent = () => {
         setIsLoading(true)
         setError(null)
         try {
-            const response = await axios.get("https://medical-backend-loj4.onrender.com/api/test/take-test/questions", {
+            const response = await axios.get("http://localhost:5000/api/test/take-test/questions", {
                 params: {
                     subjects: subjectsParam,
                     subsections: subsectionsParam,

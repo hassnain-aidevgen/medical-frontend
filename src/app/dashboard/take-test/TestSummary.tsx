@@ -25,6 +25,7 @@ import { useEffect, useState } from "react"
 import { Doughnut } from "react-chartjs-2"
 import toast, { Toaster } from "react-hot-toast"
 import TargetedExamBlueprint from "@/components/targeted-exam-blueprint"
+import { Progress } from "@/components/ui/progress"
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
@@ -34,9 +35,16 @@ type TestSummaryProps = {
     question: string
     answer: string
     explanation?: string
-    targetExam: string
-    subject?: string
-    subsection?: string
+    targetExam?: string
+    subject?: string | object
+    subsection?: string | object
+    subjectName?: string
+    subsectionName?: string
+    subjectDisplay?: string
+    subsectionDisplay?: string
+    exam_type?: string
+    difficulty?: string
+    topic?: string
   }[]
   selectedAnswers: { [key: number]: string }
   questionTimes: { [key: number]: number }
@@ -46,8 +54,8 @@ type TestSummaryProps = {
   aiTopic?: string
   targetExam?: string
   examDate?: string
+  isRecommendedTest?: boolean
 }
-
 const TestSummary: React.FC<TestSummaryProps> = ({
   questions,
   selectedAnswers,
@@ -138,94 +146,210 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     }
   }, [questions, selectedAnswers, questionTimes, score, totalTime, percentage, isAIGenerated, aiTopic, targetExam])
 
-  const handleSubmitResults = async () => {
-    setLoading(true)
-    setError(null)
+  // const handleSubmitResults = async () => {
+  //   setLoading(true)
+  //   setError(null)
 
-    const userId = localStorage.getItem("Medical_User_Id")
+  //   const userId = localStorage.getItem("Medical_User_Id")
 
-    // Create test data object
-    let testData
-    if (isAIGenerated) {
-      console.log("Original AI questions:", questions)
-      // For AI-generated tests, format to match what the backend expects
-      const formattedQuestions = questions.map((q, index) => ({
-        questionId: q._id || `ai${Date.now()}${index}`, // Remove hyphens as they might cause issues
+  //   // Create enhanced questions objects with all necessary data
+  //   const enhancedQuestions = questions.map((q, index) => ({
+  //     questionId: q._id,
+  //     questionText: q.question,
+  //     correctAnswer: q.answer,
+  //     userAnswer: selectedAnswers[index] || "",
+  //     timeSpent: questionTimes[index] || 0,
+  //     // Include additional metadata
+  //     subject: q.subject || "",
+  //     subjectName: q.subjectName || q.subjectDisplay || "",
+  //     subsection: q.subsection || "",
+  //     subsectionName: q.subsectionName || q.subsectionDisplay || "",
+  //     exam_type: q.exam_type || "",
+  //     difficulty: q.difficulty || "",
+  //     topic: q.topic || ""
+  //   }));
+
+  //   // Create test data object with enhanced questions
+  //   const testData = {
+  //     userId,
+  //     questions: enhancedQuestions,
+  //     score,
+  //     totalTime,
+  //     percentage,
+  //     isRecommendedTest: isRecommendedTest || false,
+  //     targetExam: targetExam || "",
+  //     examDate: examDate || ""
+  //   };
+
+  //   console.log("Submitting test data with enhanced questions:", testData);
+
+  //   try {
+  //     const response = await axios.post(
+  //       "https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test/v2", 
+  //       testData, 
+  //       {
+  //         headers: { "Content-Type": "application/json" },
+  //       }
+  //     );
+
+  //     if (response.status !== 201) {
+  //       throw new Error("Failed to submit test results");
+  //     }
+
+  //     // After successfully saving test data, update the streak
+  //     if (userId) {
+  //       try {
+  //         await axios.post(`https://medical-backend-loj4.onrender.com/api/test/update-streak/${userId}`);
+  //         console.log("Test streak updated successfully");
+  //       } catch (streakError) {
+  //         // Don't fail the entire process if streak update fails
+  //         console.error("Error updating streak:", streakError);
+  //       }
+  //     }
+
+  //     toast.success("Test Saved Successfully! 🎉");
+
+  //     setTimeout(() => {
+  //       router.push("/dashboard");
+  //     }, 4500);
+  //   } catch (err) {
+  //     console.error("Error submitting test results:", err);
+  //     setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+
+// In TestSummary.jsx, replace the handleSubmitResults function with this updated version:
+
+const handleSubmitResults = async () => {
+  setLoading(true);
+  setError(null);
+
+  const userId = localStorage.getItem("Medical_User_Id");
+  console.log("Processing questions for submission...");
+
+  let testData = null;
+  
+  // Log raw question data to debug
+  console.log("Raw questions data:", JSON.stringify(questions.slice(0, 1), null, 2));
+  
+  if (isAIGenerated) {
+    // For AI-generated tests
+    const formattedQuestions = questions.map((q, index) => {
+      console.log(`Processing AI question ${index}:`, q._id);
+      return {
+        questionId: q._id || `ai${Date.now()}${index}`,
         questionText: q.question,
         correctAnswer: q.answer,
         userAnswer: selectedAnswers[index] || "",
         timeSpent: questionTimes[index] || 0,
-      }))
-      console.log("Formatted AI questions:", formattedQuestions)
-
-      // Make the structure EXACTLY the same as normal tests
-      testData = {
-        userId,
-        questions: formattedQuestions,
-        score,
-        totalTime,
-        percentage,
-        isRecommendedTest: false, // Include this field to match normal tests
-        targetExam: targetExam || "", // Include target exam
-        examDate: examDate || "", // Include exam date
-      }
-    } else {
-      // For normal tests, use the existing structure exactly as before
-      testData = {
-        userId,
-        questions: questions.map((q, index) => ({
-          questionId: q._id,
-          questionText: q.question,
-          correctAnswer: q.answer,
-          userAnswer: selectedAnswers[index] || "",
-          timeSpent: questionTimes[index] || 0,
-        })),
-        score,
-        totalTime,
-        percentage,
-        isRecommendedTest,
-        targetExam: targetExam || "", // Include target exam
-        examDate: examDate || "", // Include exam date
-      }
-    }
-    console.log("Final test data being sent:", JSON.stringify(testData, null, 2))
-
-    try {
-      // OLD ONE WITHOUT THE EXAM TYPE
-      // const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test", testData, {
-      //   headers: { "Content-Type": "application/json" },
-      // })
-      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test/v2", testData, {
-        headers: { "Content-Type": "application/json" },
-      })
-
-      if (response.status !== 201) {
-        throw new Error("Failed to submit test results")
-      }
-
-      // After successfully saving test data, update the streak
-      if (userId) {
-        try {
-          await axios.post(`https://medical-backend-loj4.onrender.com/api/test/update-streak/${userId}`)
-          console.log("Test streak updated successfully")
-        } catch (streakError) {
-          // Don't fail the entire process if streak update fails
-          console.error("Error updating streak:", streakError)
-        }
-      }
-
-      toast.success("Test Saved Successfully! 🎉")
-
-      setTimeout(() => {
-        router.push("/dashboard")
-      }, 4500)
-    } catch (err) {
-      console.error("Error submitting test results:", err)
-      setError(err instanceof Error ? err.message : "An unexpected error occurred.")
-    } finally {
-      setLoading(false)
-    }
+        // Add these fields even for AI-generated questions
+        subject: "AI Generated",
+        subjectName: "AI Generated",
+        subsection: aiTopic || "Custom Topic",
+        subsectionName: aiTopic || "Custom Topic",
+        exam_type: targetExam || "",
+        difficulty: "medium",
+        topic: aiTopic || "Custom Topic"
+      };
+    });
+    
+    testData = {
+      userId,
+      questions: formattedQuestions,
+      score,
+      totalTime,
+      percentage,
+      isRecommendedTest: false,
+      targetExam: targetExam || "",
+      examDate: examDate || ""
+    };
+  } else {
+    // For regular tests
+    const formattedQuestions = questions.map((q, index) => {
+      // Log what we're processing for debugging
+      console.log(`Processing regular question ${index}:`, {
+        id: q._id,
+        subject: q.subject,
+        subjectName: q.subjectName || q.subjectDisplay,
+        subsection: q.subsection,
+        subsectionName: q.subsectionName || q.subsectionDisplay
+      });
+      
+      return {
+        questionId: q._id,
+        questionText: q.question,
+        correctAnswer: q.answer,
+        userAnswer: selectedAnswers[index] || "",
+        timeSpent: questionTimes[index] || 0,
+        // Convert fields to strings to ensure they're saved properly
+        subject: typeof q.subject === 'object' ? JSON.stringify(q.subject) : String(q.subject || ""),
+        subjectName: String(q.subjectDisplay || q.subjectName || "Unknown Subject"),
+        subsection: typeof q.subsection === 'object' ? JSON.stringify(q.subsection) : String(q.subsection || ""),
+        subsectionName: String(q.subsectionDisplay || q.subsectionName || "Unknown Topic"),
+        exam_type: String(q.exam_type || ""),
+        difficulty: String(q.difficulty || "medium"),
+        topic: String(q.topic || "")
+      };
+    });
+    
+    testData = {
+      userId,
+      questions: formattedQuestions,
+      score,
+      totalTime,
+      percentage,
+      isRecommendedTest: isRecommendedTest || false,
+      targetExam: targetExam || "",
+      examDate: examDate || ""
+    };
   }
+  
+  // Debug log the first question to verify structure
+  if (testData.questions.length > 0) {
+    console.log("First formatted question sample:", JSON.stringify(testData.questions[0], null, 2));
+  }
+  
+  try {
+    console.log("Submitting test data to API...");
+    const response = await axios.post(
+      "http://localhost:5000/api/test/take-test/submit-test/v2", 
+      testData, 
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (response.status !== 201) {
+      throw new Error("Failed to submit test results");
+    }
+
+    console.log("Test submission successful:", response.data);
+
+    // After successfully saving test data, update the streak
+    if (userId) {
+      try {
+        await axios.post(`https://medical-backend-loj4.onrender.com/api/test/update-streak/${userId}`);
+        console.log("Test streak updated successfully");
+      } catch (streakError) {
+        console.error("Error updating streak:", streakError);
+      }
+    }
+
+    toast.success("Test Saved Successfully! 🎉");
+
+    setTimeout(() => {
+      router.push("/dashboard");
+    }, 4500);
+  } catch (err) {
+    console.error("Error submitting test results:", err);
+    setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+  } finally {
+    setLoading(false);
+  }
+}
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -289,6 +413,52 @@ const TestSummary: React.FC<TestSummaryProps> = ({
               Total time: {Math.floor(totalTime / 60)} minutes {totalTime % 60} seconds
             </p>
           </CardFooter>
+        </Card>
+
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Performance by Category</CardTitle>
+            <CardDescription>How you performed across different categories</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Group questions by subject/category and calculate performance */}
+              {(() => {
+                // Group questions by category using the display field
+                const categories = {};
+                questions.forEach((q, idx) => {
+                  const category = q.subjectDisplay || q.subjectName ||
+                    (typeof q.subject === 'string' ? q.subject : 'Unknown');
+
+                  if (!categories[category]) {
+                    categories[category] = { total: 0, correct: 0 };
+                  }
+                  categories[category].total++;
+                  if (selectedAnswers[idx] === q.answer) {
+                    categories[category].correct++;
+                  }
+                });
+
+                // Return category performance bars
+                return Object.entries(categories).map(([category, stats]) => (
+                  <div key={category} className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>{category}</span>
+                      <span className="font-medium">
+                        {stats.correct}/{stats.total} ({Math.round((stats.correct / stats.total) * 100)}%)
+                      </span>
+                    </div>
+                    <Progress
+                      value={(stats.correct / stats.total) * 100}
+                      max={100}
+                      className="h-2 bg-amber-100/50"
+                    />
+                  </div>
+                ));
+              })()}
+            </div>
+          </CardContent>
         </Card>
 
         <Card>
@@ -403,6 +573,35 @@ const TestSummary: React.FC<TestSummaryProps> = ({
                 <CardDescription>{question.question}</CardDescription>
               </CardHeader>
               <CardContent>
+                {/* Add exam type, subject, and difficulty badges */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {question.exam_type && (
+                    <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-md text-sm">
+                      {question.exam_type.replace(/_/g, " ")}
+                    </span>
+                  )}
+                  {(question.subjectName || question.subject) && (
+                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-sm">
+                      Subject: {question.subjectName ||
+                        (typeof question.subject === 'string' ? question.subject : 'Unknown')}
+                    </span>
+                  )}
+                  {(question.subsectionName || question.subsection) && (
+                    <span className="px-3 py-1 bg-green-100 text-green-700 rounded-md text-sm">
+                      Topic: {question.subsectionName ||
+                        (typeof question.subsection === 'string' ? question.subsection : 'Unknown')}
+                    </span>
+                  )}
+                  {question.difficulty && (
+                    <span className={`px-3 py-1 rounded-md text-sm ${question.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                        question.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                      }`}>
+                      {question.difficulty.charAt(0).toUpperCase() + question.difficulty.slice(1)}
+                    </span>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="mb-2">

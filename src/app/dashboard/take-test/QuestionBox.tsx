@@ -16,6 +16,7 @@ type QuestionAnalytics = {
   correctPercentage: number
 }
 
+
 type QuestionBoxProps = {
   question: {
     _id: string
@@ -23,8 +24,16 @@ type QuestionBoxProps = {
     options: string[]
     answer: string
     explanation: string
-    targetExam: string // Added targetExam property
+    subject: string | { $oid: string }
+    subsection: string | { $oid: string }
+    subjectDisplay: string
+    subsectionDisplay: string
+    exam_type?: string
+    difficulty?: 'easy' | 'medium' | 'hard'
+    topic?: string
+    targetExam?: string
   }
+  
   selectedAnswer: string | undefined
   onAnswerSelect: (answer: string) => void
   questionNumber: number
@@ -150,8 +159,39 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
           <h2 className="text-xl font-semibold text-slate-700">
             Question {questionNumber} of {totalQuestions}
           </h2>
-          <span className="px-4 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">Medical Question</span>
+          <div className="flex gap-2">
+            <span className="px-4 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
+              Medical Question
+            </span>
+            {question.exam_type && (
+              <span className="px-4 py-1 bg-purple-50 text-purple-700 rounded-full text-sm font-medium">
+                {question.exam_type.replace("_", " ")}
+              </span>
+            )}
+          </div>
         </div>
+        {(question.subjectDisplay || question.subsectionDisplay) && (
+          <div className="mb-4 flex flex-wrap gap-2 text-sm">
+            {question.subjectDisplay && (
+              <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md">
+                Subject: {question.subjectDisplay}
+              </span>
+            )}
+            {question.subsectionDisplay && (
+              <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md">
+                Topic: {question.subsectionDisplay}
+              </span>
+            )}
+            {question.difficulty && (
+              <span className={`px-3 py-1 rounded-md ${question.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                  question.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-red-100 text-red-700'
+                }`}>
+                {question.difficulty.charAt(0).toUpperCase() + question.difficulty.slice(1)}
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="space-y-6">
           <p className="text-lg text-slate-800 leading-relaxed">{question.question}</p>
