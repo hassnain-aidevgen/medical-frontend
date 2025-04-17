@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Award, Crown, Medal, Share2, Star, Timer, Trophy, User, Target } from 'lucide-react'
+import { Award, Crown, Medal, Share2, Star, Timer, Trophy, User, Target } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import SpecialtyFilters from "./specialty-filters"
 // import CountryLeaderboard from "./country-leaderboard"
@@ -127,7 +127,8 @@ export default function GamifiedLeaderboard() {
         }
 
         // Fetch leaderboard data
-        const leaderboardRes = await fetch(`${API_BASE_URL}/leaderboard?timeFrame=${timeFrame}`)
+        // const leaderboardRes = await fetch(`${API_BASE_URL}/leaderboard?timeFrame=${timeFrame}`)
+        const leaderboardRes = await fetch(`http://localhost:5000/api/test/leaderboard2?timeFrame=${timeFrame}`)
 
         if (!leaderboardRes.ok) {
           throw new Error(`Failed to fetch leaderboard data: ${leaderboardRes.status}`)
@@ -144,16 +145,100 @@ export default function GamifiedLeaderboard() {
 
         // Fetch user stats if user is logged in
         if (userId) {
-          const userStatsRes = await fetch(`${API_BASE_URL}/leaderboard/player/${userId}?timeFrame=${timeFrame}`)
+          try {
+            // const userStatsRes = await fetch(`${API_BASE_URL}/leaderboard/player/${userId}?timeFrame=${timeFrame}`)
+            const userStatsRes = await fetch(
+              `http://localhost:5000/api/test/leaderboard2/player/${userId}?timeFrame=${timeFrame}`,
+            )
 
-          if (userStatsRes.ok) {
-            const userStatsData = await userStatsRes.json()
+            if (userStatsRes.ok) {
+              const userStatsData = await userStatsRes.json()
 
-            if (userStatsData.success) {
-              setUserStatsData((prev) => ({
-                ...prev,
-                [timeFrame]: userStatsData.data,
-              }))
+              if (userStatsData.success) {
+                setUserStatsData((prev) => ({
+                  ...prev,
+                  [timeFrame]: userStatsData.data,
+                }))
+              } else {
+                console.error(`User stats API returned success: false for ${timeFrame}`)
+
+                // If we have leaderboard data but no user stats, create a placeholder
+                if (leaderboardData.success && leaderboardData.data.leaderboard.length > 0) {
+                  // Find the user in the leaderboard
+                  const userInLeaderboard = leaderboardData.data.leaderboard.find(
+                    (entry: any) => entry.userId === userId,
+                  )
+
+                  if (userInLeaderboard) {
+                    // Create user stats from leaderboard data
+                    const userRank =
+                      leaderboardData.data.leaderboard.findIndex((entry: any) => entry.userId === userId) + 1
+
+                    // Get nearby players (2 above and 2 below)
+                    const startIndex = Math.max(0, userRank - 3)
+                    const endIndex = Math.min(leaderboardData.data.leaderboard.length - 1, userRank + 2)
+                    const nearbyPlayers = leaderboardData.data.leaderboard.slice(startIndex, endIndex + 1)
+
+                    setUserStatsData((prev) => ({
+                      ...prev,
+                      [timeFrame]: {
+                        rank: userRank,
+                        player: userInLeaderboard,
+                        nearbyPlayers: nearbyPlayers,
+                      },
+                    }))
+                  }
+                }
+              }
+            } else {
+              console.error(`User stats API returned status ${userStatsRes.status} for ${timeFrame}`)
+
+              // Same fallback logic as above
+              if (leaderboardData.success && leaderboardData.data.leaderboard.length > 0) {
+                const userInLeaderboard = leaderboardData.data.leaderboard.find((entry: any) => entry.userId === userId)
+
+                if (userInLeaderboard) {
+                  const userRank =
+                    leaderboardData.data.leaderboard.findIndex((entry: any) => entry.userId === userId) + 1
+
+                  const startIndex = Math.max(0, userRank - 3)
+                  const endIndex = Math.min(leaderboardData.data.leaderboard.length - 1, userRank + 2)
+                  const nearbyPlayers = leaderboardData.data.leaderboard.slice(startIndex, endIndex + 1)
+
+                  setUserStatsData((prev) => ({
+                    ...prev,
+                    [timeFrame]: {
+                      rank: userRank,
+                      player: userInLeaderboard,
+                      nearbyPlayers: nearbyPlayers,
+                    },
+                  }))
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching user stats for ${timeFrame}:`, error)
+
+            // Same fallback logic
+            if (leaderboardData.success && leaderboardData.data.leaderboard.length > 0) {
+              const userInLeaderboard = leaderboardData.data.leaderboard.find((entry: any) => entry.userId === userId)
+
+              if (userInLeaderboard) {
+                const userRank = leaderboardData.data.leaderboard.findIndex((entry: any) => entry.userId === userId) + 1
+
+                const startIndex = Math.max(0, userRank - 3)
+                const endIndex = Math.min(leaderboardData.data.leaderboard.length - 1, userRank + 2)
+                const nearbyPlayers = leaderboardData.data.leaderboard.slice(startIndex, endIndex + 1)
+
+                setUserStatsData((prev) => ({
+                  ...prev,
+                  [timeFrame]: {
+                    rank: userRank,
+                    player: userInLeaderboard,
+                    nearbyPlayers: nearbyPlayers,
+                  },
+                }))
+              }
             }
           }
         }
@@ -292,12 +377,20 @@ export default function GamifiedLeaderboard() {
         }
       } else if (activeTab !== "country" && activeTab !== "streaks" && activeTab !== "exams") {
         // Only fetch data for weekly, monthly, all-time tabs
-        if (leaderboardData[activeTab].length === 0) {
+        if (leaderboardData[activeTab].length === 0 || !userStatsData[activeTab]) {
           fetchLeaderboardData(activeTab)
         }
       }
     }
-  }, [activeTab, fetchLeaderboardData, fetchSpecialtyRankings, initialLoadComplete, specialtyRankings, leaderboardData])
+  }, [
+    activeTab,
+    fetchLeaderboardData,
+    fetchSpecialtyRankings,
+    initialLoadComplete,
+    specialtyRankings,
+    leaderboardData,
+    userStatsData,
+  ])
 
   // Handle specialty filtering
   useEffect(() => {
@@ -487,6 +580,8 @@ export default function GamifiedLeaderboard() {
                 score={currentUserStats.player.score}
                 specialty={activeTab === "specialty" ? selectedSpecialty || undefined : undefined}
                 targetExam={targetExam || undefined}
+                rank={currentUserStats.rank}
+                totalUsers={leaderboardData[activeTab].length}
               />
             )}
 

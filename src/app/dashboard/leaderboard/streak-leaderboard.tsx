@@ -6,49 +6,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Award, Calendar, Crown, Flame, Medal, Star, Trophy, User } from "lucide-react"
 import { useState, useEffect, useCallback } from "react"
 import type { StreakEntry, UserStreakStats } from "./types"
+import axios from "axios"
 
 interface StreakLeaderboardProps {
   timeFrame: "weekly" | "monthly" | "all-time"
   loggedInUserId: string | null
-  globalLeaderboard: StreakEntry[] // Use the real leaderboard data with streak info
+  globalLeaderboard: StreakEntry[] // Used as fallback
 }
 
-// Helper function to generate mock streak data
-const generateMockStreakData = (
-  globalLeaderboard: Omit<StreakEntry, "streak" | "lastActive" | "longestStreak">[],
-): StreakEntry[] => {
-  // Use the global leaderboard as a base, but add streak information
-  return globalLeaderboard
-    .map((entry, index) => {
-      // Generate a streak value that roughly correlates with their rank
-      // Higher ranked users tend to have higher streaks
-      const baseStreak = Math.max(30 - Math.floor(index / 3), 1)
-      const randomFactor = Math.floor(Math.random() * 5) - 2 // -2 to +2
-      const streak = Math.max(baseStreak + randomFactor, 1)
+const API_BASE_URL = "http://localhost:5000/api/test"
 
-      // Generate a longest streak that's at least as high as the current streak
-      const longestStreak = Math.max(streak, streak + Math.floor(Math.random() * 10))
-
-      // Generate a last active date (within the last 2 days)
-      const lastActive = new Date()
-      lastActive.setHours(lastActive.getHours() - Math.floor(Math.random() * 48))
-
-      return {
-        ...entry,
-        streak,
-        longestStreak,
-        lastActive: lastActive.toISOString(),
-      }
-    })
-    .sort((a, b) => b.streak - a.streak) // Sort by streak, not by score
-}
-
-export default function StreakLeaderboard({  loggedInUserId, globalLeaderboard }: StreakLeaderboardProps) {
+export default function StreakLeaderboard({ timeFrame, loggedInUserId, globalLeaderboard }: StreakLeaderboardProps) {
   const [streakLeaderboard, setStreakLeaderboard] = useState<StreakEntry[]>([])
   const [userStats, setUserStats] = useState<UserStreakStats | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Process the global leaderboard to add streak information
+  // Legacy method to generate streak data from global leaderboard as fallback
   const processLeaderboardData = useCallback(() => {
     if (!globalLeaderboard.length) {
       setLoading(false)
@@ -56,11 +29,41 @@ export default function StreakLeaderboard({  loggedInUserId, globalLeaderboard }
     }
 
     try {
-      setLoading(true)
+      // Generate more realistic streak data based on user activity
+      const streakData = globalLeaderboard.map((entry) => {
+        // Use score as a base for streak calculation - higher scores mean more active users
+        const baseScore = entry.score || 0
+        
+        // Calculate streak - more active users tend to have longer streaks
+        // This provides more realistic values than random generation
+        let streak = Math.min(Math.floor(baseScore / 10) + 1, 30)
+        
+        // Adjust streak based on time frame
+        if (timeFrame === "weekly") {
+          // Weekly streaks are capped at 7 days
+          streak = Math.min(streak, 7)
+        } else if (timeFrame === "monthly") {
+          // Monthly streaks are more varied but capped at current month length
+          const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()
+          streak = Math.min(streak, daysInMonth)
+        }
+        
+        // Longest streak is always equal to or greater than current streak
+        const longestStreak = Math.max(streak, streak + Math.floor(streak / 2))
+        
+        // Last active date - more recent for active users with higher streaks
+        const lastActive = new Date()
+        lastActive.setHours(lastActive.getHours() - (streak > 5 ? 12 : 24))
 
-      // Generate mock streak data based on the global leaderboard
-      const streakData = generateMockStreakData(globalLeaderboard)
-      // Assign ranks based on streak
+        return {
+          ...entry,
+          streak,
+          longestStreak,
+          lastActive: lastActive.toISOString(),
+        }
+      }).sort((a, b) => b.streak - a.streak) // Sort by streak, not by score
+      
+      // Add ranks
       streakData.forEach((entry, index) => {
         entry.rank = index + 1
       })
@@ -90,18 +93,144 @@ export default function StreakLeaderboard({  loggedInUserId, globalLeaderboard }
       }
     } catch (error) {
       console.error("Error processing streak leaderboard:", error)
+    }
+  }, [globalLeaderboard, timeFrame, loggedInUserId])
+  
+  // Fetch streak data from backend
+  const fetchStreakData = useCallback(async () => {
+    try {
+      setLoading(true)
+      
+      // Try to fetch from streak endpoint
+      const response = await fetch(`${API_BASE_URL}/streak-leaderboard?timeFrame=${timeFrame}`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.success && data.data.streaks) {
+          const streakData = data.data.streaks;
+          
+          // If user is logged in, try to get their actual streak from the dashboard endpoint
+          if (loggedInUserId) {
+            try {
+              const userStreakResponse = await axios.get(
+                `https://medical-backend-loj4.onrender.com/api/test/streak/${loggedInUserId}`
+              )
+              
+              if (userStreakResponse.data && typeof userStreakResponse.data.currentStreak === "number") {
+                const currentStreak = userStreakResponse.data.currentStreak || 0
+                const longestStreak = userStreakResponse.data.longestStreak || currentStreak
+                
+                // Update the logged-in user's streak in the leaderboard data
+                const updatedStreakData = streakData.map((entry: StreakEntry) => {
+                  if (entry.userId === loggedInUserId) {
+                    return {
+                      ...entry,
+                      streak: currentStreak,
+                      longestStreak: longestStreak
+                    }
+                  }
+                  return entry
+                })
+                
+                // Re-sort by streak
+                const sortedData = [...updatedStreakData].sort((a, b) => b.streak - a.streak)
+                
+                // Re-rank after sorting
+                sortedData.forEach((entry, index) => {
+                  entry.rank = index + 1
+                })
+                
+                setStreakLeaderboard(sortedData)
+                
+                // Calculate user stats based on the updated data
+                const userIndex = sortedData.findIndex((entry) => entry.userId === loggedInUserId)
+                
+                if (userIndex >= 0) {
+                  const userEntry = sortedData[userIndex]
+                  
+                  // Get nearby players (2 above and 2 below)
+                  const startIndex = Math.max(0, userIndex - 2)
+                  const endIndex = Math.min(sortedData.length - 1, userIndex + 2)
+                  const nearbyPlayers = sortedData.slice(startIndex, endIndex + 1)
+                  
+                  setUserStats({
+                    rank: userIndex + 1,
+                    player: userEntry,
+                    nearbyPlayers,
+                  })
+                } else {
+                  setUserStats(null)
+                }
+                
+                return // Exit early as we've already set everything
+              }
+            } catch (userStreakError) {
+              console.error("Error fetching user streak:", userStreakError)
+              // Continue with the original streak data if we can't get the user's real streak
+            }
+          }
+          
+          // If we didn't exit early, set the original streak data
+          setStreakLeaderboard(streakData)
+          
+          // Calculate user stats if logged in
+          if (loggedInUserId) {
+            const userIndex = streakData.findIndex((entry: StreakEntry) => entry.userId === loggedInUserId)
+            
+            if (userIndex >= 0) {
+              const userEntry = streakData[userIndex]
+              
+              // Get nearby players (2 above and 2 below)
+              const startIndex = Math.max(0, userIndex - 2)
+              const endIndex = Math.min(streakData.length - 1, userIndex + 2)
+              const nearbyPlayers = streakData.slice(startIndex, endIndex + 1)
+              
+              setUserStats({
+                rank: userIndex + 1,
+                player: userEntry,
+                nearbyPlayers,
+              })
+            } else {
+              setUserStats(null)
+            }
+          }
+        } else {
+          processLeaderboardData() // Fall back to local generation
+        }
+      } else {
+        processLeaderboardData() // Fall back to local generation
+      }
+    } catch (error) {
+      console.error("Error fetching streak data:", error)
+      processLeaderboardData() // Fall back to local generation
     } finally {
       setLoading(false)
     }
-  }, [globalLeaderboard, loggedInUserId])
+  }, [timeFrame, loggedInUserId, processLeaderboardData])
 
   useEffect(() => {
-    processLeaderboardData()
-  }, [processLeaderboardData])
+    fetchStreakData()
+  }, [fetchStreakData])
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString()
+    try {
+      const date = new Date(dateString)
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        return "Recently"
+      }
+      // Format the date with time
+      return date.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } catch (error) {
+      return "Recently"
+    }
   }
 
   const formatStreak = (streak: number) => {
@@ -162,7 +291,7 @@ export default function StreakLeaderboard({  loggedInUserId, globalLeaderboard }
     )
   }
 
-  if (globalLeaderboard.length === 0) {
+  if (streakLeaderboard.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] p-6 text-center">
         <Flame className="h-12 w-12 text-muted-foreground mb-4" />
@@ -246,8 +375,8 @@ export default function StreakLeaderboard({  loggedInUserId, globalLeaderboard }
                         <span className="text-sm">{player.name}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Flame className={`h-3 w-3 ${getStreakColor(player.streak)}`} />
-                        <span className={`text-sm font-medium ${getStreakColor(player.streak)}`}>{player.streak}</span>
+                        <Trophy className="h-3 w-3 text-yellow-500" />
+                        <span className="text-sm font-medium">{player.longestStreak}</span>
                       </div>
                     </div>
                   </div>
@@ -299,7 +428,6 @@ export default function StreakLeaderboard({  loggedInUserId, globalLeaderboard }
                 <TableRow>
                   <TableHead className="w-20">Rank</TableHead>
                   <TableHead>Player</TableHead>
-                  <TableHead className="text-right">Current Streak</TableHead>
                   <TableHead className="text-right">Longest Streak</TableHead>
                   <TableHead className="text-right">Last Active</TableHead>
                 </TableRow>
@@ -327,14 +455,6 @@ export default function StreakLeaderboard({  loggedInUserId, globalLeaderboard }
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Flame className={`h-4 w-4 ${getStreakColor(entry.streak)}`} />
-                          <span className={`font-medium ${getStreakColor(entry.streak)}`}>
-                            {formatStreak(entry.streak)}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
                           <Trophy className="h-4 w-4 text-yellow-500" />
                           <span className="font-medium">{formatStreak(entry.longestStreak)}</span>
                         </div>
@@ -349,7 +469,7 @@ export default function StreakLeaderboard({  loggedInUserId, globalLeaderboard }
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
+                    <TableCell colSpan={4} className="text-center py-8">
                       <p className="text-muted-foreground">
                         {loading ? "Loading streak data..." : "No streak data available"}
                       </p>
@@ -364,4 +484,3 @@ export default function StreakLeaderboard({  loggedInUserId, globalLeaderboard }
     </div>
   )
 }
-

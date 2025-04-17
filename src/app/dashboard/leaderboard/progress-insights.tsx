@@ -3,6 +3,7 @@
 import { Card } from "@/components/ui/card"
 import { Info, TrendingUp, Users, Award, Target } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useEffect, useState } from "react"
 
 interface ProgressInsightsProps {
   userId: string | null
@@ -10,32 +11,43 @@ interface ProgressInsightsProps {
   specialty?: string
   targetExam?: string
   className?: string
+  rank?: number
+  totalUsers?: number
 }
 
-export default function ProgressInsights({ userId, score, specialty, targetExam, className = "" }: ProgressInsightsProps) {
-  // Mock insights data - in a real app, this would come from the backend
-  const generateInsights = () => {
-    if (!userId) return null
+export default function ProgressInsights({ 
+  userId, 
+  score, 
+  specialty, 
+  targetExam, 
+  className = "",
+  rank,
+  totalUsers
+}: ProgressInsightsProps) {
+  const [insights, setInsights] = useState<{
+    percentile: number;
+    usersBelow: number;
+    specialty?: string;
+    targetExam?: string;
+  } | null>(null)
+  
+  useEffect(() => {
+    // Only calculate insights if we have the necessary data
+    if (!userId || !rank || !totalUsers) return
     
-    // Generate percentile based on score (mock calculation)
-    const percentile = Math.min(Math.floor((score / 1000) * 100) + Math.floor(Math.random() * 15), 99)
+    // Calculate actual percentile based on rank and total users
+    const percentile = Math.round(((totalUsers - rank) / totalUsers) * 100)
     
-    // Generate improvement rate (mock data)
-    const improvementRate = Math.floor(Math.random() * 30) + 5
+    // Calculate how many users are below the current user
+    const usersBelow = totalUsers - rank
     
-    // Generate streak consistency (mock data)
-    const streakConsistency = Math.floor(Math.random() * 40) + 60
-    
-    return {
+    setInsights({
       percentile,
-      improvementRate,
-      streakConsistency,
+      usersBelow,
       specialty,
       targetExam
-    }
-  }
-  
-  const insights = generateInsights()
+    })
+  }, [userId, rank, totalUsers, specialty, targetExam])
   
   if (!insights) {
     return null
@@ -46,7 +58,7 @@ export default function ProgressInsights({ userId, score, specialty, targetExam,
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium flex items-center gap-1.5">
           <TrendingUp className="h-4 w-4 text-primary" />
-          Personal Insights
+          Performance Insights
         </h3>
         <TooltipProvider>
           <Tooltip>
@@ -57,7 +69,7 @@ export default function ProgressInsights({ userId, score, specialty, targetExam,
             </TooltipTrigger>
             <TooltipContent side="top">
               <p className="text-xs max-w-[200px]">
-                Insights are based on your performance compared to other users with similar goals and specialties.
+                Insights are based on your current ranking compared to other users.
               </p>
             </TooltipContent>
           </Tooltip>
@@ -77,30 +89,45 @@ export default function ProgressInsights({ userId, score, specialty, targetExam,
             </div>
           </div>
           
-          <div className="flex items-start gap-2">
-            <TrendingUp className="h-4 w-4 text-green-500 mt-0.5" />
-            <div>
-              <p className="text-sm">
-                Your score has improved by <span className="font-medium text-green-500">{insights.improvementRate}%</span> in the last 30 days.
-              </p>
+          {insights.usersBelow > 0 && (
+            <div className="flex items-start gap-2">
+              <Users className="h-4 w-4 text-blue-500 mt-0.5" />
+              <div>
+                <p className="text-sm">
+                  You&apos;re performing better than <span className="font-medium">{insights.usersBelow}</span> {insights.usersBelow === 1 ? 'user' : 'users'}.
+                </p>
+              </div>
             </div>
-          </div>
+          )}
           
-          <div className="flex items-start gap-2">
-            <Award className="h-4 w-4 text-amber-500 mt-0.5" />
-            <div>
-              <p className="text-sm">
-                Your study consistency is <span className="font-medium">{insights.streakConsistency}%</span>, better than average.
-              </p>
+          {rank && (
+            <div className="flex items-start gap-2">
+              <Award className="h-4 w-4 text-amber-500 mt-0.5" />
+              <div>
+                <p className="text-sm">
+                  Your current rank is <span className="font-medium">#{rank}</span> out of {totalUsers} users.
+                </p>
+              </div>
             </div>
-          </div>
+          )}
+          
+          {score > 0 && (
+            <div className="flex items-start gap-2">
+              <TrendingUp className="h-4 w-4 text-green-500 mt-0.5" />
+              <div>
+                <p className="text-sm">
+                  Your total score is <span className="font-medium text-green-500">{score}</span> points.
+                </p>
+              </div>
+            </div>
+          )}
           
           {insights.targetExam && (
             <div className="flex items-start gap-2">
               <Target className="h-4 w-4 text-blue-500 mt-0.5" />
               <div>
                 <p className="text-sm">
-                  Based on your progress, you&apos;re on track for your <span className="font-medium">{insights.targetExam}</span> preparation.
+                  Your focus area is <span className="font-medium">{insights.targetExam}</span>.
                 </p>
               </div>
             </div>
