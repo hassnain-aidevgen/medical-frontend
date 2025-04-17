@@ -56,6 +56,7 @@ type TestSummaryProps = {
   examDate?: string
   isRecommendedTest?: boolean
 }
+
 const TestSummary: React.FC<TestSummaryProps> = ({
   questions,
   selectedAnswers,
@@ -100,6 +101,40 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     if (!examType) return ""
     return examType.replace("_", " ").replace(/USMLE/g, "USMLE ").trim()
   }
+
+  // Function to track user performance using our new schema
+  const trackUserPerformance = async (userId: string) => {
+    try {
+      console.log("Tracking user performance...");
+      
+      // Prepare data to send to the API
+      const performanceData = {
+        userId,
+        questions,
+        selectedAnswers
+      };
+      
+      // Send performance data to the API
+      const response = await axios.post(
+        "http://localhost:5000/api/test/update-performance", 
+        performanceData,
+        {
+          headers: { "Content-Type": "application/json" }
+        }
+      );
+      
+      if (response.status === 200) {
+        console.log("Performance data saved successfully:", response.data.message);
+        return true;
+      } else {
+        console.error("Failed to save performance data:", response.data);
+        return false;
+      }
+    } catch (err) {
+      console.error("Error tracking user performance:", err);
+      return false;
+    }
+  };
 
   // Fetch AI feedback when component mounts
   useEffect(() => {
@@ -146,210 +181,142 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     }
   }, [questions, selectedAnswers, questionTimes, score, totalTime, percentage, isAIGenerated, aiTopic, targetExam])
 
-  // const handleSubmitResults = async () => {
-  //   setLoading(true)
-  //   setError(null)
+  const handleSubmitResults = async () => {
+    setLoading(true);
+    setError(null);
 
-  //   const userId = localStorage.getItem("Medical_User_Id")
+    const userId = localStorage.getItem("Medical_User_Id");
+    console.log("Processing questions for submission...");
 
-  //   // Create enhanced questions objects with all necessary data
-  //   const enhancedQuestions = questions.map((q, index) => ({
-  //     questionId: q._id,
-  //     questionText: q.question,
-  //     correctAnswer: q.answer,
-  //     userAnswer: selectedAnswers[index] || "",
-  //     timeSpent: questionTimes[index] || 0,
-  //     // Include additional metadata
-  //     subject: q.subject || "",
-  //     subjectName: q.subjectName || q.subjectDisplay || "",
-  //     subsection: q.subsection || "",
-  //     subsectionName: q.subsectionName || q.subsectionDisplay || "",
-  //     exam_type: q.exam_type || "",
-  //     difficulty: q.difficulty || "",
-  //     topic: q.topic || ""
-  //   }));
-
-  //   // Create test data object with enhanced questions
-  //   const testData = {
-  //     userId,
-  //     questions: enhancedQuestions,
-  //     score,
-  //     totalTime,
-  //     percentage,
-  //     isRecommendedTest: isRecommendedTest || false,
-  //     targetExam: targetExam || "",
-  //     examDate: examDate || ""
-  //   };
-
-  //   console.log("Submitting test data with enhanced questions:", testData);
-
-  //   try {
-  //     const response = await axios.post(
-  //       "https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test/v2", 
-  //       testData, 
-  //       {
-  //         headers: { "Content-Type": "application/json" },
-  //       }
-  //     );
-
-  //     if (response.status !== 201) {
-  //       throw new Error("Failed to submit test results");
-  //     }
-
-  //     // After successfully saving test data, update the streak
-  //     if (userId) {
-  //       try {
-  //         await axios.post(`https://medical-backend-loj4.onrender.com/api/test/update-streak/${userId}`);
-  //         console.log("Test streak updated successfully");
-  //       } catch (streakError) {
-  //         // Don't fail the entire process if streak update fails
-  //         console.error("Error updating streak:", streakError);
-  //       }
-  //     }
-
-  //     toast.success("Test Saved Successfully! 🎉");
-
-  //     setTimeout(() => {
-  //       router.push("/dashboard");
-  //     }, 4500);
-  //   } catch (err) {
-  //     console.error("Error submitting test results:", err);
-  //     setError(err instanceof Error ? err.message : "An unexpected error occurred.");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-
-// In TestSummary.jsx, replace the handleSubmitResults function with this updated version:
-
-const handleSubmitResults = async () => {
-  setLoading(true);
-  setError(null);
-
-  const userId = localStorage.getItem("Medical_User_Id");
-  console.log("Processing questions for submission...");
-
-  let testData = null;
-  
-  // Log raw question data to debug
-  console.log("Raw questions data:", JSON.stringify(questions.slice(0, 1), null, 2));
-  
-  if (isAIGenerated) {
-    // For AI-generated tests
-    const formattedQuestions = questions.map((q, index) => {
-      console.log(`Processing AI question ${index}:`, q._id);
-      return {
-        questionId: q._id || `ai${Date.now()}${index}`,
-        questionText: q.question,
-        correctAnswer: q.answer,
-        userAnswer: selectedAnswers[index] || "",
-        timeSpent: questionTimes[index] || 0,
-        // Add these fields even for AI-generated questions
-        subject: "AI Generated",
-        subjectName: "AI Generated",
-        subsection: aiTopic || "Custom Topic",
-        subsectionName: aiTopic || "Custom Topic",
-        exam_type: targetExam || "",
-        difficulty: "medium",
-        topic: aiTopic || "Custom Topic"
-      };
-    });
+    let testData = null;
     
-    testData = {
-      userId,
-      questions: formattedQuestions,
-      score,
-      totalTime,
-      percentage,
-      isRecommendedTest: false,
-      targetExam: targetExam || "",
-      examDate: examDate || ""
-    };
-  } else {
-    // For regular tests
-    const formattedQuestions = questions.map((q, index) => {
-      // Log what we're processing for debugging
-      console.log(`Processing regular question ${index}:`, {
-        id: q._id,
-        subject: q.subject,
-        subjectName: q.subjectName || q.subjectDisplay,
-        subsection: q.subsection,
-        subsectionName: q.subsectionName || q.subsectionDisplay
+    // Log raw question data to debug
+    console.log("Raw questions data:", JSON.stringify(questions.slice(0, 1), null, 2));
+    
+    if (isAIGenerated) {
+      // For AI-generated tests
+      const formattedQuestions = questions.map((q, index) => {
+        console.log(`Processing AI question ${index}:`, q._id);
+        return {
+          questionId: q._id || `ai${Date.now()}${index}`,
+          questionText: q.question,
+          correctAnswer: q.answer,
+          userAnswer: selectedAnswers[index] || "",
+          timeSpent: questionTimes[index] || 0,
+          // Add these fields even for AI-generated questions
+          subject: "AI Generated",
+          subjectName: "AI Generated",
+          subsection: aiTopic || "Custom Topic",
+          subsectionName: aiTopic || "Custom Topic",
+          exam_type: targetExam || "",
+          difficulty: "medium",
+          topic: aiTopic || "Custom Topic"
+        };
       });
       
-      return {
-        questionId: q._id,
-        questionText: q.question,
-        correctAnswer: q.answer,
-        userAnswer: selectedAnswers[index] || "",
-        timeSpent: questionTimes[index] || 0,
-        // Convert fields to strings to ensure they're saved properly
-        subject: typeof q.subject === 'object' ? JSON.stringify(q.subject) : String(q.subject || ""),
-        subjectName: String(q.subjectDisplay || q.subjectName || "Unknown Subject"),
-        subsection: typeof q.subsection === 'object' ? JSON.stringify(q.subsection) : String(q.subsection || ""),
-        subsectionName: String(q.subsectionDisplay || q.subsectionName || "Unknown Topic"),
-        exam_type: String(q.exam_type || ""),
-        difficulty: String(q.difficulty || "medium"),
-        topic: String(q.topic || "")
+      testData = {
+        userId,
+        questions: formattedQuestions,
+        score,
+        totalTime,
+        percentage,
+        isRecommendedTest: false,
+        targetExam: targetExam || "",
+        examDate: examDate || ""
       };
-    });
+    } else {
+      // For regular tests
+      const formattedQuestions = questions.map((q, index) => {
+        // Log what we're processing for debugging
+        console.log(`Processing regular question ${index}:`, {
+          id: q._id,
+          subject: q.subject,
+          subjectName: q.subjectName || q.subjectDisplay,
+          subsection: q.subsection,
+          subsectionName: q.subsectionName || q.subsectionDisplay
+        });
+        
+        return {
+          questionId: q._id,
+          questionText: q.question,
+          correctAnswer: q.answer,
+          userAnswer: selectedAnswers[index] || "",
+          timeSpent: questionTimes[index] || 0,
+          // Convert fields to strings to ensure they're saved properly
+          subject: typeof q.subject === 'object' ? JSON.stringify(q.subject) : String(q.subject || ""),
+          subjectName: String(q.subjectDisplay || q.subjectName || "Unknown Subject"),
+          subsection: typeof q.subsection === 'object' ? JSON.stringify(q.subsection) : String(q.subsection || ""),
+          subsectionName: String(q.subsectionDisplay || q.subsectionName || "Unknown Topic"),
+          exam_type: String(q.exam_type || ""),
+          difficulty: String(q.difficulty || "medium"),
+          topic: String(q.topic || "")
+        };
+      });
+      
+      testData = {
+        userId,
+        questions: formattedQuestions,
+        score,
+        totalTime,
+        percentage,
+        isRecommendedTest: isRecommendedTest || false,
+        targetExam: targetExam || "",
+        examDate: examDate || ""
+      };
+    }
     
-    testData = {
-      userId,
-      questions: formattedQuestions,
-      score,
-      totalTime,
-      percentage,
-      isRecommendedTest: isRecommendedTest || false,
-      targetExam: targetExam || "",
-      examDate: examDate || ""
-    };
-  }
-  
-  // Debug log the first question to verify structure
-  if (testData.questions.length > 0) {
-    console.log("First formatted question sample:", JSON.stringify(testData.questions[0], null, 2));
-  }
-  
-  try {
-    console.log("Submitting test data to API...");
-    const response = await axios.post(
-      "http://localhost:5000/api/test/take-test/submit-test/v2", 
-      testData, 
-      {
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-
-    if (response.status !== 201) {
-      throw new Error("Failed to submit test results");
+    // Debug log the first question to verify structure
+    if (testData.questions.length > 0) {
+      console.log("First formatted question sample:", JSON.stringify(testData.questions[0], null, 2));
     }
+    
+    try {
+      console.log("Submitting test data to API...");
+      const response = await axios.post(
+        "http://localhost:5000/api/test/take-test/submit-test/v2", 
+        testData, 
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
 
-    console.log("Test submission successful:", response.data);
-
-    // After successfully saving test data, update the streak
-    if (userId) {
-      try {
-        await axios.post(`https://medical-backend-loj4.onrender.com/api/test/update-streak/${userId}`);
-        console.log("Test streak updated successfully");
-      } catch (streakError) {
-        console.error("Error updating streak:", streakError);
+      if (response.status !== 201) {
+        throw new Error("Failed to submit test results");
       }
+
+      console.log("Test submission successful:", response.data);
+
+      // After test submission is successful, track user performance
+      if (userId) {
+        try {
+          console.log("Tracking user performance data...");
+          await trackUserPerformance(userId);
+        } catch (performanceError) {
+          // Don't fail the entire submission if performance tracking fails
+          console.error("Error tracking performance:", performanceError);
+        }
+        
+        // Update the streak
+        try {
+          await axios.post(`https://medical-backend-loj4.onrender.com/api/test/update-streak/${userId}`);
+          console.log("Test streak updated successfully");
+        } catch (streakError) {
+          console.error("Error updating streak:", streakError);
+        }
+      }
+
+      toast.success("Test Saved Successfully! 🎉");
+
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 4500);
+    } catch (err) {
+      console.error("Error submitting test results:", err);
+      setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+    } finally {
+      setLoading(false);
     }
-
-    toast.success("Test Saved Successfully! 🎉");
-
-    setTimeout(() => {
-      router.push("/dashboard");
-    }, 4500);
-  } catch (err) {
-    console.error("Error submitting test results:", err);
-    setError(err instanceof Error ? err.message : "An unexpected error occurred.");
-  } finally {
-    setLoading(false);
   }
-}
 
   return (
     <div className="container mx-auto px-4 py-8">

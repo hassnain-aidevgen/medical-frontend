@@ -81,6 +81,29 @@ interface TopicMasteryData {
   isQuestPriority?: boolean
 }
 
+// Interface for performance data from the database
+interface SubjectPerformanceData {
+  subjectId: string;
+  subjectName: string;
+  subsections: {
+    subsectionId: string;
+    subsectionName: string;
+    performance: {
+      correctCount: number;
+      incorrectCount: number;
+      totalCount: number;
+      lastAttempted: string;
+    };
+  }[];
+  lastUpdated: string;
+}
+
+interface UserPerformanceData {
+  userId: string;
+  subjects: SubjectPerformanceData[];
+  lastUpdated: string;
+}
+
 // Update the component definition
 const PlannerForm: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<number>(1)
@@ -233,6 +256,26 @@ const PlannerForm: React.FC = () => {
     return subjectColors[subject] || "#3B82F6"
   }
 
+  // Function to fetch performance data from our new API endpoint
+  const fetchUserPerformanceData = async () => {
+    const userId = localStorage.getItem("Medical_User_Id");
+    if (!userId) return null;
+
+    try {
+      const response = await axios.get(`http://localhost:5000/api/test/get-performance/${userId}`);
+      
+      if (response.data.success) {
+        return response.data.data as UserPerformanceData;
+      } else {
+        console.error("Failed to fetch performance data:", response.data.message);
+        return null;
+      }
+    } catch (error) {
+      console.error("Error fetching performance data:", error);
+      return null;
+    }
+  };
+
   // Fetch performance data (weak topics) from the API
   const fetchPerformanceData = async () => {
     const userId = localStorage.getItem("Medical_User_Id")
@@ -241,15 +284,99 @@ const PlannerForm: React.FC = () => {
     setIsLoadingPerformanceData(true)
 
     try {
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/topic-mastery-v2/${userId}`)
-
-      if (response.data && response.data.weakestTopics) {
-        setWeakTopics(response.data.weakestTopics)
+      // First try to get data from our new endpoint
+      const performanceData = await fetchUserPerformanceData();
+      
+      if (!performanceData || !performanceData.subjects || performanceData.subjects.length === 0) {
+        // Fall back to the legacy endpoint if no data from new one
+        const legacyResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/topic-mastery-v2/${userId}`);
+        if (legacyResponse.data && legacyResponse.data.weakestTopics) {
+          setWeakTopics(legacyResponse.data.weakestTopics);
+        }
+        return;
       }
+      
+      // Process the performance data to identify strong and weak subjects
+      const processedTopics: TopicMasteryData[] = [];
+      const strongSubjectsArray: string[] = [];
+      const weakSubjectsArray: string[] = [];
+      
+      // Process subjects
+      performanceData.subjects.forEach(subject => {
+        let totalCorrect = 0;
+        let totalIncorrect = 0;
+        let totalQuestions = 0;
+        
+        // Calculate subject-level totals
+        subject.subsections.forEach(subsection => {
+          totalCorrect += subsection.performance.correctCount;
+          totalIncorrect += subsection.performance.incorrectCount;
+          totalQuestions += subsection.performance.totalCount;
+        });
+        
+        // Only consider subjects with at least 3 questions
+        if (totalQuestions >= 3) {
+          const accuracyPercent = (totalCorrect / totalQuestions) * 100;
+          
+          // Determine mastery level
+          let masteryLevel = "Intermediate";
+          if (accuracyPercent >= 70) {
+            masteryLevel = "Advanced";
+            strongSubjectsArray.push(subject.subjectName);
+          } else if (accuracyPercent < 50) {
+            masteryLevel = "Beginner";
+            weakSubjectsArray.push(subject.subjectName);
+          }
+          
+          // Add to processed topics list
+          processedTopics.push({
+            name: subject.subjectName,
+            masteryScore: accuracyPercent,
+            masteryLevel: masteryLevel,
+            isQuestPriority: accuracyPercent < 50
+          });
+          
+          // Add subsections as topics
+          subject.subsections.forEach(subsection => {
+            if (subsection.performance.totalCount >= 2) {
+              const subsectionAccuracy = (subsection.performance.correctCount / subsection.performance.totalCount) * 100;
+              let subsectionMasteryLevel = "Intermediate";
+              
+              if (subsectionAccuracy < 50) {
+                subsectionMasteryLevel = "Beginner";
+                // Add weak subsections to weak topics
+                processedTopics.push({
+                  name: `${subject.subjectName}: ${subsection.subsectionName}`,
+                  masteryScore: subsectionAccuracy,
+                  masteryLevel: subsectionMasteryLevel,
+                  isQuestPriority: true
+                });
+              }
+            }
+          });
+        }
+      });
+      
+      // Sort by mastery score (ascending, so weakest first)
+      processedTopics.sort((a, b) => a.masteryScore - b.masteryScore);
+      
+      // Update state
+      setWeakTopics(processedTopics.filter(topic => topic.masteryLevel === "Beginner"));
+      
+      // Update form data with strong and weak subjects
+      setFormData(prev => ({
+        ...prev,
+        strongSubjects: strongSubjectsArray,
+        weakSubjects: weakSubjectsArray,
+        weakTopics: processedTopics
+          .filter(topic => topic.masteryLevel === "Beginner")
+          .map(topic => topic.name)
+      }));
+      
     } catch (error) {
-      console.error("Error fetching performance data:", error)
+      console.error("Error fetching performance data:", error);
     } finally {
-      setIsLoadingPerformanceData(false)
+      setIsLoadingPerformanceData(false);
     }
   }
 
@@ -901,7 +1028,7 @@ const PlannerForm: React.FC = () => {
               Subject Assessment
             </h2>
 
-            {/* New Performance Data Integration Section */}
+            {/* Performance Data Integration Section */}
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
               <div className="flex items-start">
                 <div
@@ -928,22 +1055,24 @@ const PlannerForm: React.FC = () => {
                       className="mt-3 bg-white p-3 rounded-md border border-blue-200"
                     >
                       <h4 className="font-medium text-sm text-gray-700 mb-2">
-                        Detected weak topics from your performance:
+                        Detected weak topics from your performance data:
                       </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                         {weakTopics.map((topic, index) => (
                           <div key={index} className="flex items-center text-sm">
                             <div
                               className={`w-2 h-2 rounded-full mr-2 ${
-                                topic.masteryLevel === "Beginner"
+                                topic.masteryScore < 30
                                   ? "bg-red-500"
-                                  : topic.masteryLevel === "Intermediate"
-                                    ? "bg-yellow-500"
-                                    : "bg-blue-500"
+                                  : topic.masteryScore < 50
+                                  ? "bg-orange-500"
+                                  : "bg-yellow-500"
                               }`}
                             ></div>
                             <span>{topic.name}</span>
-                            <span className="ml-1 text-xs text-gray-500">({topic.masteryScore}%)</span>
+                            <span className="ml-1 text-xs text-gray-500">
+                              ({Math.round(topic.masteryScore)}%)
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -1402,6 +1531,7 @@ const PlannerForm: React.FC = () => {
           <div className="h-4 bg-gray-200 rounded w-3/4"></div>
           <div className="h-4 bg-gray-200 rounded"></div>
           <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
           <div className="h-4 bg-gray-200 rounded w-2/3"></div>
         </div>
       </motion.div>
@@ -1650,3 +1780,4 @@ const PlannerForm: React.FC = () => {
 }
 
 export default PlannerForm
+                      

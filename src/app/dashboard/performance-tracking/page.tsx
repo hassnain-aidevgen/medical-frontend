@@ -142,7 +142,26 @@ interface ComparativeAnalytics {
     timeEfficiency: number
   } | null
 }
-
+interface SubjectPerformanceData {
+  subjectId: string;
+  subjectName: string;
+  subsections: {
+    subsectionId: string;
+    subsectionName: string;
+    performance: {
+      correctCount: number;
+      incorrectCount: number;
+      totalCount: number;
+      lastAttempted: string;
+    };
+  }[];
+  lastUpdated: string;
+}
+interface UserPerformanceData {
+  userId: string;
+  subjects: SubjectPerformanceData[];
+  lastUpdated: string;
+}
 interface TopicMasteryMetrics {
   topics: {
     name: string
@@ -336,6 +355,13 @@ export default function AnalyticsDashboard() {
   const [performanceData, setPerformanceData] = useState<TestResult[]>([])
   const [statsData, setStatsData] = useState<StatsData | null>(null)
   const [comparativeData, setComparativeData] = useState<ComparativeAnalytics | null>(null)
+  const [userPerformanceData, setUserPerformanceData] = useState<UserPerformanceData | null>(null);
+const [userWeakSubjects, setUserWeakSubjects] = useState<{
+  subjectName: string;
+  subsectionName: string;
+  accuracy: number;
+  totalQuestions: number;
+}[]>([]);
   const [topicMasteryData, setTopicMasteryData] = useState<TopicMasteryMetrics | null>(null)
   const [loading, setLoading] = useState({
     performance: true,
@@ -370,7 +396,72 @@ export default function AnalyticsDashboard() {
   const [viewAllQuestions, setViewAllQuestions] = useState(false)
   const [selectedTestIndex, setSelectedTestIndex] = useState<number | null>(null)
   const [targetExam] = useState<string | null>(null)
-
+  const fetchWeakSubjects = async (userId: string) => {
+    try {
+      // Fetch performance data from your new endpoint
+      const response = await axios.get(`http://localhost:5000/api/test/get-performance/${userId}`);
+      
+      if (response.data.success && response.data.data) {
+        setUserPerformanceData(response.data.data);
+        
+        // Process the data to extract weak subjects and subsections
+        const weakSubjectsData = [];
+        const subjects = response.data.data.subjects || [];
+        
+        // Process each subject
+        for (const subject of subjects) {
+          let totalCorrect = 0;
+          let totalIncorrect = 0;
+          let totalQuestions = 0;
+          
+          // Calculate subject-level totals from subsections
+          subject.subsections.forEach((subsection: { performance: { correctCount: number; incorrectCount: number; totalCount: number }; subsectionName: string }) => {
+            totalCorrect += subsection.performance.correctCount;
+            totalIncorrect += subsection.performance.incorrectCount;
+            totalQuestions += subsection.performance.totalCount;
+          });
+          
+          // Calculate accuracy percentage
+          const accuracy = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0;
+          
+          // Add subject to weak subjects list if accuracy is below 50% and has at least 3 attempts
+          if (accuracy < 50 && totalQuestions >= 3) {
+            weakSubjectsData.push({
+              subjectName: subject.subjectName,
+              subsectionName: "",
+              accuracy: accuracy,
+              totalQuestions: totalQuestions
+            });
+          }
+          
+          // Add individual weak subsections (topics)
+          subject.subsections.forEach((subsection: { performance: { correctCount: number; incorrectCount: number; totalCount: number }; subsectionName: string }) => {
+            if (subsection.performance.totalCount >= 2) {
+              const subsectionAccuracy = subsection.performance.totalCount > 0 
+                ? (subsection.performance.correctCount / subsection.performance.totalCount) * 100 
+                : 0;
+                
+              if (subsectionAccuracy < 50) {
+                weakSubjectsData.push({
+                  subjectName: subject.subjectName,
+                  subsectionName: subsection.subsectionName,
+                  accuracy: subsectionAccuracy,
+                  totalQuestions: subsection.performance.totalCount
+                });
+              }
+            }
+          });
+        }
+        
+        // Sort by accuracy (ascending)
+        weakSubjectsData.sort((a, b) => a.accuracy - b.accuracy);
+        setUserWeakSubjects(weakSubjectsData);
+      }
+    } catch (error) {
+      console.error("Error fetching weak subjects:", error);
+    }
+  };
+// ye wali
   useEffect(() => {
     const fetchData = async () => {
       const userId = localStorage.getItem("Medical_User_Id")
@@ -428,6 +519,7 @@ export default function AnalyticsDashboard() {
         } finally {
           setLoading((prev) => ({ ...prev, topicMastery: false }))
         }
+        await fetchWeakSubjects(userId);
         setShareUrl("")
       } catch (err) {
         console.error("Error fetching data:", err)
@@ -447,6 +539,7 @@ export default function AnalyticsDashboard() {
 
     fetchData()
   }, [])
+  
 
   const generatePDF = async () => {
     if (!dashboardRef.current) return
@@ -1597,80 +1690,130 @@ export default function AnalyticsDashboard() {
                 className="lg:col-span-3"
               >
                 <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Zap className="h-5 w-5 text-blue-500" />
-                      Personalized Study Recommendations
-                    </CardTitle>
-                    <CardDescription>
-                      Based on your performance data, we recommend focusing on these areas
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {topicMasteryData?.recommendations.map((rec, index) => (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: 0.2 + index * 0.1 }}
-                          className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm"
-                        >
-                          <div className="flex items-start gap-3">
-                            <div
-                              className={`p-2 rounded-full 
-                              ${
-                                rec.masteryLevel === "Expert"
-                                  ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
-                                  : rec.masteryLevel === "Advanced"
-                                    ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-                                    : rec.masteryLevel === "Intermediate"
-                                      ? "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                      : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                              }`}
-                            >
-                              {getMasteryIcon(rec.masteryLevel)}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-medium">{rec.topic}</h3>
-                                {rec.isQuestPriority && (
-                                  <Badge
-                                    variant="outline"
-                                    className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs"
-                                  >
-                                    Quest
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground mt-1">{rec.recommendation}</p>
-                            </div>
-                          </div>
-                          <div className="mt-3">
-                            <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                              <span>Current Mastery</span>
-                              <span>{rec.masteryScore}%</span>
-                            </div>
-                            <Progress
-                              value={rec.masteryScore}
-                              className={`h-2 ${
-                                rec.masteryLevel === "Expert"
-                                  ? "bg-green-500"
-                                  : rec.masteryLevel === "Advanced"
-                                    ? "bg-blue-500"
-                                    : rec.masteryLevel === "Intermediate"
-                                      ? "bg-yellow-500"
-                                      : "bg-red-500"
-                              }`}
-                            />
-                          </div>
-                          <Button variant="ghost" size="sm" className="w-full mt-3">
-                            Study This Topic
-                          </Button>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </CardContent>
+                  
+                  <motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.5, delay: 0.1 }}
+  className="lg:col-span-3"
+>
+  <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2">
+        <Zap className="h-5 w-5 text-blue-500" />
+        Personalized Study Recommendations
+      </CardTitle>
+      <CardDescription>
+        Based on your performance data, we recommend focusing on these areas
+      </CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {userWeakSubjects.length > 0 ? (
+          userWeakSubjects.slice(0, 6).map((subject, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.2 + index * 0.1 }}
+              className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm"
+            >
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                  <AlertTriangle className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-medium">{subject.subjectName}</h3>
+                    {subject.subsectionName && (
+                      <Badge
+                        variant="outline"
+                        className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs"
+                      >
+                        Topic
+                      </Badge>
+                    )}
+                  </div>
+                  {subject.subsectionName && (
+                    <p className="text-sm font-medium text-muted-foreground mt-1">
+                      {subject.subsectionName}
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {subject.accuracy < 30 
+                      ? "Needs significant improvement. Focus on fundamentals."
+                      : subject.accuracy < 50 
+                        ? "Requires more practice and review of core concepts."
+                        : "Continue practicing to strengthen your knowledge."}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                  <span>Current Mastery</span>
+                  <span>{subject.accuracy.toFixed(1)}%</span>
+                </div>
+                <Progress
+                  value={subject.accuracy}
+                  className={`h-2 ${
+                    subject.accuracy >= 70
+                      ? "bg-green-500"
+                      : subject.accuracy >= 50
+                        ? "bg-yellow-500"
+                        : subject.accuracy >= 30
+                          ? "bg-orange-500"
+                          : "bg-red-500"
+                  }`}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Based on {subject.totalQuestions} questions
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" className="w-full mt-3">
+                Study This Topic
+              </Button>
+            </motion.div>
+          ))
+        ) : loading.performance || loading.stats ? (
+          // Show skeleton loaders while loading
+          Array(6)
+            .fill(0)
+            .map((_, index) => (
+              <div key={index} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+                <div className="flex items-start gap-3">
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-5/6" />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <div className="flex justify-between mb-1">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-3 w-8" />
+                  </div>
+                  <Skeleton className="h-2 w-full" />
+                </div>
+                <div className="mt-3">
+                  <Skeleton className="h-8 w-full rounded-md" />
+                </div>
+              </div>
+            ))
+        ) : (
+          // No weak subjects found
+          <div className="col-span-full flex flex-col items-center justify-center py-6">
+            <BookOpen className="h-12 w-12 text-muted-foreground mb-2" />
+            <h3 className="text-lg font-medium">No weak areas identified yet</h3>
+            <p className="text-sm text-muted-foreground text-center mt-1">
+              Take more tests to help us identify areas where you need improvement.
+            </p>
+          </div>
+        )}
+      </div>
+    </CardContent>
+  </Card>
+</motion.div>
                 </Card>
               </motion.div>
 
