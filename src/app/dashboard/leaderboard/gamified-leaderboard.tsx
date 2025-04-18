@@ -581,7 +581,7 @@ export default function GamifiedLeaderboard() {
                 specialty={activeTab === "specialty" ? selectedSpecialty || undefined : undefined}
                 targetExam={targetExam || undefined}
                 rank={currentUserStats.rank}
-                totalUsers={leaderboardData[activeTab].length}
+                totalUsers={["weekly", "monthly", "all-time"].includes(activeTab as "weekly" | "monthly" | "all-time") ? leaderboardData[activeTab as "weekly" | "monthly" | "all-time"].length : 0}
               />
             )}
 

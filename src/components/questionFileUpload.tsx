@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import axios from "axios"
 import { Info } from "lucide-react"
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toast, Toaster } from "react-hot-toast"
 
 const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test"
@@ -21,6 +21,23 @@ const QuestionFileUpload: React.FC = () => {
     const [file, setFile] = useState<File | null>(null)
     const [errors, setErrors] = useState<UploadError[]>([])
     const [isUploading, setIsUploading] = useState(false)
+    const [examTypes, setExamTypes] = useState<string[]>([])
+
+    useEffect(() => {
+        // Fetch exam types when component mounts
+        const fetchExamTypes = async () => {
+          try {
+            const response = await axios.get("https://medical-backend-loj4.onrender.com/api/test/exam-types")
+            if (response.data && Array.isArray(response.data.examTypes)) {
+              setExamTypes(response.data.examTypes)
+            }
+          } catch (error) {
+            console.error("Error fetching exam types:", error)
+          }
+        }
+        
+        fetchExamTypes()
+      }, [])
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = event.target.files?.[0]
@@ -71,7 +88,7 @@ const QuestionFileUpload: React.FC = () => {
       "system": "System Name",
       "topic": "Topic Name",
       "subtopics": ["Subtopic 1", "Subtopic 2"],
-      "exam_type": "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3",
+      "exam_type": ${examTypes.map(type => `"${type}"`).join(" | ")},
       "year": 2023,
       "difficulty": "easy" | "medium" | "hard",
       "specialty": "Specialty Name",

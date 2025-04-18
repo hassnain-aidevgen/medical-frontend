@@ -10,10 +10,11 @@ import { Textarea } from "@/components/ui/textarea"
 import axios from "axios"
 import { Plus, Save, Trash2 } from "lucide-react"
 import type React from "react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { toast, Toaster } from "react-hot-toast"
+import AddExamTypeDialog from "./AddExamType"
 
-const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test"
+const API_BASE_URL = "http://localhost:5000/api/test"
 
 const EXAM_TYPES = ["USMLE_STEP1", "USMLE_STEP2", "USMLE_STEP3"] as const
 const DIFFICULTY_LEVELS = ["easy", "medium", "hard"] as const
@@ -85,6 +86,7 @@ export default function CombinedQuestionForm() {
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [errors, setErrors] = useState<ValidationError[]>([])
     const [touched, setTouched] = useState<Set<string>>(new Set())
+    const [examTypes, setExamTypes] = useState<string[]>([])
 
     useEffect(() => {
         const fetchSubjects = async () => {
@@ -98,6 +100,47 @@ export default function CombinedQuestionForm() {
         }
         fetchSubjects()
     }, [])
+
+    const fetchExamTypes = useCallback(async () => {
+        try {
+            const { data } = await axios.get("http://localhost:5000/api/exam-type/exam-types")
+            if (data && Array.isArray(data.examTypes)) {
+                // Ensure we always have the ALL_USMLE_TYPES option first
+                const allTypes: string[] = []
+
+                // Add the fetched exam types, filtering out duplicates
+                data.examTypes.forEach((type: string) => {
+                    if (!allTypes.includes(type)) {
+                        allTypes.push(type)
+                    }
+                })
+
+                setExamTypes(allTypes)
+            }
+        } catch (error) {
+            console.error("Error fetching exam types:", error)
+        }
+    }, [])
+
+    const handleExamTypeAdded = (newExamType: { name: string }) => {
+        if (newExamType && newExamType.name) {
+          setExamTypes(prev => {
+            if (prev.includes(newExamType.name)) return prev
+            return [...prev, newExamType.name]
+          })
+          toast.success(`Exam type ${newExamType.name} added successfully!`)
+          
+          // Clear any existing errors that might have been triggered
+          setErrors([])
+        }
+      }
+
+    useEffect(() => {
+        fetchExamTypes() // Add this line to fetch exam types
+
+        // Other existing code in this useEffect
+    }, [fetchExamTypes])
+
 
     useEffect(() => {
         const fetchSubsections = async () => {
@@ -169,13 +212,14 @@ export default function CombinedQuestionForm() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        e.stopPropagation()
         setIsSubmitting(true)
 
         const validationErrors = validateForm()
         if (validationErrors.length > 0) {
             setErrors(validationErrors)
             setIsSubmitting(false)
-            toast.error("Please fix the validation errors")
+            // toast.error("Please fix the validation errors")
             return
         }
 
@@ -354,24 +398,28 @@ export default function CombinedQuestionForm() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor={`exam_type-${questionIndex}`}>Exam Type</Label>
-                                    <Select
-                                        value={question.exam_type}
-                                        onValueChange={(value) =>
-                                            updateQuestion(questionIndex, "exam_type", value as (typeof EXAM_TYPES)[number])
-                                        }
-                                    >
-                                        <SelectTrigger className={getFieldError(`exam_type-${questionIndex}`) ? "border-red-500" : ""}>
-                                            <SelectValue placeholder="Select exam type" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {EXAM_TYPES.map((type) => (
-                                                <SelectItem key={type} value={type}>
-                                                    {type}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    {/* <Label htmlFor={`exam_type-${questionIndex}`}>Exam Type </Label> */}
+                                    <div>
+                                        <div className="flex gap-1 items-center mb-2">
+                                            <h2 className="text-sm font-semibold">Exam Type</h2>
+                                            <AddExamTypeDialog onExamTypeAdded={handleExamTypeAdded} />
+                                        </div>
+                                        <Select
+                                            // value={examType}
+                                            // onValueChange={(value) => handleFilterChange(value, setExamType)}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select exam type" />
+                                            </SelectTrigger>
+                                            <SelectContent className="max-h-60">
+                                                {examTypes.map((type) => (
+                                                    <SelectItem key={type} value={type}>
+                                                        {type.replace(/_/g, ' ')}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                     {getFieldError(`exam_type-${questionIndex}`) && (
                                         <p className="text-sm text-red-500">{getFieldError(`exam_type-${questionIndex}`)}</p>
                                     )}

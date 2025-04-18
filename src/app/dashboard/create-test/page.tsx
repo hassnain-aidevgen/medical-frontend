@@ -200,9 +200,7 @@ export default function CreateTest() {
   // const [questions, setQuestions] = useState<Question[]>([])
   // Update the state declarations to include the new "All" options
   // Replace the existing state declarations for examType, difficulty, and questionType with:
-  const [examType, setExamType] = useState<
-    "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3" | "ALL_USMLE_TYPES" | "NEET" | "PLAB" | "MCAT" | "NCLEX" | "COMLEX"
-  >("ALL_USMLE_TYPES")
+
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | "ALL_DIFFICULTY_LEVELS">(
     "ALL_DIFFICULTY_LEVELS",
   )
@@ -225,6 +223,9 @@ export default function CreateTest() {
   const [selectedRecommendations, setSelectedRecommendations] = useState<string[]>([])
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false)
   const [showRecommendations, setShowRecommendations] = useState(false)
+  const [examTypes, setExamTypes] = useState<string[]>([]);
+  const [examType, setExamType] = useState("ALL_USMLE_TYPES");
+const [loading, setLoading] = useState(true);
 
   // Add this new state to track if recommendations are being added to the test
   const [recommendedQuestionsToAdd, setRecommendedQuestionsToAdd] = useState<Recommendation[]>([])
@@ -332,6 +333,23 @@ export default function CreateTest() {
     const formattedDate = today.toISOString().split("T")[0]
     setExamDate(formattedDate)
   }, [examType])
+
+  useEffect(() => {
+    const fetchExamTypes = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/api/exam-type/exam-types"); // adjust if needed
+        if (response.data.success) {
+          setExamTypes(response.data.examTypes);
+        }
+      } catch (err) {
+        console.error("Failed to fetch exam types:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchExamTypes();
+  }, []);
 
   // Fix the fetchFilteredQuestions function to ensure it's not using selectedExam for filtering
   // Replace the existing fetchFilteredQuestions function with this updated version:
@@ -990,32 +1008,30 @@ export default function CreateTest() {
 
             {/* Filters section */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <h2 className="text-lg font-semibold mb-2">Exam Type</h2>
-                <Select
-                  value={examType}
-                  onValueChange={(value: typeof examType) => handleFilterChange(value, setExamType)}
-                  disabled={isFilterLoading || !!selectedExam} // Disable when target exam is selected
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select exam type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL_USMLE_TYPES">All USMLE Types</SelectItem>
-                    <SelectItem value="USMLE_STEP1">USMLE STEP 1</SelectItem>
-                    <SelectItem value="USMLE_STEP2">USMLE STEP 2</SelectItem>
-                    <SelectItem value="USMLE_STEP3">USMLE STEP 3</SelectItem>
-                    <SelectItem value="NEET">NEET</SelectItem>
-                    <SelectItem value="PLAB">PLAB</SelectItem>
-                    <SelectItem value="MCAT">MCAT</SelectItem>
-                    <SelectItem value="NCLEX">NCLEX</SelectItem>
-                    <SelectItem value="COMLEX">COMLEX</SelectItem>
-                  </SelectContent>
-                </Select>
-                {selectedExam && (
-                  <p className="text-xs text-gray-500 mt-1">Using target exam: {selectedExam.replace("_", " ")}</p>
-                )}
-              </div>
+            <div>
+  <h2 className="text-lg font-semibold mb-2">Exam Type</h2>
+  <Select
+    value={examType}
+    onValueChange={(value: typeof examType) => handleFilterChange(value, setExamType)}
+  >
+    <SelectTrigger>
+      <SelectValue placeholder="Select exam type" />
+    </SelectTrigger>
+    <SelectContent>
+    {!loading && (
+  <>
+    <SelectItem value="ALL_USMLE_TYPES">All USMLE Types</SelectItem>
+    {examTypes.map((type) => (
+      <SelectItem key={type} value={type}>
+        {type}
+      </SelectItem>
+    ))}
+  </>
+)}
+    </SelectContent>
+  </Select>
+</div>
+
 
               <div>
                 <h2 className="text-lg font-semibold mb-2">Difficulty</h2>
