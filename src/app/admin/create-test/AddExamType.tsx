@@ -47,7 +47,7 @@ type AddExamTypeDialogProps = {
     setError("")
     
     try {
-      const response = await axios.post("http://localhost:5000/api/exam-type/add-exam-type", {
+      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/exam-type/add-exam-type", {
         name: newExamType
       })
       

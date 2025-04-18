@@ -84,7 +84,7 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
         try {
           // Use the same base URL for both API calls
           // const baseUrl = "https://medical-backend-loj4.onrender.com"; // Or use process.env.REACT_APP_API_URL
-          const baseUrl = "http://localhost:5000"; // Or use process.env.REACT_APP_API_URL
+          const baseUrl = "https://medical-backend-loj4.onrender.com"; // Or use process.env.REACT_APP_API_URL
           
           const blueprintResponse = await axios.get(
             `${baseUrl}/api/test/exams/blueprint/${encodeURIComponent(selectedExam)}/${userId}`

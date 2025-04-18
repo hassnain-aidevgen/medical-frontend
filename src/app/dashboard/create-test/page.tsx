@@ -337,7 +337,7 @@ const [loading, setLoading] = useState(true);
   useEffect(() => {
     const fetchExamTypes = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/api/exam-type/exam-types"); // adjust if needed
+        const response = await axios.get("https://medical-backend-loj4.onrender.com/api/exam-type/exam-types"); // adjust if needed
         if (response.data.success) {
           setExamTypes(response.data.examTypes);
         }

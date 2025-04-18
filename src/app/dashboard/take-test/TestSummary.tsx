@@ -116,7 +116,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       
       // Send performance data to the API
       const response = await axios.post(
-        "http://localhost:5000/api/test/update-performance", 
+        "https://medical-backend-loj4.onrender.com/api/test/update-performance", 
         performanceData,
         {
           headers: { "Content-Type": "application/json" }
@@ -273,7 +273,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     try {
       console.log("Submitting test data to API...");
       const response = await axios.post(
-        "http://localhost:5000/api/test/take-test/submit-test/v2", 
+        "https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test/v2", 
         testData, 
         {
           headers: { "Content-Type": "application/json" },
@@ -393,7 +393,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
               {/* Group questions by subject/category and calculate performance */}
               {(() => {
                 // Group questions by category using the display field
-                const categories = {};
+                const categories: Record<string, { total: number; correct: number }> = {};
                 questions.forEach((q, idx) => {
                   const category = q.subjectDisplay || q.subjectName ||
                     (typeof q.subject === 'string' ? q.subject : 'Unknown');

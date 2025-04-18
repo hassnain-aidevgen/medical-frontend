@@ -14,7 +14,7 @@ interface StreakLeaderboardProps {
   globalLeaderboard: StreakEntry[] // Used as fallback
 }
 
-const API_BASE_URL = "http://localhost:5000/api/test"
+const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test"
 
 export default function StreakLeaderboard({ timeFrame, loggedInUserId, globalLeaderboard }: StreakLeaderboardProps) {
   const [streakLeaderboard, setStreakLeaderboard] = useState<StreakEntry[]>([])

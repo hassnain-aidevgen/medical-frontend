@@ -128,7 +128,7 @@ export default function GamifiedLeaderboard() {
 
         // Fetch leaderboard data
         // const leaderboardRes = await fetch(`${API_BASE_URL}/leaderboard?timeFrame=${timeFrame}`)
-        const leaderboardRes = await fetch(`http://localhost:5000/api/test/leaderboard2?timeFrame=${timeFrame}`)
+        const leaderboardRes = await fetch(`https://medical-backend-loj4.onrender.com/api/test/leaderboard2?timeFrame=${timeFrame}`)
 
         if (!leaderboardRes.ok) {
           throw new Error(`Failed to fetch leaderboard data: ${leaderboardRes.status}`)
@@ -148,7 +148,7 @@ export default function GamifiedLeaderboard() {
           try {
             // const userStatsRes = await fetch(`${API_BASE_URL}/leaderboard/player/${userId}?timeFrame=${timeFrame}`)
             const userStatsRes = await fetch(
-              `http://localhost:5000/api/test/leaderboard2/player/${userId}?timeFrame=${timeFrame}`,
+              `https://medical-backend-loj4.onrender.com/api/test/leaderboard2/player/${userId}?timeFrame=${timeFrame}`,
             )
 
             if (userStatsRes.ok) {

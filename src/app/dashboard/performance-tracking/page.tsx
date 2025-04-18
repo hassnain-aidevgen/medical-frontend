@@ -399,7 +399,7 @@ const [userWeakSubjects, setUserWeakSubjects] = useState<{
   const fetchWeakSubjects = async (userId: string) => {
     try {
       // Fetch performance data from your new endpoint
-      const response = await axios.get(`http://localhost:5000/api/test/get-performance/${userId}`);
+      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/get-performance/${userId}`);
       
       if (response.data.success && response.data.data) {
         setUserPerformanceData(response.data.data);

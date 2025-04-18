@@ -30,30 +30,21 @@ import TestSummary from "./TestSummary"
 //     question_type: "case_based" | "single_best_answer" | "extended_matching"
 //     targetExam: string 
 // }
-type Question =  {
+type Question = {
+    _id: string
+    question: string
+    options: string[]
     answer: string
-    question: {
-        _id: string
-        question: string
-        options: string[]
-        answer: string
-        explanation: string
-        subject: string | { $oid: string }
-        subsection: string | { $oid: string }
-        subjectDisplay: string
-        subsectionDisplay: string
-        exam_type?: string
-        difficulty?: 'easy' | 'medium' | 'hard'
-        topic?: string
-        targetExam?: string
-      }
-      selectedAnswer: string | undefined
-      onAnswerSelect: (answer: string) => void
-      questionNumber: number
-      totalQuestions: number
-      showCorrectAnswer: boolean
-      onSubmit: () => void
-}
+    explanation: string
+    subject: string | { $oid: string }
+    subsection: string | { $oid: string }
+    subjectDisplay: string
+    subsectionDisplay: string
+    exam_type?: string
+    difficulty?: 'easy' | 'medium' | 'hard'
+    topic?: string
+    targetExam?: string
+  }
 
 const TestComponent = () => {
     // const router = useRouter()
@@ -81,7 +72,7 @@ const TestComponent = () => {
         setIsLoading(true)
         setError(null)
         try {
-            const response = await axios.get("http://localhost:5000/api/test/take-test/questions", {
+            const response = await axios.get("https://medical-backend-loj4.onrender.com/api/test/take-test/questions", {
                 params: {
                     subjects: subjectsParam,
                     subsections: subsectionsParam,

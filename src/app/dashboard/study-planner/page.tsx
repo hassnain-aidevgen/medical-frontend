@@ -262,7 +262,7 @@ const PlannerForm: React.FC = () => {
     if (!userId) return null;
 
     try {
-      const response = await axios.get(`http://localhost:5000/api/test/get-performance/${userId}`);
+      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/get-performance/${userId}`);
       
       if (response.data.success) {
         return response.data.data as UserPerformanceData;

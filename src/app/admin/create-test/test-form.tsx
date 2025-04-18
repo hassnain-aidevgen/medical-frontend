@@ -14,7 +14,7 @@ import { useCallback, useEffect, useState } from "react"
 import { toast, Toaster } from "react-hot-toast"
 import AddExamTypeDialog from "./AddExamType"
 
-const API_BASE_URL = "http://localhost:5000/api/test"
+const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test"
 
 const EXAM_TYPES = ["USMLE_STEP1", "USMLE_STEP2", "USMLE_STEP3"] as const
 const DIFFICULTY_LEVELS = ["easy", "medium", "hard"] as const
@@ -103,7 +103,7 @@ export default function CombinedQuestionForm() {
 
     const fetchExamTypes = useCallback(async () => {
         try {
-            const { data } = await axios.get("http://localhost:5000/api/exam-type/exam-types")
+            const { data } = await axios.get("https://medical-backend-loj4.onrender.com/api/exam-type/exam-types")
             if (data && Array.isArray(data.examTypes)) {
                 // Ensure we always have the ALL_USMLE_TYPES option first
                 const allTypes: string[] = []
