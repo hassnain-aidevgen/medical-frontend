@@ -1,87 +1,91 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Book, Calendar, Lightbulb, Loader2, ChevronRight } from "lucide-react"
+import { Book, Calendar, Lightbulb, Loader2, ChevronRight, BookMarked, BookOpen } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { useRouter } from "next/navigation"
+// import StudyPlanResults from "./study-plan-results-updated" // Import the StudyPlanResults component
+import StudyPlanResults from "@/app/dashboard/study-planner/study-plan-results"
 
 interface StudyPlan {
   plan: {
-    title: string;
-    overview: string;
+    title: string
+    overview: string
     examInfo?: {
-      exam: string;
-      targetDate: string;
-      targetScore?: string;
-    };
+      exam: string
+      targetDate: string
+      targetScore?: string
+    }
     weeklyPlans: {
-      weekNumber: number;
-      theme: string;
-      focusAreas?: string[];
+      weekNumber: number
+      theme: string
+      focusAreas?: string[]
       weeklyGoals?: Array<{
-        subject: string;
-        description: string;
-      }>;
+        subject: string
+        description: string
+      }>
       days?: Array<{
-        dayOfWeek: string;
+        dayOfWeek: string
         tasks?: Array<{
-          title: string;
-          description: string;
-          completed: boolean;
-        }>;
-      }>;
-    }[];
+          title: string
+          description: string
+          completed: boolean
+        }>
+      }>
+    }[]
     studyTips?: Array<{
-      title: string;
-      description: string;
-    }>;
+      title: string
+      description: string
+    }>
     resources?: {
       books?: Array<{
-        title: string;
-        author: string;
-        publicationYear?: number;
-        link?: string;
-      }>;
+        title: string
+        author: string
+        publicationYear?: number
+        link?: string
+      }>
       videos?: Array<{
-        title: string;
-        url: string;
-        duration?: string;
-      }>;
+        title: string
+        url: string
+        duration?: string
+      }>
       questionBanks?: Array<{
-        title: string;
-        questionsCount: number;
-        link?: string;
-      }>;
-    };
-  };
+        title: string
+        questionsCount: number
+        link?: string
+      }>
+    }
+  }
   metadata: {
-    duration: string;
-  };
+    duration: string
+  }
 }
 
 interface UserData {
-  name: string;
-  email: string;
-  currentLevel: string;
-  targetExam: string;
-  examDate: string;
-  strongSubjects: string[];
-  weakSubjects: string[];
-  availableHours: number;
-  daysPerWeek: number;
-  preferredTimeOfDay: string;
-  preferredLearningStyle: string;
-  targetScore: string;
-  specificGoals: string;
-  additionalInfo: string;
-  previousScores: string;
+  name: string
+  email: string
+  currentLevel: string
+  targetExam: string
+  examDate: string
+  strongSubjects: string[]
+  weakSubjects: string[]
+  availableHours: number
+  daysPerWeek: number
+  preferredTimeOfDay: string
+  preferredLearningStyle: string
+  targetScore: string
+  specificGoals: string
+  additionalInfo: string
+  previousScores: string
 }
 
 export default function DashboardStudyPlan() {
   const [studyPlan, setStudyPlan] = useState<StudyPlan | null>(null)
   const [userData, setUserData] = useState<UserData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [hasExistingPlan, setHasExistingPlan] = useState(false)
+  const [showFullPlan, setShowFullPlan] = useState(false) // New state to control view
   const router = useRouter()
 
   useEffect(() => {
@@ -89,12 +93,13 @@ export default function DashboardStudyPlan() {
     try {
       const savedPlan = localStorage.getItem("studyPlan")
       const savedUserData = localStorage.getItem("userData")
-      
+
       if (savedPlan) {
         const parsedPlan = JSON.parse(savedPlan)
         setStudyPlan(parsedPlan)
+        setHasExistingPlan(true)
       }
-      
+
       if (savedUserData) {
         const parsedUserData = JSON.parse(savedUserData)
         setUserData(parsedUserData)
@@ -105,6 +110,15 @@ export default function DashboardStudyPlan() {
       setIsLoading(false)
     }
   }, [])
+
+  const loadExistingPlan = () => {
+    // Instead of navigating, we'll show the full plan in this component
+    setShowFullPlan(true)
+  }
+
+  const resetView = () => {
+    setShowFullPlan(false)
+  }
 
   const formatDate = (dateString?: string): string => {
     if (!dateString) return "Not specified"
@@ -126,7 +140,7 @@ export default function DashboardStudyPlan() {
   }
 
   const daysRemaining = userData?.examDate ? calculateDaysRemaining(userData.examDate) : 0
-  
+
   const getProgressColor = (days: number): string => {
     if (days < 30) return "bg-red-500"
     if (days < 90) return "bg-amber-500"
@@ -144,6 +158,16 @@ export default function DashboardStudyPlan() {
     )
   }
 
+  // If we should show the full plan, render the StudyPlanResults component
+  if (showFullPlan && studyPlan && userData) {
+    // Use type assertion to convert studyPlan to StudyPlanResponse
+    return <StudyPlanResults 
+      plan={studyPlan as any} 
+      userData={userData} 
+      onReset={resetView} 
+    />
+  }
+
   if (!studyPlan || !userData) {
     return (
       <Card className="w-full">
@@ -151,8 +175,8 @@ export default function DashboardStudyPlan() {
           <div className="text-center">
             <h3 className="text-lg font-medium text-gray-700 mb-2">No Study Plan Found</h3>
             <p className="text-gray-500 mb-6">You haven&apos;t created a personalized study plan yet.</p>
-            <button 
-              onClick={() => router.push('/smart-study')}
+            <button
+              onClick={() => router.push("/smart-study")}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
               Create Study Plan
@@ -170,6 +194,27 @@ export default function DashboardStudyPlan() {
 
   return (
     <Card className="w-full overflow-hidden">
+      {hasExistingPlan && (
+        <div className="mb-0 p-4 bg-blue-50 border-b border-blue-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <BookMarked className="text-blue-600 mr-2" size={20} />
+              <div>
+                <h3 className="font-medium text-blue-800">You have a saved study plan</h3>
+                <p className="text-sm text-blue-600">You can continue with your previous plan or create a new one.</p>
+              </div>
+            </div>
+            <button
+              onClick={loadExistingPlan}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center"
+            >
+              <BookOpen className="mr-2" size={16} />
+              Load Saved Plan
+            </button>
+          </div>
+        </div>
+      )}
+
       <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center text-base sm:text-lg">
@@ -189,15 +234,16 @@ export default function DashboardStudyPlan() {
               <div className="flex justify-between items-center mb-1">
                 <div className="flex items-center">
                   <Calendar className="h-4 w-4 text-blue-600 mr-2" />
-                  <span className="text-sm font-medium text-blue-800">
-                    Exam Date: {formatDate(userData.examDate)}
-                  </span>
+                  <span className="text-sm font-medium text-blue-800">Exam Date: {formatDate(userData.examDate)}</span>
                 </div>
                 <span className="text-xs font-medium text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
                   {daysRemaining} days left
                 </span>
               </div>
-              <Progress value={(daysRemaining / 180) * 100} className={`h-1.5 mt-2 ${getProgressColor(daysRemaining)}`} />
+              <Progress
+                value={(daysRemaining / 180) * 100}
+                className={`h-1.5 mt-2 ${getProgressColor(daysRemaining)}`}
+              />
             </div>
           )}
 
@@ -206,9 +252,11 @@ export default function DashboardStudyPlan() {
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-gray-50 p-3 border-b">
                 <div className="flex justify-between items-center">
-                  <h3 className="font-medium text-gray-800">Week {currentWeek.weekNumber}: {currentWeek.theme}</h3>
+                  <h3 className="font-medium text-gray-800">
+                    Week {currentWeek.weekNumber}: {currentWeek.theme}
+                  </h3>
                   <button
-                    onClick={() => router.push('/dashboard/smart-study')}
+                    onClick={loadExistingPlan}
                     className="text-xs text-blue-600 hover:text-blue-800 flex items-center"
                   >
                     View Details
@@ -216,11 +264,14 @@ export default function DashboardStudyPlan() {
                   </button>
                 </div>
               </div>
-              
+
               <div className="p-3">
                 <div className="flex flex-wrap gap-1 mb-3">
                   {currentWeek.focusAreas?.slice(0, 3).map((area, index) => (
-                    <span key={index} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                    <span
+                      key={index}
+                      className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                    >
                       {area}
                     </span>
                   ))}
@@ -230,7 +281,7 @@ export default function DashboardStudyPlan() {
                     </span>
                   )}
                 </div>
-                
+
                 {/* Quick Goals Summary */}
                 {currentWeek.weeklyGoals && currentWeek.weeklyGoals.length > 0 && (
                   <div className="space-y-1 mb-2">
@@ -238,7 +289,9 @@ export default function DashboardStudyPlan() {
                     {currentWeek.weeklyGoals.slice(0, 2).map((goal, index) => (
                       <div key={index} className="flex items-start">
                         <div className="w-2 h-2 rounded-full bg-green-500 mt-1.5 mr-2"></div>
-                        <p className="text-xs text-gray-700">{goal.subject}: {goal.description}</p>
+                        <p className="text-xs text-gray-700">
+                          {goal.subject}: {goal.description}
+                        </p>
                       </div>
                     ))}
                     {currentWeek.weeklyGoals.length > 2 && (
@@ -263,13 +316,13 @@ export default function DashboardStudyPlan() {
             </div>
           )}
 
-          {/* View Full Plan Button */}
+          {/* Action Buttons */}
           <div className="pt-2">
             <button
-              onClick={() => router.push('/dashboard/study-planner')}
+              onClick={() => router.push("/dashboard/study-planner")}
               className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors"
             >
-              Create New Ai Study Plan
+              Create New AI Study Plan
             </button>
           </div>
         </div>

@@ -32,6 +32,12 @@ interface PlannerSyncSchedulerProps {
   onTestsAdded?: (tests: Test[]) => void
   onSyncComplete?: () => void
   onRefresh?: () => void
+  // New props to replace localStorage
+  lastSyncTime: string | null
+  lastSyncedTests: Test[]
+  onSyncTimeChange: (time: string) => void
+  onLastSyncedTestsChange: (tests: Test[]) => void
+  weeklyStudyPlan?: PlanTask[] // Optional prop for study plan data
 }
 
 // Define interfaces for the study plan structure
@@ -67,33 +73,25 @@ interface StudyPlanWeek {
   days: StudyPlanDay[]
 }
 
-const PlannerSyncScheduler = ({ userId, onTestsAdded, onSyncComplete, onRefresh }: PlannerSyncSchedulerProps) => {
+const PlannerSyncScheduler = ({
+  userId,
+  onTestsAdded,
+  onSyncComplete,
+  onRefresh,
+  lastSyncTime,
+  lastSyncedTests,
+  onSyncTimeChange,
+  onLastSyncedTestsChange,
+  weeklyStudyPlan,
+}: PlannerSyncSchedulerProps) => {
   const [isProcessing, setIsProcessing] = useState(false)
-  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null)
-  const [lastSyncedTests, setLastSyncedTests] = useState<Test[]>([])
   const [isUndoing, setIsUndoing] = useState(false)
   const [showUndoButton, setShowUndoButton] = useState(false)
 
-  // Load last sync time and tests from localStorage
+  // Update showUndoButton based on lastSyncedTests
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedSyncTime = localStorage.getItem("lastPlannerSyncTime")
-      if (storedSyncTime) {
-        setLastSyncTime(storedSyncTime)
-      }
-
-      const storedTests = localStorage.getItem("lastSyncedTests")
-      if (storedTests) {
-        try {
-          const tests = JSON.parse(storedTests)
-          setLastSyncedTests(tests)
-          setShowUndoButton(true)
-        } catch (e) {
-          console.error("Error parsing stored tests:", e)
-        }
-      }
-    }
-  }, [])
+    setShowUndoButton(lastSyncedTests.length > 0)
+  }, [lastSyncedTests])
 
   // Helper function to ensure date is a string
   const formatDateToString = (date: Date | string): string => {
@@ -190,21 +188,14 @@ const PlannerSyncScheduler = ({ userId, onTestsAdded, onSyncComplete, onRefresh 
     return reviewTasks
   }
 
-  // Replace the fetchWeeklyPlan function with this updated version:
+  // Updated fetchWeeklyPlan to use props instead of localStorage
   const fetchWeeklyPlan = async (): Promise<PlanTask[]> => {
-    // First try to get from localStorage
-    if (typeof window !== "undefined") {
-      const storedPlan = localStorage.getItem("weeklyStudyPlan")
-      if (storedPlan) {
-        try {
-          return JSON.parse(storedPlan)
-        } catch (e) {
-          console.error("Error parsing stored plan:", e)
-        }
-      }
+    // First check if we have the plan in props
+    if (weeklyStudyPlan && weeklyStudyPlan.length > 0) {
+      return weeklyStudyPlan
     }
 
-    // If not in localStorage, try to fetch from backend
+    // If not in props, try to fetch from backend
     if (userId) {
       try {
         const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/study-plan/${userId}`)
@@ -298,7 +289,7 @@ const PlannerSyncScheduler = ({ userId, onTestsAdded, onSyncComplete, onRefresh 
     }))
   }
 
-  // Function to undo the last sync
+  // Function to undo the last sync - updated to use props instead of localStorage
   const undoLastSync = async () => {
     if (lastSyncedTests.length === 0) {
       toast.error("No tests to undo")
@@ -319,9 +310,8 @@ const PlannerSyncScheduler = ({ userId, onTestsAdded, onSyncComplete, onRefresh 
         }
       }
 
-      // Clear the last synced tests
-      setLastSyncedTests([])
-      localStorage.removeItem("lastSyncedTests")
+      // Clear the last synced tests using the prop callback
+      onLastSyncedTestsChange([])
       setShowUndoButton(false)
 
       // Refresh the calendar data
@@ -340,7 +330,7 @@ const PlannerSyncScheduler = ({ userId, onTestsAdded, onSyncComplete, onRefresh 
     }
   }
 
-  // Main function to sync planner and add review tasks
+  // Main function to sync planner and add review tasks - updated to use props instead of localStorage
   const syncPlannerAndAddReviews = async () => {
     if (!userId) {
       toast.error("User ID not found. Please log in.")
@@ -384,17 +374,13 @@ const PlannerSyncScheduler = ({ userId, onTestsAdded, onSyncComplete, onRefresh 
         }
       }
 
-      // 6. Update last sync time
+      // 6. Update last sync time using the prop callback
       const now = new Date().toISOString()
-      setLastSyncTime(now)
-      if (typeof window !== "undefined") {
-        localStorage.setItem("lastPlannerSyncTime", now)
-      }
+      onSyncTimeChange(now)
 
-      // 7. Save the added tests for potential undo
+      // 7. Save the added tests for potential undo using the prop callback
       const allAddedTests = [...addedTests, ...addedReviews]
-      setLastSyncedTests(allAddedTests)
-      localStorage.setItem("lastSyncedTests", JSON.stringify(allAddedTests))
+      onLastSyncedTestsChange(allAddedTests)
       setShowUndoButton(true)
 
       // 8. Notify parent component with properly formatted dates

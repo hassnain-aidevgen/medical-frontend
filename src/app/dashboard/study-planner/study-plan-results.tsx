@@ -75,10 +75,6 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
     },
   )
 
-  // Memoize the initializeWeekTracking function with useCallback
-  // const memoizedInitializeWeekTracking = useCallback(() => {
-  //   initializeWeekTracking(activeWeek)
-  // }, [initializeWeekTracking, activeWeek])
 
   useEffect(() => {
     // Show a tip when the results first load
@@ -90,10 +86,6 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
     return () => clearTimeout(tipTimer)
   }, [])
 
-  // Initialize tracking whenever the active week changes
-  // useEffect(() => {
-  //   memoizedInitializeWeekTracking()
-  // }, [memoizedInitializeWeekTracking])
 
   const weeklyPlans = studyPlanData.weeklyPlans || []
   const totalWeeks = weeklyPlans.length

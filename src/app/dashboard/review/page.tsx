@@ -165,12 +165,22 @@ export default function ReviewDashboard() {
         </div>
 
         <Tabs defaultValue="upcoming">
-          <TabsList>
-            <TabsTrigger value="upcoming">Upcoming Reviews</TabsTrigger>
-            <TabsTrigger value="completion">Completion History</TabsTrigger>
-            <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
-            <TabsTrigger value="infographics">Infographics</TabsTrigger>
-            <TabsTrigger value="preferences">Review Preferences</TabsTrigger>
+          <TabsList className="flex flex-wrap gap-1 overflow-x-auto">
+            <TabsTrigger value="upcoming" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              Upcoming Reviews
+            </TabsTrigger>
+            <TabsTrigger value="completion" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              Completion History
+            </TabsTrigger>
+            <TabsTrigger value="flashcards" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              Flashcards
+            </TabsTrigger>
+            <TabsTrigger value="infographics" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              Infographics
+            </TabsTrigger>
+            <TabsTrigger value="preferences" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              Review Preferences
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="upcoming" className="mt-4">
             <Card>
@@ -235,4 +245,3 @@ export default function ReviewDashboard() {
     </div>
   )
 }
-

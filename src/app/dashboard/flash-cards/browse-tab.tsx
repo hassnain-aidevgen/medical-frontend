@@ -93,7 +93,7 @@ export default function BrowseTab({
     setCurrentCard((currentCard + 1) % filteredCards.length)
     setShowAnswer(false)
   }
-  
+
   const prevCard = () => {
     if (filteredCards.length === 0) return
     setCurrentCard((currentCard - 1 + filteredCards.length) % filteredCards.length)
@@ -395,18 +395,21 @@ export default function BrowseTab({
                           </Badge>
                         ))}
                     </div>
-                    <div className="flex justify-between items-center w-full">
+                    <div className="flex flex-wrap justify-between items-center w-full gap-2">
                       <Button
                         variant="ghost"
                         onClick={prevCard}
                         disabled={filteredCards.length <= 1}
-                        className="text-slate-600 dark:text-slate-400"
+                        className="text-slate-600 dark:text-slate-400 text-sm sm:text-base px-2 sm:px-4"
                       >
                         <ChevronLeft className="h-5 w-5 mr-1" />
                         Previous
                       </Button>
 
-                      <Button onClick={flipCard} className="bg-indigo-500 hover:bg-indigo-600 text-white px-6">
+                      <Button
+                        onClick={flipCard}
+                        className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 sm:px-6 text-sm sm:text-base order-first sm:order-none w-full sm:w-auto mb-2 sm:mb-0"
+                      >
                         <RotateCcw className="mr-2 h-5 w-5" />
                         {showAnswer ? "Show Question" : "Reveal Answer"}
                       </Button>
@@ -415,7 +418,7 @@ export default function BrowseTab({
                         variant="ghost"
                         onClick={nextCard}
                         disabled={filteredCards.length <= 1}
-                        className="text-slate-600 dark:text-slate-400"
+                        className="text-slate-600 dark:text-slate-400 text-sm sm:text-base px-2 sm:px-4"
                       >
                         Next
                         <ChevronRight className="h-5 w-5 ml-1" />

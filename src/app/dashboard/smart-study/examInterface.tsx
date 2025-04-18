@@ -22,12 +22,27 @@ interface Test {
   color: string
 }
 
-const ExamInterface = ({ tests }: { tests: Test[] }) => {
+interface ExamInterfaceProps {
+  tests: Test[]
+  // New props to replace localStorage
+  selectedExam?: string
+  examDate?: string
+  onExamChange?: (exam: string) => void
+  onExamDateChange?: (date: string) => void
+}
+
+const ExamInterface = ({
+  tests,
+  selectedExam: propSelectedExam,
+  examDate: propExamDate,
+  onExamChange,
+  onExamDateChange,
+}: ExamInterfaceProps) => {
   const [userId, setUserId] = useState<string>("")
-  // Exam selection state
-  const [selectedExam, setSelectedExam] = useState<string>("")
-  // New states for exam date and countdown
-  const [examDate, setExamDate] = useState<string>("")
+  // Exam selection state - use props if provided, otherwise use local state
+  const [selectedExam, setSelectedExam] = useState<string>(propSelectedExam || "")
+  // New states for exam date and countdown - use props if provided, otherwise use local state
+  const [examDate, setExamDate] = useState<string>(propExamDate || "")
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null)
   const availableExams = ["USMLE Step 1", "NEET", "PLAB", "MCAT", "NCLEX", "COMLEX"]
   interface Question {
@@ -59,6 +74,19 @@ const ExamInterface = ({ tests }: { tests: Test[] }) => {
   const [showHighYieldData, setShowHighYieldData] = useState(false)
   const [activeTab, setActiveTab] = useState<string>("overview")
 
+  // Update local state when props change
+  useEffect(() => {
+    if (propSelectedExam !== undefined) {
+      setSelectedExam(propSelectedExam)
+    }
+  }, [propSelectedExam])
+
+  useEffect(() => {
+    if (propExamDate !== undefined) {
+      setExamDate(propExamDate)
+    }
+  }, [propExamDate])
+
   // Calculate days remaining until exam - using useCallback to memoize
   const calculateDaysRemaining = useCallback(() => {
     if (!examDate) return null
@@ -74,7 +102,6 @@ const ExamInterface = ({ tests }: { tests: Test[] }) => {
 
     return daysDiff >= 0 ? daysDiff : null
   }, [examDate]) // Include examDate in the dependency array
-  
 
   // Effect for countdown timer
   useEffect(() => {
@@ -94,19 +121,22 @@ const ExamInterface = ({ tests }: { tests: Test[] }) => {
       const storedData = localStorage.getItem("Medical_User_Id")
       setUserId(storedData || "")
 
-      // Load saved exam and exam date from localStorage
-      const savedExam = localStorage.getItem("selectedExam")
-      const savedExamDate = localStorage.getItem("examDate")
-
-      if (savedExam) {
-        setSelectedExam(savedExam)
+      // Only load from localStorage if props are not provided
+      if (propSelectedExam === undefined) {
+        const savedExam = localStorage.getItem("selectedExam")
+        if (savedExam) {
+          setSelectedExam(savedExam)
+        }
       }
 
-      if (savedExamDate) {
-        setExamDate(savedExamDate)
+      if (propExamDate === undefined) {
+        const savedExamDate = localStorage.getItem("examDate")
+        if (savedExamDate) {
+          setExamDate(savedExamDate)
+        }
       }
     }
-  }, [])
+  }, [propSelectedExam, propExamDate])
 
   // Get exam-specific subjects mapping
   const getExamSubjects = useCallback((exam: string) => {
@@ -343,15 +373,15 @@ const ExamInterface = ({ tests }: { tests: Test[] }) => {
     const newExam = e.target.value
     setSelectedExam(newExam)
 
-    // Save to localStorage
+    // Call the prop callback if provided
+    if (onExamChange) {
+      onExamChange(newExam)
+    }
+
+    // Save to localStorage as fallback
     if (typeof window !== "undefined") {
       localStorage.setItem("selectedExam", newExam)
     }
-
-    // Optionally save to backend
-    // if (userId && newExam) {
-    //   saveExamToBackend(newExam)
-    // }
   }
 
   // Handle exam date change
@@ -359,7 +389,12 @@ const ExamInterface = ({ tests }: { tests: Test[] }) => {
     const newDate = e.target.value
     setExamDate(newDate)
 
-    // Save to localStorage
+    // Call the prop callback if provided
+    if (onExamDateChange) {
+      onExamDateChange(newDate)
+    }
+
+    // Save to localStorage as fallback
     if (typeof window !== "undefined") {
       localStorage.setItem("examDate", newDate)
     }

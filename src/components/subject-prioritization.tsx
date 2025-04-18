@@ -141,14 +141,6 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
     fetchData();
   }, [selectedExam, userId, examDate]);
 
-  // Calculate subject priorities once data is loaded
-  // useEffect(() => {
-  //   if (!examBlueprint.length) return;
-
-  //   calculateSubjectPriorities();
-  // }, [examBlueprint, tests, daysToExam]);
-
-
   // Helper to get days until exam
   const getDaysToExam = (date: string): number => {
     const today = new Date();
@@ -217,117 +209,6 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({
     ];
   };
 
-  // // Calculate subject priorities
-  // const calculateSubjectPriorities = () => {
-  //   try {
-  //     // Group tests by subject
-  //     const subjectGroups: Record<string, Test[]> = {};
-
-  //     tests.forEach(test => {
-  //       const subject = test.subjectName;
-
-  //       if (!subjectGroups[subject]) {
-  //         subjectGroups[subject] = [];
-  //       }
-
-  //       subjectGroups[subject].push(test);
-  //     });
-
-  //     // Calculate priority for each subject in the blueprint
-  //     const priorityData: SubjectPriority[] = examBlueprint.map(blueprint => {
-  //       // Find tests for this subject (case insensitive matching)
-  //       const matchingTests = Object.entries(subjectGroups)
-  //         .filter(([subject]) => subject.toLowerCase() === blueprint.topic.toLowerCase())
-  //         .flatMap(([, tests]) => tests);
-
-  //       // Calculate proficiency
-  //       const testsTotal = matchingTests.length;
-  //       const testsCompleted = matchingTests.filter(test => test.completed).length;
-
-  //       // Proficiency score: percentage of completed tests, with a minimum of 10%
-  //       const proficiencyScore = testsTotal > 0
-  //         ? Math.max(10, Math.round((testsCompleted / testsTotal) * 100))
-  //         : 10;
-
-  //       // Calculate urgency multiplier based on days to exam
-  //       let urgencyMultiplier = 1;
-  //       let urgency: 'low' | 'medium' | 'high' = 'medium';
-
-  //       if (daysToExam > 0) {
-  //         if (daysToExam <= 7) {
-  //           urgencyMultiplier = 2;
-  //           urgency = 'high';
-  //         } else if (daysToExam <= 30) {
-  //           urgencyMultiplier = 1.5;
-  //           urgency = 'medium';
-  //         } else {
-  //           urgencyMultiplier = 1;
-  //           urgency = 'low';
-  //         }
-  //       }
-
-  //       // Calculate priority score using the formula
-  //       const priorityScore = (blueprint.percentage * (1 - proficiencyScore / 100) * urgencyMultiplier);
-
-  //       // Determine suggested difficulty based on proficiency and time to exam
-  //       let suggestedDifficulty: 'foundation' | 'moderate' | 'advanced';
-
-  //       if (daysToExam <= 14) {
-  //         // Close to exam: focus on strengths and foundation
-  //         suggestedDifficulty = proficiencyScore >= 70 ? 'advanced' :
-  //           proficiencyScore >= 40 ? 'moderate' : 'foundation';
-  //       } else if (daysToExam <= 30) {
-  //         // Medium-term: push to higher difficulty if doing well
-  //         suggestedDifficulty = proficiencyScore >= 80 ? 'advanced' :
-  //           proficiencyScore >= 50 ? 'moderate' : 'foundation';
-  //       } else {
-  //         // Long-term: challenge appropriately for growth
-  //         suggestedDifficulty = proficiencyScore >= 90 ? 'advanced' :
-  //           proficiencyScore >= 60 ? 'moderate' : 'foundation';
-  //       }
-
-  //       // Generate recommendation based on all factors
-  //       let recommendation = "";
-
-  //       if (proficiencyScore < 30) {
-  //         recommendation = `Focus on building ${blueprint.topic} fundamentals. Aim for at least 2-3 practice sessions.`;
-  //       } else if (proficiencyScore < 70) {
-  //         recommendation = `Continue strengthening your knowledge in ${blueprint.topic}. Take more practice tests.`;
-  //       } else {
-  //         recommendation = `Maintain your strong performance in ${blueprint.topic}. Focus on advanced concepts.`;
-  //       }
-
-  //       // If high-yield subject with low proficiency, add urgency to recommendation
-  //       if (blueprint.isHighYield && proficiencyScore < 50) {
-  //         recommendation = `PRIORITY: ${recommendation} This is a high-yield topic (${blueprint.percentage}% of exam).`;
-  //       }
-
-  //       // If close to exam with low proficiency, add time-based recommendation
-  //       if (daysToExam <= 14 && proficiencyScore < 50) {
-  //         recommendation += ` With only ${daysToExam} days remaining, prioritize this subject.`;
-  //       }
-
-  //       return {
-  //         subject: blueprint.topic,
-  //         blueprintPercentage: blueprint.percentage,
-  //         proficiencyScore,
-  //         priorityScore,
-  //         suggestedDifficulty,
-  //         urgency,
-  //         isHighYield: blueprint.isHighYield || false,
-  //         recommendation
-  //       };
-  //     });
-
-  //     // Sort subjects by priority score (highest first)
-  //     priorityData.sort((a, b) => b.priorityScore - a.priorityScore);
-
-  //     setSubjectPriorities(priorityData);
-  //   } catch (error) {
-  //     console.error("Error calculating subject priorities:", error);
-  //     toast.error("Failed to calculate subject priorities");
-  //   }
-  // };
   const calculateSubjectPriorities = useCallback(() => {
     try {
       // Group tests by subject

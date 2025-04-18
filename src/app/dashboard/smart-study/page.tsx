@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
 import ExamInterface from "./examInterface"
 import PerformanceVisualizer from "./performance-visualizer"
+import PlannerSyncScheduler from "./planner-sync-scheduler"
 import PriorityIndicator from "./priority-indicator"
 import TodayDashboard from "./today-dashboard"
 
@@ -33,6 +34,28 @@ interface ExamTest {
   color: string
 }
 
+// Define the interface for weekly plan tasks
+interface PlanTask {
+  id: string
+  title: string
+  subject: string
+  topic: string
+  date: string
+  duration: number
+  priority: "high" | "medium" | "low"
+}
+
+// Define the interface for synced tests
+interface SyncedTest {
+  _id: string
+  date: Date | string
+  subjectName: string
+  testTopic: string
+  completed: boolean
+  userId: string
+  color: string
+}
+
 const SmartStudyCalendar = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -49,7 +72,8 @@ const SmartStudyCalendar = () => {
   const [isSyncing, setIsSyncing] = useState(false)
   const [isUndoing, setIsUndoing] = useState(false)
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null)
-  const [lastSyncedTests, setLastSyncedTests] = useState<any[]>([])
+  const [lastSyncedTests, setLastSyncedTests] = useState<SyncedTest[]>([])
+  const [weeklyStudyPlan, setWeeklyStudyPlan] = useState<PlanTask[]>([])
   const [showUndoButton, setShowUndoButton] = useState(false)
   const [activeTab, setActiveTab] = useState("calendar") // calendar, performance, today
 
@@ -74,8 +98,37 @@ const SmartStudyCalendar = () => {
           console.error("Error parsing stored tests:", e)
         }
       }
+
+      // Load weekly study plan from localStorage
+      const storedPlan = localStorage.getItem("weeklyStudyPlan")
+      if (storedPlan) {
+        try {
+          setWeeklyStudyPlan(JSON.parse(storedPlan))
+        } catch (e) {
+          console.error("Error parsing stored plan:", e)
+        }
+      }
     }
   }, [])
+
+  // Update localStorage when state changes
+  useEffect(() => {
+    if (lastSyncTime) {
+      localStorage.setItem("lastPlannerSyncTime", lastSyncTime)
+    }
+  }, [lastSyncTime])
+
+  useEffect(() => {
+    if (lastSyncedTests.length > 0) {
+      localStorage.setItem("lastSyncedTests", JSON.stringify(lastSyncedTests))
+    }
+  }, [lastSyncedTests])
+
+  useEffect(() => {
+    if (weeklyStudyPlan.length > 0) {
+      localStorage.setItem("weeklyStudyPlan", JSON.stringify(weeklyStudyPlan))
+    }
+  }, [weeklyStudyPlan])
 
   const fetchTests = useCallback(async () => {
     if (!userId) return
@@ -224,318 +277,25 @@ const SmartStudyCalendar = () => {
     }
   }
 
-  // Helper function to ensure date is a string
-  const formatDateToString = (date: Date | string): string => {
-    if (date instanceof Date) {
-      return date.toISOString()
-    } else if (typeof date === "string") {
-      return date
-    }
-    // Fallback to current date if invalid
-    return new Date().toISOString()
+  // Handler for when tests are added from the PlannerSyncScheduler
+  const handleTestsAdded = (newTests: SyncedTest[]) => {
+    // Refresh the tests list
+    fetchTests()
   }
 
-  // Update the addTestToCalendar function to use the correct API endpoint
-  const addTestToCalendar = async (test: any): Promise<any | null> => {
-    if (!userId) {
-      toast.error("User ID not found. Please log in.")
-      return null
-    }
-
-    try {
-      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/calender", {
-        userId: test.userId,
-        subjectName: test.subjectName,
-        testTopic: test.testTopic,
-        date: formatDateToString(test.date),
-        color: test.color,
-        completed: test.completed,
-      })
-
-      if (response.status !== 200 && response.status !== 201) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      return response.data
-    } catch (error) {
-      console.error("Failed to add test:", error)
-      return null
-    }
+  // Handler for sync time change
+  const handleSyncTimeChange = (time: string) => {
+    setLastSyncTime(time)
   }
 
-  // Function to delete a test from the calendar - updated to use axios
-  const deleteTestFromCalendar = async (testId: string): Promise<boolean> => {
-    if (!userId) {
-      toast.error("User ID not found. Please log in.")
-      return false
-    }
-
-    try {
-      const response = await axios.delete(`https://medical-backend-loj4.onrender.com/api/test/calender/${testId}`)
-
-      if (response.status !== 200) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      return true
-    } catch (error) {
-      console.error("Failed to delete test:", error)
-      return false
-    }
+  // Handler for last synced tests change
+  const handleLastSyncedTestsChange = (tests: SyncedTest[]) => {
+    setLastSyncedTests(tests)
   }
 
-  // Update the createReviewTasks function to return Test objects
-  const createReviewTasks = (test: any): any[] => {
-    const reviewTasks: any[] = []
-    const testDate = test.date instanceof Date ? test.date : new Date(test.date)
-
-    // Create review intervals (24 hours, 7 days, 30 days)
-    const intervals = [
-      { days: 1, label: "24h Review" },
-      { days: 7, label: "7d Review" },
-      { days: 30, label: "30d Review" },
-    ]
-
-    intervals.forEach((interval) => {
-      const reviewDate = new Date(testDate)
-      reviewDate.setDate(reviewDate.getDate() + interval.days)
-
-      // Skip if review date is in the past
-      if (reviewDate < new Date(new Date().setHours(0, 0, 0, 0))) {
-        return
-      }
-
-      reviewTasks.push({
-        _id: `review-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        subjectName: test.subjectName,
-        testTopic: `${test.testTopic} - ${interval.label}`,
-        date: reviewDate,
-        color: "#EF4444", // Red color for review tasks
-        completed: false,
-        userId: test.userId,
-      })
-    })
-
-    return reviewTasks
-  }
-
-  // Function to fetch weekly plan
-  const fetchWeeklyPlan = async (): Promise<any[]> => {
-    // First try to get from localStorage
-    if (typeof window !== "undefined") {
-      const storedPlan = localStorage.getItem("weeklyStudyPlan")
-      if (storedPlan) {
-        try {
-          return JSON.parse(storedPlan)
-        } catch (e) {
-          console.error("Error parsing stored plan:", e)
-        }
-      }
-    }
-
-    // If not in localStorage, try to fetch from backend
-    if (userId) {
-      try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/study-plan/${userId}`)
-        if (response.data?.studyPlan) {
-          console.log("Study plan data:", response.data.studyPlan)
-
-          // Extract tasks from the study plan structure
-          const tasks: any[] = []
-
-          // Check if the study plan has weeklyPlans
-          if (response.data.studyPlan.plan?.weeklyPlans) {
-            // Iterate through each week
-            response.data.studyPlan.plan.weeklyPlans.forEach((week: any) => {
-              // Iterate through each day in the week
-              if (week.days) {
-                week.days.forEach((day: any) => {
-                  // Iterate through each task in the day
-                  if (day.tasks) {
-                    day.tasks.forEach((task: any) => {
-                      // Create a date string for the task based on the day of week
-                      const today = new Date()
-                      const dayIndex = [
-                        "sunday",
-                        "monday",
-                        "tuesday",
-                        "wednesday",
-                        "thursday",
-                        "friday",
-                        "saturday",
-                      ].findIndex((d) => d.toLowerCase() === day.dayOfWeek.toLowerCase())
-
-                      // Calculate the date for this day of the week
-                      const taskDate = new Date(today)
-                      const currentDay = today.getDay()
-                      const daysToAdd = (dayIndex - currentDay + 7) % 7
-                      taskDate.setDate(today.getDate() + daysToAdd)
-
-                      // Convert the task to our PlanTask format
-                      tasks.push({
-                        id: `task-${Math.random().toString(36).substring(2, 9)}`,
-                        title: task.activity,
-                        subject: task.subject,
-                        topic: task.activity,
-                        date: taskDate.toISOString().split("T")[0],
-                        duration: task.duration,
-                        priority: determinePriority(task.subject),
-                      })
-                    })
-                  }
-                })
-              }
-            })
-          }
-
-          return tasks
-        }
-      } catch (error) {
-        console.error("Failed to fetch weekly plan:", error)
-      }
-    }
-
-    return [] // Return empty array if no plan found
-  }
-
-  // Add a helper function to determine priority based on subject
-  const determinePriority = (subject: string): "high" | "medium" | "low" => {
-    // This is a placeholder logic - you can customize based on your needs
-    // For example, you might want to check if the subject is in the user's weak subjects
-    const weakSubjects = ["Anatomy", "Pharmacology"] // Example weak subjects
-    const mediumSubjects = ["Physiology", "Pathology"] // Example medium subjects
-
-    if (weakSubjects.some((s) => subject.toLowerCase().includes(s.toLowerCase()))) {
-      return "high"
-    } else if (mediumSubjects.some((s) => subject.toLowerCase().includes(s.toLowerCase()))) {
-      return "medium"
-    } else {
-      return "low"
-    }
-  }
-
-  // Update the convertPlanTasksToTests function to return Test objects with red color
-  const convertPlanTasksToTests = (tasks: any[], userId: string): any[] => {
-    return tasks.map((task) => ({
-      _id: `plan-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      subjectName: task.subject,
-      testTopic: task.title,
-      date: new Date(task.date),
-      color: "#EF4444", // Red color for all tasks
-      completed: false,
-      userId: userId,
-    }))
-  }
-
-  // Function to undo the last sync
-  const undoLastSync = async () => {
-    if (lastSyncedTests.length === 0) {
-      toast.error("No tests to undo")
-      return
-    }
-
-    setIsUndoing(true)
-    toast.loading("Undoing last sync...")
-
-    try {
-      let deletedCount = 0
-      for (const test of lastSyncedTests) {
-        if (test._id) {
-          const success = await deleteTestFromCalendar(test._id)
-          if (success) {
-            deletedCount++
-          }
-        }
-      }
-
-      // Clear the last synced tests
-      setLastSyncedTests([])
-      localStorage.removeItem("lastSyncedTests")
-      setShowUndoButton(false)
-
-      // Refresh the calendar data
-      fetchTests()
-
-      toast.dismiss()
-      toast.success(`Removed ${deletedCount} tests from your calendar`)
-    } catch (error) {
-      console.error("Error during undo:", error)
-      toast.dismiss()
-      toast.error("Failed to undo changes. Please try again.")
-    } finally {
-      setIsUndoing(false)
-    }
-  }
-
-  // Main function to sync planner and add review tasks
-  const syncPlannerAndAddReviews = async () => {
-    if (!userId) {
-      toast.error("User ID not found. Please log in.")
-      return
-    }
-
-    setIsSyncing(true)
-    toast.loading("Syncing planner and scheduling reviews...")
-
-    try {
-      console.log("Fetch weekly plan")
-      // 1. Fetch weekly plan
-      const planTasks = await fetchWeeklyPlan()
-
-      console.log("Convert plan tasks to calendar tests")
-      // 2. Convert plan tasks to calendar tests
-      const planTests = convertPlanTasksToTests(planTasks, userId)
-
-      console.log("Add plan tests to calendar")
-      // 3. Add plan tests to calendar
-      const addedTests: any[] = []
-      const reviewTasks: any[] = []
-
-      for (const test of planTests) {
-        const addedTest = await addTestToCalendar(test)
-        if (addedTest) {
-          addedTests.push(addedTest)
-
-          // 4. Create review tasks for each added test
-          const reviews = createReviewTasks(addedTest)
-          reviewTasks.push(...reviews)
-        }
-      }
-
-      // 5. Add review tasks to calendar
-      const addedReviews: any[] = []
-      for (const review of reviewTasks) {
-        const addedReview = await addTestToCalendar(review)
-        if (addedReview) {
-          addedReviews.push(addedReview)
-        }
-      }
-
-      // 6. Update last sync time
-      const now = new Date().toISOString()
-      setLastSyncTime(now)
-      if (typeof window !== "undefined") {
-        localStorage.setItem("lastPlannerSyncTime", now)
-      }
-
-      // 7. Save the added tests for potential undo
-      const allAddedTests = [...addedTests, ...addedReviews]
-      setLastSyncedTests(allAddedTests)
-      localStorage.setItem("lastSyncedTests", JSON.stringify(allAddedTests))
-      setShowUndoButton(true)
-
-      // 8. Refresh the calendar data
-      fetchTests()
-
-      toast.dismiss()
-      toast.success(`Synced ${addedTests.length} plan items and scheduled ${addedReviews.length} review sessions`)
-    } catch (error) {
-      console.error("Error during sync:", error)
-      toast.dismiss()
-      toast.error("Failed to sync planner. Please try again.")
-    } finally {
-      setIsSyncing(false)
-    }
+  // Handler for weekly study plan change
+  const handleWeeklyStudyPlanChange = (plan: PlanTask[]) => {
+    setWeeklyStudyPlan(plan)
   }
 
   const renderCalendarDays = () => {
@@ -903,42 +663,16 @@ const SmartStudyCalendar = () => {
           {/* AI Sync Tab */}
           {activeTab === "sync" && (
             <div>
-              <h2 className="text-xl font-semibold mb-4">AI Planner Sync & Review Scheduler</h2>
-
-              <div className="bg-blue-50 rounded-lg p-5 mb-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                  <div>
-                    <h3 className="font-medium text-lg mb-2">Sync Your Study Plan</h3>
-                    <p className="text-gray-600 mb-2">
-                      Sync your AI study plan with the calendar and automatically schedule spaced repetition review
-                      sessions.
-                    </p>
-                    {lastSyncTime && (
-                      <p className="text-sm text-gray-500">Last synced: {new Date(lastSyncTime).toLocaleString()}</p>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2">
-                    {showUndoButton && (
-                      <button
-                        onClick={undoLastSync}
-                        disabled={isUndoing || isSyncing}
-                        className="bg-gray-500 text-white py-2 px-4 rounded hover:bg-gray-600 transition-colors disabled:opacity-50 flex items-center"
-                      >
-                        <RefreshCw size={16} className="mr-1" />
-                        {isUndoing ? "Undoing..." : "Undo Last Sync"}
-                      </button>
-                    )}
-                    <button
-                      onClick={syncPlannerAndAddReviews}
-                      disabled={isSyncing || isUndoing}
-                      className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
-                    >
-                      {isSyncing ? "Processing..." : "Sync Plan & Schedule Reviews"}
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <PlannerSyncScheduler
+                userId={userId}
+                onTestsAdded={handleTestsAdded}
+                onRefresh={fetchTests}
+                lastSyncTime={lastSyncTime}
+                lastSyncedTests={lastSyncedTests}
+                onSyncTimeChange={handleSyncTimeChange}
+                onLastSyncedTestsChange={handleLastSyncedTestsChange}
+                weeklyStudyPlan={weeklyStudyPlan}
+              />
 
               <div className="border-t pt-4">
                 <h3 className="font-medium text-lg mb-3">How It Works</h3>

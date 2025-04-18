@@ -709,17 +709,25 @@ export default function StudyQuest() {
 
       <Card className="shadow-sm">
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>My Quests</CardTitle>
-            <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-              <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="active">Active</TabsTrigger>
-                <TabsTrigger value="completed">Completed</TabsTrigger>
-                <TabsTrigger value="overdue">Overdue</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+      <CardTitle>My Quests</CardTitle>
+      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
+        <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4 gap-1">
+          <TabsTrigger value="all" className="text-xs sm:text-sm px-2 sm:px-4">
+            All
+          </TabsTrigger>
+          <TabsTrigger value="active" className="text-xs sm:text-sm px-2 sm:px-4">
+            Active
+          </TabsTrigger>
+          <TabsTrigger value="completed" className="text-xs sm:text-sm px-2 sm:px-4">
+            Completed
+          </TabsTrigger>
+          <TabsTrigger value="overdue" className="text-xs sm:text-sm px-2 sm:px-4">
+            Overdue
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+    </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {loading && filteredQuests.length === 0 ? (

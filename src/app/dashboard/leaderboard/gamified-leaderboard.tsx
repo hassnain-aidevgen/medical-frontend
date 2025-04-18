@@ -581,7 +581,11 @@ export default function GamifiedLeaderboard() {
                 specialty={activeTab === "specialty" ? selectedSpecialty || undefined : undefined}
                 targetExam={targetExam || undefined}
                 rank={currentUserStats.rank}
-                totalUsers={["weekly", "monthly", "all-time"].includes(activeTab as "weekly" | "monthly" | "all-time") ? leaderboardData[activeTab as "weekly" | "monthly" | "all-time"].length : 0}
+                totalUsers={
+                  ["weekly", "monthly", "all-time"].includes(activeTab as "weekly" | "monthly" | "all-time")
+                    ? leaderboardData[activeTab as "weekly" | "monthly" | "all-time"].length
+                    : 0
+                }
               />
             )}
 
@@ -882,14 +886,26 @@ export default function GamifiedLeaderboard() {
         </div>
 
         <Tabs defaultValue="all-time" value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)}>
-          <TabsList className="grid w-full grid-cols-7 mb-4">
-            <TabsTrigger value="weekly">Weekly</TabsTrigger>
-            <TabsTrigger value="monthly">Monthly</TabsTrigger>
-            <TabsTrigger value="all-time">All Time</TabsTrigger>
-            <TabsTrigger value="specialty">Specialty</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 md:grid-cols-7 mb-4 gap-1 overflow-x-auto">
+            <TabsTrigger value="weekly" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              Weekly
+            </TabsTrigger>
+            <TabsTrigger value="monthly" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              Monthly
+            </TabsTrigger>
+            <TabsTrigger value="all-time" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              All Time
+            </TabsTrigger>
+            <TabsTrigger value="specialty" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              Specialty
+            </TabsTrigger>
             {/* <TabsTrigger value="country">Country</TabsTrigger> */}
-            <TabsTrigger value="streaks">Streaks</TabsTrigger>
-            <TabsTrigger value="exams">Exams</TabsTrigger>
+            <TabsTrigger value="streaks" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              Streaks
+            </TabsTrigger>
+            <TabsTrigger value="exams" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              Exams
+            </TabsTrigger>
           </TabsList>
 
           {/* Specialty Filters - Only show when specialty tab is active */}
