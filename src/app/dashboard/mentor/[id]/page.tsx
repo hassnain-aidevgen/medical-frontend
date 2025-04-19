@@ -10,7 +10,7 @@ import axios from "axios"
 import { Briefcase, Building, CalendarIcon, ChevronLeft, Star, CheckCircle, XCircle } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
+import { JSX, useCallback, useEffect, useState } from "react"
 import toast from "react-hot-toast"
 import { MentorBadgeSet } from "../MentorBadgeSet"
 import { SuggestedMentorships } from "../SuggestedMentorships"
@@ -744,7 +744,7 @@ const handleSubmitReview = async (
         </div>
       ) : bookings.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-muted-foreground mb-4">You don't have any bookings with this mentor yet</p>
+          <p className="text-muted-foreground mb-4">You don&apos;t have any bookings with this mentor yet</p>
           <Button onClick={() => setActiveTab("mentorships")}>Book a Session</Button>
         </div>
       ) : (
@@ -904,7 +904,7 @@ const handleSubmitReview = async (
             bookings.filter((booking) => booking.mentorId === mentor._id).length === 0 && (
               <div className="text-center py-4">
                 <p className="text-muted-foreground mb-4">
-                  You don't have any bookings with this mentor yet
+                  You don&apos;t have any bookings with this mentor yet
                 </p>
                 <Button onClick={() => setActiveTab("mentorships")}>Book Your First Session</Button>
               </div>

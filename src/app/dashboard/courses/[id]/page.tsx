@@ -890,7 +890,7 @@ export default function CourseDetailPage() {
                               <Play className="h-12 w-12 text-gray-300" />
                             </div>
                             <h4 className="text-lg font-medium text-gray-900 mb-1">No videos available</h4>
-                            <p className="text-gray-500">This course doesn't have any videos yet.</p>
+                            <p className="text-gray-500">This course doesn&apos;t have any videos yet.</p>
                           </div>
                         )}
                       </div>
@@ -1031,7 +1031,7 @@ export default function CourseDetailPage() {
                               {review.comment && review.comment.length > 10 ? (
                                 <p className="text-gray-700">{review.comment}</p>
                               ) : (
-                                <p className="text-gray-500 italic">This review doesn't include detailed comments.</p>
+                                <p className="text-gray-500 italic">This review doesn&apos;t include detailed comments.</p>
                               )}
                             </div>
                             {session?.user?.id === review.userId && (
