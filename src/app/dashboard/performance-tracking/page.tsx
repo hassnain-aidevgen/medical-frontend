@@ -143,24 +143,24 @@ interface ComparativeAnalytics {
   } | null
 }
 interface SubjectPerformanceData {
-  subjectId: string;
-  subjectName: string;
+  subjectId: string
+  subjectName: string
   subsections: {
-    subsectionId: string;
-    subsectionName: string;
+    subsectionId: string
+    subsectionName: string
     performance: {
-      correctCount: number;
-      incorrectCount: number;
-      totalCount: number;
-      lastAttempted: string;
-    };
-  }[];
-  lastUpdated: string;
+      correctCount: number
+      incorrectCount: number
+      totalCount: number
+      lastAttempted: string
+    }
+  }[]
+  lastUpdated: string
 }
 interface UserPerformanceData {
-  userId: string;
-  subjects: SubjectPerformanceData[];
-  lastUpdated: string;
+  userId: string
+  subjects: SubjectPerformanceData[]
+  lastUpdated: string
 }
 interface TopicMasteryMetrics {
   topics: {
@@ -355,13 +355,15 @@ export default function AnalyticsDashboard() {
   const [performanceData, setPerformanceData] = useState<TestResult[]>([])
   const [statsData, setStatsData] = useState<StatsData | null>(null)
   const [comparativeData, setComparativeData] = useState<ComparativeAnalytics | null>(null)
-  const [userPerformanceData, setUserPerformanceData] = useState<UserPerformanceData | null>(null);
-const [userWeakSubjects, setUserWeakSubjects] = useState<{
-  subjectName: string;
-  subsectionName: string;
-  accuracy: number;
-  totalQuestions: number;
-}[]>([]);
+  const [userPerformanceData, setUserPerformanceData] = useState<UserPerformanceData | null>(null)
+  const [userWeakSubjects, setUserWeakSubjects] = useState<
+    {
+      subjectName: string
+      subsectionName: string
+      accuracy: number
+      totalQuestions: number
+    }[]
+  >([])
   const [topicMasteryData, setTopicMasteryData] = useState<TopicMasteryMetrics | null>(null)
   const [loading, setLoading] = useState({
     performance: true,
@@ -399,69 +401,80 @@ const [userWeakSubjects, setUserWeakSubjects] = useState<{
   const fetchWeakSubjects = async (userId: string) => {
     try {
       // Fetch performance data from your new endpoint
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/get-performance/${userId}`);
-      
+      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/get-performance/${userId}`)
+
       if (response.data.success && response.data.data) {
-        setUserPerformanceData(response.data.data);
-        
+        setUserPerformanceData(response.data.data)
+
         // Process the data to extract weak subjects and subsections
-        const weakSubjectsData = [];
-        const subjects = response.data.data.subjects || [];
-        
+        const weakSubjectsData = []
+        const subjects = response.data.data.subjects || []
+
         // Process each subject
         for (const subject of subjects) {
-          let totalCorrect = 0;
-          let totalIncorrect = 0;
-          let totalQuestions = 0;
-          
+          let totalCorrect = 0
+          let totalIncorrect = 0
+          let totalQuestions = 0
+
           // Calculate subject-level totals from subsections
-          subject.subsections.forEach((subsection: { performance: { correctCount: number; incorrectCount: number; totalCount: number }; subsectionName: string }) => {
-            totalCorrect += subsection.performance.correctCount;
-            totalIncorrect += subsection.performance.incorrectCount;
-            totalQuestions += subsection.performance.totalCount;
-          });
-          
+          subject.subsections.forEach(
+            (subsection: {
+              performance: { correctCount: number; incorrectCount: number; totalCount: number }
+              subsectionName: string
+            }) => {
+              totalCorrect += subsection.performance.correctCount
+              totalIncorrect += subsection.performance.incorrectCount
+              totalQuestions += subsection.performance.totalCount
+            },
+          )
+
           // Calculate accuracy percentage
-          const accuracy = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0;
-          
+          const accuracy = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0
+
           // Add subject to weak subjects list if accuracy is below 50% and has at least 3 attempts
           if (accuracy < 50 && totalQuestions >= 3) {
             weakSubjectsData.push({
               subjectName: subject.subjectName,
               subsectionName: "",
               accuracy: accuracy,
-              totalQuestions: totalQuestions
-            });
+              totalQuestions: totalQuestions,
+            })
           }
-          
+
           // Add individual weak subsections (topics)
-          subject.subsections.forEach((subsection: { performance: { correctCount: number; incorrectCount: number; totalCount: number }; subsectionName: string }) => {
-            if (subsection.performance.totalCount >= 2) {
-              const subsectionAccuracy = subsection.performance.totalCount > 0 
-                ? (subsection.performance.correctCount / subsection.performance.totalCount) * 100 
-                : 0;
-                
-              if (subsectionAccuracy < 50) {
-                weakSubjectsData.push({
-                  subjectName: subject.subjectName,
-                  subsectionName: subsection.subsectionName,
-                  accuracy: subsectionAccuracy,
-                  totalQuestions: subsection.performance.totalCount
-                });
+          subject.subsections.forEach(
+            (subsection: {
+              performance: { correctCount: number; incorrectCount: number; totalCount: number }
+              subsectionName: string
+            }) => {
+              if (subsection.performance.totalCount >= 2) {
+                const subsectionAccuracy =
+                  subsection.performance.totalCount > 0
+                    ? (subsection.performance.correctCount / subsection.performance.totalCount) * 100
+                    : 0
+
+                if (subsectionAccuracy < 50) {
+                  weakSubjectsData.push({
+                    subjectName: subject.subjectName,
+                    subsectionName: subsection.subsectionName,
+                    accuracy: subsectionAccuracy,
+                    totalQuestions: subsection.performance.totalCount,
+                  })
+                }
               }
-            }
-          });
+            },
+          )
         }
-        
+
         // Sort by accuracy (ascending)
-        weakSubjectsData.sort((a, b) => a.accuracy - b.accuracy);
-        setUserWeakSubjects(weakSubjectsData);
+        weakSubjectsData.sort((a, b) => a.accuracy - b.accuracy)
+        setUserWeakSubjects(weakSubjectsData)
       }
     } catch (error) {
-      console.error("Error fetching weak subjects:", error);
+      console.error("Error fetching weak subjects:", error)
     }
-  };
-// ye wali
+  }
+  // ye wali
   useEffect(() => {
     const fetchData = async () => {
       const userId = localStorage.getItem("Medical_User_Id")
@@ -519,7 +532,7 @@ const [userWeakSubjects, setUserWeakSubjects] = useState<{
         } finally {
           setLoading((prev) => ({ ...prev, topicMastery: false }))
         }
-        await fetchWeakSubjects(userId);
+        await fetchWeakSubjects(userId)
         setShareUrl("")
       } catch (err) {
         console.error("Error fetching data:", err)
@@ -539,7 +552,6 @@ const [userWeakSubjects, setUserWeakSubjects] = useState<{
 
     fetchData()
   }, [])
-  
 
   const generatePDF = async () => {
     if (!dashboardRef.current) return
@@ -817,16 +829,19 @@ const [userWeakSubjects, setUserWeakSubjects] = useState<{
     return (
       <div className="container mx-auto p-4 space-y-4">
         <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-        <div className="bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-lg">
-          <h2 className="text-lg font-medium text-red-800 dark:text-red-400 mb-2">Error Loading Data</h2>
-          <ul className="space-y-1 text-sm text-red-700 dark:text-red-300">
-            {error.performance && <li>{error.performance}</li>}
-            {error.stats && <li>{error.stats}</li>}
-            {error.comparative && <li>{error.comparative}</li>}
-            {error.topicMastery && <li>{error.topicMastery}</li>}
-          </ul>
-          <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
-            Retry
+        <div className="bg-blue-100 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-6 rounded-lg text-center">
+          <h2 className="text-xl font-medium text-blue-800 dark:text-blue-400 mb-4">
+            Welcome to Your Analytics Dashboard
+          </h2>
+          <div className="flex justify-center mb-4">
+            <BookOpen className="h-16 w-16 text-blue-500" />
+          </div>
+          <p className="text-blue-700 dark:text-blue-300 mb-4 max-w-2xl mx-auto">
+            It looks like you haven&apos;t taken any tests yet. Start taking tests to see your performance analytics, track
+            your progress, and get personalized recommendations.
+          </p>
+          <Button variant="default" className="mt-2" onClick={() => (window.location.href = "/dashboard/create-test")}>
+            Take Your First Test
           </Button>
         </div>
       </div>
@@ -943,7 +958,11 @@ const [userWeakSubjects, setUserWeakSubjects] = useState<{
             </div>
 
             {/* Streak Tracker Component */}
-            <StreakTracker userId={localStorage.getItem("Medical_User_Id") || ""} performanceData={performanceData} isLoading={loading.performance} />
+            <StreakTracker
+              userId={localStorage.getItem("Medical_User_Id") || ""}
+              performanceData={performanceData}
+              isLoading={loading.performance}
+            />
 
             {/* History Timeline Component */}
             <HistoryTimeline performanceData={performanceData} isLoading={loading.performance} />
@@ -1690,130 +1709,129 @@ const [userWeakSubjects, setUserWeakSubjects] = useState<{
                 className="lg:col-span-3"
               >
                 <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
-                  
                   <motion.div
-  initial={{ opacity: 0, y: 20 }}
-  animate={{ opacity: 1, y: 0 }}
-  transition={{ duration: 0.5, delay: 0.1 }}
-  className="lg:col-span-3"
->
-  <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
-    <CardHeader>
-      <CardTitle className="flex items-center gap-2">
-        <Zap className="h-5 w-5 text-blue-500" />
-        Personalized Study Recommendations
-      </CardTitle>
-      <CardDescription>
-        Based on your performance data, we recommend focusing on these areas
-      </CardDescription>
-    </CardHeader>
-    <CardContent>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {userWeakSubjects.length > 0 ? (
-          userWeakSubjects.slice(0, 6).map((subject, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.2 + index * 0.1 }}
-              className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm"
-            >
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
-                  <AlertTriangle className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium">{subject.subjectName}</h3>
-                    {subject.subsectionName && (
-                      <Badge
-                        variant="outline"
-                        className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs"
-                      >
-                        Topic
-                      </Badge>
-                    )}
-                  </div>
-                  {subject.subsectionName && (
-                    <p className="text-sm font-medium text-muted-foreground mt-1">
-                      {subject.subsectionName}
-                    </p>
-                  )}
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {subject.accuracy < 30 
-                      ? "Needs significant improvement. Focus on fundamentals."
-                      : subject.accuracy < 50 
-                        ? "Requires more practice and review of core concepts."
-                        : "Continue practicing to strengthen your knowledge."}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-3">
-                <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                  <span>Current Mastery</span>
-                  <span>{subject.accuracy.toFixed(1)}%</span>
-                </div>
-                <Progress
-                  value={subject.accuracy}
-                  className={`h-2 ${
-                    subject.accuracy >= 70
-                      ? "bg-green-500"
-                      : subject.accuracy >= 50
-                        ? "bg-yellow-500"
-                        : subject.accuracy >= 30
-                          ? "bg-orange-500"
-                          : "bg-red-500"
-                  }`}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Based on {subject.totalQuestions} questions
-                </p>
-              </div>
-              <Button variant="ghost" size="sm" className="w-full mt-3">
-                Study This Topic
-              </Button>
-            </motion.div>
-          ))
-        ) : loading.performance || loading.stats ? (
-          // Show skeleton loaders while loading
-          Array(6)
-            .fill(0)
-            .map((_, index) => (
-              <div key={index} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
-                <div className="flex items-start gap-3">
-                  <Skeleton className="h-8 w-8 rounded-full" />
-                  <div className="space-y-2 flex-1">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-5/6" />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <div className="flex justify-between mb-1">
-                    <Skeleton className="h-3 w-24" />
-                    <Skeleton className="h-3 w-8" />
-                  </div>
-                  <Skeleton className="h-2 w-full" />
-                </div>
-                <div className="mt-3">
-                  <Skeleton className="h-8 w-full rounded-md" />
-                </div>
-              </div>
-            ))
-        ) : (
-          // No weak subjects found
-          <div className="col-span-full flex flex-col items-center justify-center py-6">
-            <BookOpen className="h-12 w-12 text-muted-foreground mb-2" />
-            <h3 className="text-lg font-medium">No weak areas identified yet</h3>
-            <p className="text-sm text-muted-foreground text-center mt-1">
-              Take more tests to help us identify areas where you need improvement.
-            </p>
-          </div>
-        )}
-      </div>
-    </CardContent>
-  </Card>
-</motion.div>
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                    className="lg:col-span-3"
+                  >
+                    <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Zap className="h-5 w-5 text-blue-500" />
+                          Personalized Study Recommendations
+                        </CardTitle>
+                        <CardDescription>
+                          Based on your performance data, we recommend focusing on these areas
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {userWeakSubjects.length > 0 ? (
+                            userWeakSubjects.slice(0, 6).map((subject, index) => (
+                              <motion.div
+                                key={index}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3, delay: 0.2 + index * 0.1 }}
+                                className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm"
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div className="p-2 rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                                    <AlertTriangle className="h-4 w-4" />
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <h3 className="font-medium">{subject.subjectName}</h3>
+                                      {subject.subsectionName && (
+                                        <Badge
+                                          variant="outline"
+                                          className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs"
+                                        >
+                                          Topic
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {subject.subsectionName && (
+                                      <p className="text-sm font-medium text-muted-foreground mt-1">
+                                        {subject.subsectionName}
+                                      </p>
+                                    )}
+                                    <p className="text-sm text-muted-foreground mt-1">
+                                      {subject.accuracy < 30
+                                        ? "Needs significant improvement. Focus on fundamentals."
+                                        : subject.accuracy < 50
+                                          ? "Requires more practice and review of core concepts."
+                                          : "Continue practicing to strengthen your knowledge."}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="mt-3">
+                                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                    <span>Current Mastery</span>
+                                    <span>{subject.accuracy.toFixed(1)}%</span>
+                                  </div>
+                                  <Progress
+                                    value={subject.accuracy}
+                                    className={`h-2 ${
+                                      subject.accuracy >= 70
+                                        ? "bg-green-500"
+                                        : subject.accuracy >= 50
+                                          ? "bg-yellow-500"
+                                          : subject.accuracy >= 30
+                                            ? "bg-orange-500"
+                                            : "bg-red-500"
+                                    }`}
+                                  />
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Based on {subject.totalQuestions} questions
+                                  </p>
+                                </div>
+                                <Button variant="ghost" size="sm" className="w-full mt-3">
+                                  Study This Topic
+                                </Button>
+                              </motion.div>
+                            ))
+                          ) : loading.performance || loading.stats ? (
+                            // Show skeleton loaders while loading
+                            Array(6)
+                              .fill(0)
+                              .map((_, index) => (
+                                <div key={index} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
+                                  <div className="flex items-start gap-3">
+                                    <Skeleton className="h-8 w-8 rounded-full" />
+                                    <div className="space-y-2 flex-1">
+                                      <Skeleton className="h-4 w-3/4" />
+                                      <Skeleton className="h-4 w-full" />
+                                      <Skeleton className="h-4 w-5/6" />
+                                    </div>
+                                  </div>
+                                  <div className="mt-3">
+                                    <div className="flex justify-between mb-1">
+                                      <Skeleton className="h-3 w-24" />
+                                      <Skeleton className="h-3 w-8" />
+                                    </div>
+                                    <Skeleton className="h-2 w-full" />
+                                  </div>
+                                  <div className="mt-3">
+                                    <Skeleton className="h-8 w-full rounded-md" />
+                                  </div>
+                                </div>
+                              ))
+                          ) : (
+                            // No weak subjects found
+                            <div className="col-span-full flex flex-col items-center justify-center py-6">
+                              <BookOpen className="h-12 w-12 text-muted-foreground mb-2" />
+                              <h3 className="text-lg font-medium">No weak areas identified yet</h3>
+                              <p className="text-sm text-muted-foreground text-center mt-1">
+                                Take more tests to help us identify areas where you need improvement.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 </Card>
               </motion.div>
 

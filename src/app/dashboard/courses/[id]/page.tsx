@@ -1,5 +1,14 @@
 "use client"
 
+import { useState, useEffect } from "react"
+import { useParams, useRouter } from "next/navigation"
+import toast from "react-hot-toast"
+// import { useUser } from "@clerk/nextjs"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
+import { Textarea } from "@/components/ui/textarea"
+
 import type React from "react"
 
 import { loadStripe } from "@stripe/stripe-js"
@@ -16,8 +25,6 @@ import {
   Lock,
 } from "lucide-react"
 import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 
 // Extend the Session type to include the 'id' property
@@ -32,13 +39,10 @@ declare module "next-auth" {
     }
   }
 }
-import { toast, Toaster } from "react-hot-toast" // Revert to react-hot-toast
+import { Toaster } from "react-hot-toast" // Revert to react-hot-toast
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { apiClient } from "@/lib/api"
 import Image from "next/image"
@@ -53,7 +57,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { format } from "date-fns"
 
@@ -93,11 +96,20 @@ interface Review {
   createdAt?: string
 }
 
-export default function CourseDetailPage() {
+const CoursePage = () => {
   const params = useParams()
   const router = useRouter()
-  const { data: session } = useSession()
   const [course, setCourse] = useState<Course | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasPurchased, setHasPurchased] = useState(false)
+  const [activeLessonIndex, setActiveLessonIndex] = useState(0)
+  const [activeSectionIndex, setActiveSectionIndex] = useState(0)
+  const [rating, setRating] = useState<number | null>(null)
+  const [comment, setComment] = useState("")
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false)
+  // const { user } = useUser()
+
+  const { data: session } = useSession()
   const [allCourses, setAllCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [addingToCart, setAddingToCart] = useState(false)
@@ -105,11 +117,9 @@ export default function CourseDetailPage() {
   const [userReview, setUserReview] = useState<Review | null>(null)
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewComment, setReviewComment] = useState("")
-  const [isSubmittingReview, setIsSubmittingReview] = useState(false)
   const [loadingReviews, setLoadingReviews] = useState(false)
 
   // Add states for purchase verification
-  const [hasPurchased, setHasPurchased] = useState<boolean | null>(null)
   const [checkingPurchase, setCheckingPurchase] = useState(false)
   const [showPurchaseDialog, setShowPurchaseDialog] = useState(false)
 
@@ -144,9 +154,13 @@ export default function CourseDetailPage() {
 
         // Call API to check if user has purchased this course
         const response = await fetch(`http://localhost:5000/api/course-purchase/verify/${params.id}`, {
+          method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
+          body: JSON.stringify({
+            userId: localStorage.getItem("Medical_User_Id"),
+          }),
         })
 
         if (!response.ok) {
@@ -279,6 +293,12 @@ export default function CourseDetailPage() {
 
         setReviews(reviews)
 
+        // Add console logging to debug the review data when it's received:
+        console.log("Received reviews data:", reviews)
+        reviews.forEach((review: Review) => {
+          console.log(`Review by ${review.userId}: rating=${review.rating}, comment=${review.comment}`)
+        })
+
         // Check if the current user has already submitted a review
         if (session?.user?.id) {
           const userReview = reviews.find((review: Review) => review.userId === session.user.id)
@@ -314,53 +334,52 @@ export default function CourseDetailPage() {
   }
 
   const handleBuyNow = async () => {
-    if (!course) return;
-  
+    if (!course) return
+
     try {
-      setAddingToCart(true);
-  
+      setAddingToCart(true)
+
       // Get token from localStorage
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token")
       if (!token) {
-        toast.error("Please log in to purchase this course");
-        router.push("/login?redirect=" + encodeURIComponent(window.location.pathname));
-        return;
+        toast.error("Please log in to purchase this course")
+        router.push("/login?redirect=" + encodeURIComponent(window.location.pathname))
+        return
       }
-  
+
       // Create checkout session
       const response = await fetch("http://localhost:5000/api/course-purchase/create-checkout-session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
           items: [{ type: "course", id: course._id }],
           successUrl: `${window.location.origin}/dashboard?success=true`,
           cancelUrl: `${window.location.origin}/courses/${course._id}?canceled=true`,
-          userId: localStorage.getItem("Medical_User_Id")
-        })
-      });
-  
+          userId: localStorage.getItem("Medical_User_Id"),
+        }),
+      })
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create checkout session");
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Failed to create checkout session")
       }
-  
-      const session = await response.json();
-  
+
+      const session = await response.json()
+
       // Redirect to checkout
-      window.location.href = session.url;
+      window.location.href = session.url
     } catch (error) {
-      console.error("Error processing purchase:", error);
+      console.error("Error processing purchase:", error)
       if (error instanceof Error) {
-        toast.error(error.message || "Failed to process purchase");
+        toast.error(error.message || "Failed to process purchase")
       } else {
-        toast.error("Failed to process purchase");
+        toast.error("Failed to process purchase")
       }
-      setAddingToCart(false);
+      setAddingToCart(false)
     }
-  };
+  }
   // Function to handle video play attempt
   const handleVideoPlayAttempt = () => {
     // Skip the login check - assume user is already logged in
@@ -371,116 +390,160 @@ export default function CourseDetailPage() {
     }
     // If hasPurchased is true, the video will play normally
   }
-  
-  
+
   // Modified purchase verification function - only checks purchase status
   useEffect(() => {
     const checkPurchaseStatus = async () => {
       if (!params.id) {
-        setHasPurchased(false);
-        return;
+        setHasPurchased(false)
+        return
       }
-  
+
       try {
-        setCheckingPurchase(true);
-  
+        setCheckingPurchase(true)
+
         // Get token from localStorage
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("token")
         if (!token) {
-          setHasPurchased(false);
-          return;
+          setHasPurchased(false)
+          return
         }
-        const userId = localStorage.getItem("Medical_User_Id");
-  
+
         // Call API to check if user has purchased this course
         const response = await fetch(`http://localhost:5000/api/course-purchase/verify/${params.id}`, {
+          method: "POST",
           headers: {
-            // "Authorization": `Bearer ${token}`
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            userId: localStorage.getItem("Medical_User_Id")
-          })
-        });
-  
+            userId: localStorage.getItem("Medical_User_Id"),
+          }),
+        })
+
         if (!response.ok) {
-          throw new Error(`Failed to verify purchase: ${response.status}`);
+          throw new Error(`Failed to verify purchase: ${response.status}`)
         }
-  
-        const data = await response.json();
-        setHasPurchased(data.purchased);
+
+        const data = await response.json()
+        setHasPurchased(data.purchased)
       } catch (error) {
-        console.error("Error checking purchase status:", error);
-        setHasPurchased(false);
+        console.error("Error checking purchase status:", error)
+        setHasPurchased(false)
       } finally {
-        setCheckingPurchase(false);
+        setCheckingPurchase(false)
       }
-    };
-  
-    checkPurchaseStatus();
-  }, [params.id]);
-  
+    }
+
+    checkPurchaseStatus()
+  }, [params.id])
+
   const handleReviewSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-  
-    const userId = typeof window !== "undefined" ? localStorage.getItem("Medical_User_Id") : null;
-  
+    e.preventDefault()
+
+    const userId = typeof window !== "undefined" ? localStorage.getItem("Medical_User_Id") : null
+
     if (!userId) {
-      toast.error("You must be logged in to submit a review");
-      return;
+      toast.error("You must be logged in to submit a review")
+      return
     }
-  
+
     if (!reviewRating || !reviewComment.trim()) {
-      toast.error("Please provide both a rating and comment");
-      return;
+      toast.error("Please provide both a rating and comment")
+      return
     }
-  
+
     try {
-      setIsSubmittingReview(true);
-  
+      setIsSubmittingReview(true)
+
       const reviewData = {
         courseId: params.id,
-        userId, // 👈 Include userId explicitly
+        userId,
         rating: reviewRating,
         comment: reviewComment,
-      };
-  
+      }
+
+      console.log("Submitting review data:", reviewData)
+
       const response = await fetch("http://localhost:5000/api/reviews/course", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(reviewData),
-      });
-  
+      })
+
       if (!response.ok) {
-        toast.error("Failed to submit review. Please try again.");
-        return;
+        toast.error("Failed to submit review. Please try again.")
+        return
       }
-  
-      const savedReview = await response.json();
-  
+
+      const savedReview = await response.json()
+      console.log("Received saved review:", savedReview)
+
+      // Create a new reviews array to force a re-render
       if (userReview) {
-        setReviews(
-          reviews.map((review) =>
-            review.userId === savedReview.userId ? savedReview : review
-          )
-        );
-        toast.success("Your review has been updated!");
+        // Update existing review
+        const updatedReviews = reviews.map((review) => (review.userId === savedReview.userId ? savedReview : review))
+        setReviews([...updatedReviews]) // Create a new array reference to trigger re-render
+        toast.success("Your review has been updated!")
       } else {
-        setReviews([savedReview, ...reviews]);
-        toast.success("Your review has been submitted!");
+        // Add new review
+        setReviews([savedReview, ...reviews]) // Create a new array reference to trigger re-render
+        toast.success("Your review has been submitted!")
       }
-  
-      setUserReview(savedReview);
-      document.body.click(); // Close modal
+
+      setUserReview(savedReview)
+
+      // Force close the dialog
+      document.body.click()
+
+      // Add a small delay before refreshing reviews to ensure backend consistency
+      setTimeout(() => {
+        fetchReviews()
+      }, 500)
     } catch (error) {
-      console.error("Error submitting review:", error);
-      toast.error("Something went wrong while submitting your review.");
+      console.error("Error submitting review:", error)
+      toast.error("Something went wrong while submitting your review.")
     } finally {
-      setIsSubmittingReview(false);
+      setIsSubmittingReview(false)
     }
-  };
-  
+  }
+
+  // Add this fetchReviews function outside of any useEffect
+  const fetchReviews = async () => {
+    if (!params.id) return
+
+    try {
+      setLoadingReviews(true)
+
+      const response = await fetch(`http://localhost:5000/api/reviews/course/${params.id}`)
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch reviews: ${response.status}`)
+      }
+
+      const data = await response.json()
+      const reviews = data.success ? data.reviews : []
+
+      console.log("Fetched fresh reviews:", reviews)
+      setReviews(reviews)
+
+      // Check if the current user has already submitted a review
+      if (session?.user?.id) {
+        const userReview = reviews.find((review: Review) => review.userId === session.user.id)
+        if (userReview) {
+          setUserReview(userReview)
+          setReviewRating(userReview.rating)
+          setReviewComment(userReview.comment)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching reviews:", error)
+      toast.error("Failed to load reviews")
+    } finally {
+      setLoadingReviews(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -699,14 +762,14 @@ export default function CourseDetailPage() {
                               <div className="flex overflow-x-auto gap-2 pb-2">
                                 {course.videos.map((video, idx) => (
                                   <button
-                                  key={idx}
-                                  onClick={() => {
-                                    if (hasPurchased) {
-                                      setCurrentVideoIndex(idx)
-                                    } else {
-                                      setShowPurchaseDialog(true)
-                                    }
-                                  }}
+                                    key={idx}
+                                    onClick={() => {
+                                      if (hasPurchased) {
+                                        setCurrentVideoIndex(idx)
+                                      } else {
+                                        setShowPurchaseDialog(true)
+                                      }
+                                    }}
                                     className={`px-3 py-2 text-sm whitespace-nowrap rounded-md transition-colors ${
                                       currentVideoIndex === idx
                                         ? "bg-primary text-primary-foreground"
@@ -764,7 +827,7 @@ export default function CourseDetailPage() {
                                       <Image
                                         src={
                                           course.thumbnail ||
-                                          `/placeholder.svg?height=480&width=854&text=${encodeURIComponent("Premium Content")}`
+                                          `/placeholder.svg?height=480&width=854&text=${encodeURIComponent("Premium Content") || "/placeholder.svg"}`
                                         }
                                         alt="Video thumbnail"
                                         width={854}
@@ -1022,17 +1085,19 @@ export default function CourseDetailPage() {
                                   </div>
                                   <span className="font-medium">
                                     {review.rating !== undefined && review.rating !== null
-                                      ? Number(review.rating).toFixed(1)
+                                      ? review.rating.toFixed(1)
                                       : "0.0"}
                                   </span>
                                 </div>
                               </div>
                             </div>
                             <div className="pt-3 border-t border-gray-100">
-                              {review.comment && review.comment.length > 10 ? (
+                              {review.comment ? (
                                 <p className="text-gray-700">{review.comment}</p>
                               ) : (
-                                <p className="text-gray-500 italic">This review doesn&apos;t include detailed comments.</p>
+                                <p className="text-gray-500 italic">
+                                  This review doesn&apos;t include detailed comments.
+                                </p>
                               )}
                             </div>
                             {session?.user?.id === review.userId && (
@@ -1174,3 +1239,5 @@ export default function CourseDetailPage() {
     </div>
   )
 }
+
+export default CoursePage

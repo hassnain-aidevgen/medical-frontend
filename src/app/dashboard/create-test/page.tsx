@@ -254,8 +254,11 @@ const [loading, setLoading] = useState(true);
         return
       }
 
-      // Update the URL to point to your new endpoint on localhost
-      const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations2/${userId}`)
+      // Update the URL to point to your new endpoint on localhost 
+      // old one
+      // const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations2/${userId}`)
+      // new onne:
+      const { data } = await axios.get(`http://localhost:5000/api/test/recommendations3/${userId}`)
 
       console.log("Recommendation data received:", data) // For debugging
 

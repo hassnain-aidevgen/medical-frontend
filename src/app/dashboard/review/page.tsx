@@ -194,7 +194,7 @@ export default function ReviewDashboard() {
                 <UpcomingReviews reviews={stats.upcomingReviews} />
               </CardContent>
             </Card>
-          </TabsContent>
+          </TabsContent>sdddddd
           <TabsContent value="completion" className="mt-4">
             <Card>
               <CardHeader>
@@ -202,6 +202,7 @@ export default function ReviewDashboard() {
                 <CardDescription>Your review completion history over time</CardDescription>
               </CardHeader>
               <CardContent>
+
                 <CompletionChart />
               </CardContent>
             </Card>

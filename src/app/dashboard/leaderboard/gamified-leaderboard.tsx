@@ -122,13 +122,16 @@ export default function GamifiedLeaderboard() {
         setLoading((prev) => ({ ...prev, [timeFrame]: true }))
 
         const userId = localStorage.getItem("Medical_User_Id")
-        if (userId && !loggedInUserId) {
-          setLoggedInUserId(userId)
-        }
+
+        // Remove this part to prevent the infinite loop
+        // if (userId && !loggedInUserId) {
+        //   setLoggedInUserId(userId)
+        // }
 
         // Fetch leaderboard data
-        // const leaderboardRes = await fetch(`${API_BASE_URL}/leaderboard?timeFrame=${timeFrame}`)
-        const leaderboardRes = await fetch(`https://medical-backend-loj4.onrender.com/api/test/leaderboard2?timeFrame=${timeFrame}`)
+        const leaderboardRes = await fetch(
+          `https://medical-backend-loj4.onrender.com/api/test/leaderboard2?timeFrame=${timeFrame}`,
+        )
 
         if (!leaderboardRes.ok) {
           throw new Error(`Failed to fetch leaderboard data: ${leaderboardRes.status}`)
@@ -146,7 +149,6 @@ export default function GamifiedLeaderboard() {
         // Fetch user stats if user is logged in
         if (userId) {
           try {
-            // const userStatsRes = await fetch(`${API_BASE_URL}/leaderboard/player/${userId}?timeFrame=${timeFrame}`)
             const userStatsRes = await fetch(
               `https://medical-backend-loj4.onrender.com/api/test/leaderboard2/player/${userId}?timeFrame=${timeFrame}`,
             )
@@ -248,8 +250,18 @@ export default function GamifiedLeaderboard() {
         setLoading((prev) => ({ ...prev, [timeFrame]: false }))
       }
     },
-    [loggedInUserId],
+    [
+      /* Remove loggedInUserId from dependencies */
+    ],
   )
+
+  // Add a separate useEffect to set the loggedInUserId once on component mount
+  useEffect(() => {
+    const userId = localStorage.getItem("Medical_User_Id")
+    if (userId) {
+      setLoggedInUserId(userId)
+    }
+  }, [])
 
   const fetchUserBadges = useCallback(async () => {
     try {
@@ -343,7 +355,7 @@ export default function GamifiedLeaderboard() {
     const loadInitialData = async () => {
       const userId = localStorage.getItem("Medical_User_Id")
       if (userId) {
-        setLoggedInUserId(userId)
+        // setLoggedInUserId(userId) // Moved to separate useEffect
 
         // Set a mock target exam based on user ID
         if (userId) {

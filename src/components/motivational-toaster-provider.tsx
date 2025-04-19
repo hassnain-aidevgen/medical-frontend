@@ -58,35 +58,6 @@ export default function MotivationalToastProvider() {
         <>
             <Toaster position="top-center" />
 
-            {/* Debug button - only visible in development */}
-            {/* {process.env.NODE_ENV === "development" && (
-                <button
-                    onClick={() => {
-                        const category = getCategoryForPath(pathname)
-                        const message = getRandomMessageForCategory(category)
-                        const icon = getRandomIconForCategory(category)
-
-                        toast(message, {
-                            icon,
-                            duration: 5000,
-                            position: "top-center",
-                            style: {
-                                borderLeft: `4px solid ${getCategoryColor(category)}`,
-                                padding: "16px",
-                                maxWidth: "500px",
-                                backgroundColor: "#f8fafc",
-                                color: "#1e293b",
-                            },
-                        })
-
-                        console.log(`Manually triggered ${category} message for path: ${pathname}`)
-                    }}
-                    className="fixed bottom-4 right-4 bg-primary text-white p-2 rounded-full shadow-lg z-50"
-                    style={{ opacity: 0.7 }}
-                >
-                    Test Toast
-                </button>
-            )} */}
         </>
     )
 }
