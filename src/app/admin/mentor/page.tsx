@@ -24,7 +24,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import axios from "axios"
-import { Edit, MoreHorizontal, Plus, Search, Star, Trash } from "lucide-react"
+import { Edit, MoreHorizontal, Plus, Search, Star, Trash, MessageSquare } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
@@ -61,7 +61,7 @@ export default function MentorsPage() {
 
     const fetchMentors = async () => {
         try {
-            const response = await axios.get("https://medical-backend-loj4.onrender.com/api/mentor", {
+            const response = await axios.get("http://localhost:5000/api/mentor", {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
@@ -90,7 +90,7 @@ export default function MentorsPage() {
         if (!mentorToDelete) return
 
         try {
-            await axios.delete(`https://medical-backend-loj4.onrender.com/api/mentor/${mentorToDelete._id}`, {
+            await axios.delete(`http://localhost:5000/api/mentor/${mentorToDelete._id}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
@@ -226,12 +226,12 @@ export default function MentorsPage() {
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                 <DropdownMenuSeparator />
-                                                {/* <DropdownMenuItem asChild>
-                                                    <Link href={`/admin/mentor/${mentor._id}`}>
-                                                        <Eye className="h-4 w-4 mr-2" />
-                                                        View
+                                                <DropdownMenuItem asChild>
+                                                    <Link href={`/admin/mentor/${mentor._id}/requests`}>
+                                                        <MessageSquare className="h-4 w-4 mr-2" />
+                                                        Requests
                                                     </Link>
-                                                </DropdownMenuItem> */}
+                                                </DropdownMenuItem>
                                                 <DropdownMenuItem asChild>
                                                     <Link href={`/admin/mentor/${mentor._id}/edit`}>
                                                         <Edit className="h-4 w-4 mr-2" />

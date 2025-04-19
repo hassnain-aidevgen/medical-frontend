@@ -67,7 +67,7 @@ export default function EditMentorPage() {
     useEffect(() => {
         const fetchMentor = async () => {
             try {
-                const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/mentor/${params.id}`, {
+                const response = await axios.get(`http://localhost:5000/api/mentor/${params.id}`, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("token")}`,
                     },
@@ -219,7 +219,7 @@ export default function EditMentorPage() {
         try {
             // Update mentor profile with all schema fields
             await axios.put(
-                `https://medical-backend-loj4.onrender.com/api/mentor/${params.id}`,
+                `http://localhost:5000/api/mentor/${params.id}`,
                 {
                     name: formData.name,
                     email: formData.email,

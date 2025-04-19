@@ -338,14 +338,14 @@ export default function ViewCoursePage() {
                                     <span>Rating</span>
                                 </div>
                                 <div className="flex items-center">
-                                    <span className="font-medium mr-1">{course.rating.toFixed(1)}</span>
+                                    <span className="font-medium mr-1">{(course.rating ?? 0).toFixed(1)}</span>
                                     <div className="flex">
                                         {Array(5)
                                             .fill(0)
                                             .map((_, i) => (
                                                 <Star
                                                     key={i}
-                                                    className={`h-4 w-4 ${i < Math.round(course.rating) ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground"}`}
+                                                    className={`h-4 w-4 ${i < Math.round(course.rating ?? 0) ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground"}`}
                                                 />
                                             ))}
                                     </div>
@@ -359,7 +359,7 @@ export default function ViewCoursePage() {
                                     <Calendar className="h-5 w-5 text-muted-foreground" />
                                     <span>Created</span>
                                 </div>
-                                <span className="font-medium">{new Date(course.createdAt).toLocaleDateString()}</span>
+                                <span className="font-medium">{course.createdAt ? new Date(course.createdAt).toLocaleDateString() : "N/A"}</span>
                             </div>
 
                             <Separator />
@@ -369,7 +369,7 @@ export default function ViewCoursePage() {
                                     <Calendar className="h-5 w-5 text-muted-foreground" />
                                     <span>Last Updated</span>
                                 </div>
-                                <span className="font-medium">{new Date(course.updatedAt).toLocaleDateString()}</span>
+                                <span className="font-medium">{course.updatedAt ? new Date(course.updatedAt).toLocaleDateString() : "N/A"}</span>
                             </div>
                         </CardContent>
                     </Card>
