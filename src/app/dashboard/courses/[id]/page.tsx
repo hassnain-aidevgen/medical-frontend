@@ -77,6 +77,7 @@ declare module "@/types" {
       thumbnail?: string
       order?: number
     }[]
+    contentLinks: string[]
   }
 }
 

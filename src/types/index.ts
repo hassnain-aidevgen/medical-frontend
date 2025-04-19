@@ -176,6 +176,7 @@ export interface User {
 
 // Course related types
 export interface Course {
+  contentLinks: string[]
   _id: string
   title: string
   description: string
