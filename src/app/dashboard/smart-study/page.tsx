@@ -487,15 +487,28 @@ const SmartStudyCalendar = () => {
                             >
                               <Trash2 size={18} />
                             </button>
-                            <button
-                              onClick={() => test._id && handleToggleCompletion(test._id, !test.completed)}
-                              className={`${
-                                test.completed ? "bg-gray-500" : "bg-green-500"
-                              } text-white py-1 px-3 rounded hover:opacity-90 transition-colors text-sm`}
-                              disabled={isLoading}
-                            >
-                              {test.completed ? "Mark Incomplete" : "Complete"}
-                            </button>
+                            {new Date(test.date) < new Date(new Date().setHours(0, 0, 0, 0)) ? (
+  <button
+    onClick={() => {
+      // You can define a real reschedule flow later
+      console.log("Reschedule button clicked for:", test)
+    }}
+    className="bg-yellow-500 text-white py-1 px-3 rounded hover:bg-yellow-600 transition-colors text-sm"
+    disabled={isLoading}
+  >
+    Reschedule Test
+  </button>
+) : (
+  <button
+    onClick={() => test._id && handleToggleCompletion(test._id, !test.completed)}
+    className={`${
+      test.completed ? "bg-gray-500" : "bg-green-500"
+    } text-white py-1 px-3 rounded hover:opacity-90 transition-colors text-sm`}
+    disabled={isLoading}
+  >
+    {test.completed ? "Mark Incomplete" : "Complete"}
+  </button>
+)}
                           </div>
                         </li>
                       ))}

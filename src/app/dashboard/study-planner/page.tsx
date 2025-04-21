@@ -400,17 +400,11 @@ const PlannerForm: React.FC = () => {
   }, [studyTips])
 
   useEffect(() => {
+    const planId = localStorage.getItem("currentPlanId")
     const savedPlan = localStorage.getItem("studyPlan")
-    if (savedPlan) {
-      try {
-        const parsedPlan = JSON.parse(savedPlan)
-        if (parsedPlan && parsedPlan.plan) {
-          setHasExistingPlan(true)
-        }
-      } catch (error) {
-        console.error("Error parsing saved plan:", error)
-        localStorage.removeItem("studyPlan")
-      }
+    
+    if (planId || savedPlan) {
+      setHasExistingPlan(true)
     }
   }, [])
 
@@ -601,36 +595,62 @@ const PlannerForm: React.FC = () => {
     }, updateInterval)
   }
 
-  const loadExistingPlan = () => {
+  const loadExistingPlan = async () => {
     try {
-      const savedPlan = localStorage.getItem("studyPlan")
-      if (savedPlan) {
-        const parsedPlan = JSON.parse(savedPlan)
-        const savedUserData = localStorage.getItem("userData")
-        const parsedUserData = savedUserData ? JSON.parse(savedUserData) : formData
-
-        setStudyPlan(parsedPlan)
-        setFormData(parsedUserData)
+      const planId = localStorage.getItem("currentPlanId")
+      if (planId) {
+        try {
+          // Fetch the plan from the database using the ID
+          const response = await axios.get(`http://localhost:5000/api/test/getStudyPlan/${planId}`)
+          if (response.data.success) {
+            setStudyPlan(response.data.data)
+            // If you need user data
+            const savedUserData = localStorage.getItem("userData")
+            const parsedUserData = savedUserData ? JSON.parse(savedUserData) : formData
+            setFormData(parsedUserData)
+          }
+        } catch (error) {
+          console.error("Error fetching plan by ID:", error)
+          fallbackToLocalStorage()
+        }
+      } else {
+        fallbackToLocalStorage()
       }
     } catch (error) {
       console.error("Error loading saved plan:", error)
+    }
+    
+    function fallbackToLocalStorage() {
+      // Fallback to localStorage if no plan ID or API fails
+      const savedPlan = localStorage.getItem("studyPlan")
+      if (savedPlan) {
+        try {
+          const parsedPlan = JSON.parse(savedPlan)
+          const savedUserData = localStorage.getItem("userData")
+          const parsedUserData = savedUserData ? JSON.parse(savedUserData) : formData
+          setStudyPlan(parsedPlan)
+          setFormData(parsedUserData)
+        } catch (parseError) {
+          console.error("Error parsing saved plan:", parseError)
+        }
+      }
     }
   }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault()
-
+  
     // Validate final step
     if (!validateStep(currentStep)) {
       return
     }
-
+  
     setIsSubmitting(true)
     setApiError(null)
-
+  
     // Start progress simulation
     simulateProgress()
-
+  
     // Prepare data for submission that's compatible with the existing API
     const submissionData = {
       name: formData.name,
@@ -651,24 +671,24 @@ const PlannerForm: React.FC = () => {
         formData.additionalInfo + (formData.usePerformanceData ? "\n[Using performance data for weak topics]" : ""),
       previousScores: formData.previousScores,
     }
-
+  
     // Save user data to localStorage
     localStorage.setItem("userData", JSON.stringify(formData)) // Save the full data for our UI
     const userId = localStorage.getItem("Medical_User_Id")
-
+  
     // Log the request for debugging
     console.log(
       "Sending request to:",
       `https://medical-backend-loj4.onrender.com/api/test/generatePlan?userId=${userId}`,
     )
     console.log("Request data:", submissionData)
-
+  
     // Check if we need to use a different endpoint or method
     // Let's try the original endpoint that was working before
     console.error("Request data sent:", submissionData)
     try {
       const response = await axios.post(
-        `https://medical-backend-loj4.onrender.com/api/test/generatePlan?userId=${userId}`,
+        `http://localhost:5000/api/test/generatePlan?userId=${userId}`,
         submissionData,
         {
           headers: {
@@ -676,34 +696,36 @@ const PlannerForm: React.FC = () => {
           },
         },
       )
-
+  
       const result = response.data
-
+  
       if (response.status !== 200) {
         throw new Error(result.error || "Failed to generate plan")
       }
-
+  
       // Set progress to 100% when done
       setGenerationProgress(100)
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current)
       }
-
+  
       // Store the study plan data
       const planData = result.data as StudyPlanResponse
       setStudyPlan(planData)
-
+  
       // Add study plan tasks to calendar
       await addPlanTasksToCalendar(planData)
-
-      // Save to localStorage
-      localStorage.setItem("studyPlan", JSON.stringify(planData))
-
+  
+      // Save only the plan ID to localStorage
+      if (result.data && result.data.planId) {
+        localStorage.setItem("currentPlanId", result.data.planId)
+      }
+  
       // Show success message
       setShowSuccess(true)
     } catch (error) {
       console.error("Error generating plan:", error)
-
+  
       // Add more detailed error logging
       if (axios.isAxiosError(error)) {
         console.error("API Error Response:", error.response?.data)
@@ -712,7 +734,7 @@ const PlannerForm: React.FC = () => {
       } else {
         setApiError((error as Error).message || "Failed to generate study plan. Please try again.")
       }
-
+  
       // Clear progress interval on error
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current)

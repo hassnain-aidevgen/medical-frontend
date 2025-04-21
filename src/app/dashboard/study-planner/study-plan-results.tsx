@@ -25,7 +25,7 @@ import {
   X,
   XCircle,
 } from "lucide-react"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useMemo } from "react"
 // Add this import at the top
 import { jsPDF } from "jspdf"
 
@@ -67,13 +67,20 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
   const metadata = studyPlan.metadata
 
   // Initialize our performance adapter with the adapted plan
-  const { handleTaskStatusChange, getTaskStatus, needsReplanning, applyReplanning } = usePerformanceAdapter(
-    adaptStudyPlanForPerformance(studyPlan),
-    userData,
-    (updatedPlan) => {
-      setStudyPlan(updatedPlan as unknown as StudyPlanResponse)
-    },
-  )
+  const adaptedPlan = useMemo(() => adaptStudyPlanForPerformance(studyPlan), [studyPlan]);
+
+const {
+  handleTaskStatusChange,
+  getTaskStatus,
+  needsReplanning,
+  applyReplanning,
+} = usePerformanceAdapter(
+  adaptedPlan,
+  userData,
+  (updatedPlan) => {
+    setStudyPlan(updatedPlan as unknown as StudyPlanResponse);
+  }
+);
 
 
   useEffect(() => {
@@ -930,17 +937,19 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
             <span className="text-sm hidden sm:inline">Print</span>
           </button>
           <button
-            onClick={() => {
-              // Clear saved plan
-              localStorage.removeItem("studyPlan")
-              onReset()
-            }}
-            className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors flex items-center"
-            title="Create New Plan"
-          >
-            <X size={18} className="mr-1" />
-            <span className="text-sm hidden sm:inline">New Plan</span>
-          </button>
+  onClick={() => {
+    // Clear saved plan
+    localStorage.removeItem("studyPlan")
+    localStorage.removeItem("currentPlanId")
+    localStorage.removeItem("studyPlanPerformance")
+    onReset()
+  }}
+  className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors flex items-center"
+  title="Create New Plan"
+>
+  <X size={18} className="mr-1" />
+  <span className="text-sm hidden sm:inline">New Plan</span>
+</button>
         </div>
       </div>
 

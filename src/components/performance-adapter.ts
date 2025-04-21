@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 // Define the types expected by the performance adapter
 export interface Task {
@@ -19,16 +19,16 @@ export interface Resource {
 
 export interface Day {
   dayOfWeek: string;
-  focusAreas: string[]; // Note: This is required, not optional
+  focusAreas: string[];
   tasks: Task[];
 }
 
 export interface Week {
   weekNumber: number;
   theme: string;
-  focusAreas: string[]; // Note: This is required, not optional
-  weeklyGoals: WeeklyGoal[]; // Changed from optional to required
-  days: Day[]; // Changed from optional to required
+  focusAreas: string[];
+  weeklyGoals: WeeklyGoal[];
+  days: Day[];
 }
 
 export interface WeeklyGoal {
@@ -96,11 +96,7 @@ export interface UserData {
   previousScores: string;
 }
 
-export type TaskStatus =
-  | "completed"
-  | "incomplete"
-  | "not-understood"
-  | "skipped";
+export type TaskStatus = "completed" | "incomplete" | "not-understood" | "skipped";
 
 export interface TaskPerformance {
   subject: string;
@@ -121,156 +117,152 @@ export function usePerformanceAdapter(
     tasks: Record<string, TaskPerformance>;
     lastUpdated: number;
   }>({ tasks: {}, lastUpdated: Date.now() });
+
   const [needsReplanning, setNeedsReplanning] = useState(false);
+  const hasLoadedData = useRef(false);
 
-  // Load performance data from localStorage on mount
+  // ✅ Load once
   useEffect(() => {
+    if (hasLoadedData.current) return;
+  
     const storedData = localStorage.getItem("studyPlanPerformance");
-    if (storedData) {
-      try {
-        const parsedData = JSON.parse(storedData);
-        setPerformanceData(parsedData);
-
-        // Check if we need replanning
-        const tasksArray = Object.values(parsedData.tasks) as TaskPerformance[];
-        const needsReplan = tasksArray.some(
-          (task) =>
-            task.status === "not-understood" || task.status === "skipped"
-        );
-        setNeedsReplanning(needsReplan);
-      } catch (error) {
-        console.error("Error parsing performance data:", error);
-      }
+    let parsedData;
+  
+    try {
+      parsedData = storedData ? JSON.parse(storedData) : null;
+    } catch (error) {
+      console.error("Failed to parse localStorage data", error);
+      parsedData = null;
     }
-  }, []);
-
-  // Save performance data to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem(
-      "studyPlanPerformance",
-      JSON.stringify(performanceData)
-    );
-  }, [performanceData]);
-
-  // Function to handle task status changes
-  const handleTaskStatusChange = (taskId: string, status: TaskStatus) => {
-    // Extract task information from the taskId
-    // Format: weekNumber-dayOfWeek-subject-activity
-    const parts = taskId.split("-");
-    if (parts.length < 4) {
-      console.error("Invalid taskId format:", taskId);
-      return;
-    }
-
-    const weekNumber = parseInt(parts[0], 10);
-    const dayOfWeek = parts[1];
-    // The subject and activity might contain hyphens, so we need to reconstruct them
-    const subject = parts.slice(2, -1).join("-");
-    const activity = parts[parts.length - 1];
-
-    setPerformanceData((prev) => {
-      const newTasks = {
-        ...prev.tasks,
-        [taskId]: {
-          subject,
-          activity,
-          weekNumber,
-          dayOfWeek,
-          taskId,
-          timestamp: Date.now(),
-          status,
-        },
-      };
-
-      // Check if we need replanning
-      const needsReplan = Object.values(newTasks).some(
+  
+    if (parsedData && typeof parsedData === "object" && parsedData.tasks) {
+      setPerformanceData(parsedData);
+      
+      const tasksArray = Object.values(parsedData.tasks) as TaskPerformance[];
+      const needsReplan = tasksArray.some(
         (task) => task.status === "not-understood" || task.status === "skipped"
       );
       setNeedsReplanning(needsReplan);
+    }
+  
+    hasLoadedData.current = true;
+  }, []);
+  
+
+  // ✅ Save only after mount
+  useEffect(() => {
+    if (hasLoadedData.current) {
+      try {
+        localStorage.setItem("studyPlanPerformance", JSON.stringify(performanceData));
+      } catch (err) {
+        console.error("Error saving performance data to localStorage:", err);
+      }
+    }
+  }, [performanceData.lastUpdated]);
+
+  const handleTaskStatusChange = (taskId: string, status: TaskStatus) => {
+    const parts = taskId.split("-");
+    if (parts.length < 4) return;
+
+    const weekNumber = parseInt(parts[0], 10);
+    const dayOfWeek = parts[1];
+    const subject = parts.slice(2, -1).join("-");
+    const activity = parts[parts.length - 1];
+
+    const updatedTask: TaskPerformance = {
+      subject,
+      activity,
+      weekNumber,
+      dayOfWeek,
+      taskId,
+      timestamp: Date.now(),
+      status,
+    };
+
+    setPerformanceData((prev) => {
+      const updatedTasks = {
+        ...prev.tasks,
+        [taskId]: updatedTask,
+      };
+
+      const needsReplan = Object.values(updatedTasks).some(
+        (task) => task.status === "not-understood" || task.status === "skipped"
+      );
+
+      setNeedsReplanning(needsReplan);
 
       return {
-        tasks: newTasks,
+        tasks: updatedTasks,
         lastUpdated: Date.now(),
       };
     });
   };
 
-  // Function to get the status of a task
   const getTaskStatus = (
     weekNumber: number,
     dayOfWeek: string,
     subject: string,
     activity: string
   ): TaskStatus => {
-    // Generate a consistent task ID
-    const taskId = `${weekNumber}-${dayOfWeek}-${subject}-${activity}`
-      .replace(/\s+/g, "-")
-      .toLowerCase();
-
-    // Return the status if it exists, otherwise "incomplete"
+    const taskId = `${weekNumber}-${dayOfWeek}-${subject}-${activity}`.replace(/\s+/g, "-").toLowerCase();
     return performanceData.tasks[taskId]?.status || "incomplete";
   };
+  const lastUpdateRef = useRef<string>(JSON.stringify(studyPlan.plan.weeklyPlans));
 
-  // Function to apply replanning
-  const applyReplanning = () => {
-    // Clone the study plan
-    const updatedPlan = JSON.parse(JSON.stringify(studyPlan)) as StudyPlan;
+const applyReplanning = () => {
+  if (!studyPlan?.plan?.weeklyPlans) return;
 
-    // Get tasks that need to be redistributed
-    const tasksToRedistribute = Object.values(performanceData.tasks).filter(
-      (task) => task.status === "not-understood" || task.status === "skipped"
+  const updatedPlan = structuredClone(studyPlan);
+
+  const tasksToRedistribute = Object.values(performanceData.tasks).filter(
+    (task) => task.status === "not-understood" || task.status === "skipped"
+  );
+
+  if (tasksToRedistribute.length === 0) {
+    setNeedsReplanning(false);
+    return;
+  }
+
+  tasksToRedistribute.forEach((task) => {
+    const futureWeek = updatedPlan.plan.weeklyPlans.find(
+      (week) => week.weekNumber > task.weekNumber && week.weekNumber <= task.weekNumber + 2
     );
 
-    if (tasksToRedistribute.length === 0) {
-      setNeedsReplanning(false);
-      return;
+    if (futureWeek?.days?.length) {
+      futureWeek.days[0].tasks.push({
+        subject: task.subject,
+        activity: `Review: ${task.activity}`,
+        duration: 30,
+        isReview: true,
+      });
     }
+  });
 
-    // Simple algorithm to redistribute tasks to future weeks
-    tasksToRedistribute.forEach((task) => {
-      const { weekNumber, subject, activity } = task;
+  const updatedTasks = { ...performanceData.tasks };
+  tasksToRedistribute.forEach((task) => {
+    updatedTasks[task.taskId] = {
+      ...task,
+      status: "incomplete",
+    };
+  });
 
-      // Find a future week to add this task as a review
-      const futureWeek = updatedPlan.plan.weeklyPlans.find(
-        (week) =>
-          week.weekNumber > weekNumber && week.weekNumber <= weekNumber + 2
-      );
+  setPerformanceData({
+    tasks: updatedTasks,
+    lastUpdated: Date.now(),
+  });
 
-      if (futureWeek && futureWeek.days && futureWeek.days.length > 0) {
-        // Add to the first day of the future week
-        const targetDay = futureWeek.days[0];
+  setNeedsReplanning(false);
 
-        // Add as a review task
-        targetDay.tasks.push({
-          subject,
-          activity: `Review: ${activity}`,
-          duration: 30, // Default review duration
-          isReview: true,
-        });
-      }
-    });
-
-    // Mark tasks as redistributed by changing their status to "incomplete"
-    const updatedTasks = { ...performanceData.tasks };
-    tasksToRedistribute.forEach((task) => {
-      updatedTasks[task.taskId] = {
-        ...task,
-        status: "incomplete",
-      };
-    });
-
-    // Update performance data
-    setPerformanceData({
-      tasks: updatedTasks,
-      lastUpdated: Date.now(),
-    });
-
-    // Reset replanning flag
-    setNeedsReplanning(false);
-
-    // Call the callback with the updated plan
+  // ✅ Compare with the last update to prevent recursive loop
+  const updatedPlanString = JSON.stringify(updatedPlan.plan.weeklyPlans);
+  if (updatedPlanString !== lastUpdateRef.current) {
+    lastUpdateRef.current = updatedPlanString;
     onPlanUpdate(updatedPlan);
-  };
+  }
+};
+
+  
+  
 
   return {
     handleTaskStatusChange,
@@ -279,3 +271,4 @@ export function usePerformanceAdapter(
     applyReplanning,
   };
 }
+
