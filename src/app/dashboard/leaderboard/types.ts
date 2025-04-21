@@ -12,6 +12,7 @@ export interface LeaderboardEntry {
     badges?: Badge[]
     streak?: number
     targetExam?: string
+    testCount?: number // Add testCount property
   }
   
   export interface UserStats {
