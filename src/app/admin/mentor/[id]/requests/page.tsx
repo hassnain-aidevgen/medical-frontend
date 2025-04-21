@@ -23,7 +23,7 @@ import toast from "react-hot-toast"
 import Link from "next/link"
 
 // API base URL from environment variable or default
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api"
 
 interface MentorData {
     _id: string

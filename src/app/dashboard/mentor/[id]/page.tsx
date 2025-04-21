@@ -94,7 +94,7 @@ interface MentorshipReview {
 // Function to fetch reviews for a specific mentorship
 const fetchMentorshipReviews = async (mentorshipId: string): Promise<MentorshipReview[]> => {
   try {
-    const res = await axios.get(`http://localhost:5000/api/reviews/mentorship/${mentorshipId}`)
+    const res = await axios.get(`https://medical-backend-loj4.onrender.com/api/reviews/mentorship/${mentorshipId}`)
     return res.data?.data || []
   } catch (error) {
     console.error("Error fetching reviews for mentorship:", error)
@@ -137,7 +137,7 @@ export default function MentorDetailPage() {
     async (mentorId: string) => {
       try {
         setLoading(true)
-        const response = await axios.get(`http://localhost:5000/api/mentor/${mentorId}`)
+        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/mentor/${mentorId}`)
         const mentorData = response.data.data
         console.log("Fetched mentor data:", mentorData)
 
@@ -186,7 +186,7 @@ export default function MentorDetailPage() {
   
       console.log("🔍 Fetching bookings for user ID:", userId);
   
-      const response = await axios.get("http://localhost:5000/api/bookings/user", {
+      const response = await axios.get("https://medical-backend-loj4.onrender.com/api/bookings/user", {
         params: {
           userId: userId,
         },
@@ -318,7 +318,7 @@ const handleSubmitReview = async (
     }
 
     const response = await axios.get<CheckUserReviewResponse>(
-      `http://localhost:5000/api/reviews/check-user-review/${mentorId}?userId=${userId}`
+      `https://medical-backend-loj4.onrender.com/api/reviews/check-user-review/${mentorId}?userId=${userId}`
     );
 
     const { hasReview } = response.data;
@@ -332,10 +332,10 @@ const handleSubmitReview = async (
 
     // Step 2: Submit or update the review
     if (hasReview) {
-      await axios.put("http://localhost:5000/api/reviews/updatereview", reviewPayload);
+      await axios.put("https://medical-backend-loj4.onrender.com/api/reviews/updatereview", reviewPayload);
       toast.success("Review updated successfully");
     } else {
-      await axios.post("http://localhost:5000/api/reviews/addreview", reviewPayload);
+      await axios.post("https://medical-backend-loj4.onrender.com/api/reviews/addreview", reviewPayload);
       toast.success("Review submitted successfully");
     }
 
@@ -405,7 +405,7 @@ const handleSubmitReview = async (
   
         // Use x-auth-token header
         const response = await axios.post(
-          "http://localhost:5000/api/bookings",
+          "https://medical-backend-loj4.onrender.com/api/bookings",
           {
             user_id,
             mentorshipId: mentorship._id,

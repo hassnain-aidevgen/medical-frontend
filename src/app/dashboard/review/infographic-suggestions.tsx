@@ -47,7 +47,7 @@ export function InfographicSuggestions() {
       setLoadingTopics(true)
       const userId = localStorage.getItem("Medical_User_Id")
       const response = await axios.get(
-        `http://localhost:5000/api/test/get-performance-all-weak/${userId}`
+        `https://medical-backend-loj4.onrender.com/api/test/get-performance-all-weak/${userId}`
       )
       const weakAreas = response.data?.data?.weakAreas || []
       console.log("Fetched weak areas:", weakAreas)

@@ -258,7 +258,7 @@ const [loading, setLoading] = useState(true);
       // old one
       // const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations2/${userId}`)
       // new onne:
-      const { data } = await axios.get(`http://localhost:5000/api/test/recommendations3/${userId}`)
+      const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations3/${userId}`)
 
       console.log("Recommendation data received:", data) // For debugging
 

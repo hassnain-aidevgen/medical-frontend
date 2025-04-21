@@ -601,7 +601,7 @@ const PlannerForm: React.FC = () => {
       if (planId) {
         try {
           // Fetch the plan from the database using the ID
-          const response = await axios.get(`http://localhost:5000/api/test/getStudyPlan/${planId}`)
+          const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/getStudyPlan/${planId}`)
           if (response.data.success) {
             setStudyPlan(response.data.data)
             // If you need user data
@@ -688,7 +688,7 @@ const PlannerForm: React.FC = () => {
     console.error("Request data sent:", submissionData)
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/test/generatePlan?userId=${userId}`,
+        `https://medical-backend-loj4.onrender.com/api/test/generatePlan?userId=${userId}`,
         submissionData,
         {
           headers: {

@@ -153,7 +153,7 @@ const CoursePage = () => {
         }
 
         // Call API to check if user has purchased this course
-        const response = await fetch(`http://localhost:5000/api/course-purchase/verify/${params.id}`, {
+        const response = await fetch(`https://medical-backend-loj4.onrender.com/api/course-purchase/verify/${params.id}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -280,7 +280,7 @@ const CoursePage = () => {
         setLoadingReviews(true)
 
         // Use the correct endpoint path matching your backend
-        const response = await fetch(`http://localhost:5000/api/reviews/course/${params.id}`)
+        const response = await fetch(`https://medical-backend-loj4.onrender.com/api/reviews/course/${params.id}`)
 
         if (!response.ok) {
           throw new Error(`Failed to fetch reviews: ${response.status}`)
@@ -348,7 +348,7 @@ const CoursePage = () => {
       }
 
       // Create checkout session
-      const response = await fetch("http://localhost:5000/api/course-purchase/create-checkout-session", {
+      const response = await fetch("https://medical-backend-loj4.onrender.com/api/course-purchase/create-checkout-session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -410,7 +410,7 @@ const CoursePage = () => {
         }
 
         // Call API to check if user has purchased this course
-        const response = await fetch(`http://localhost:5000/api/course-purchase/verify/${params.id}`, {
+        const response = await fetch(`https://medical-backend-loj4.onrender.com/api/course-purchase/verify/${params.id}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -464,7 +464,7 @@ const CoursePage = () => {
 
       console.log("Submitting review data:", reviewData)
 
-      const response = await fetch("http://localhost:5000/api/reviews/course", {
+      const response = await fetch("https://medical-backend-loj4.onrender.com/api/reviews/course", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -516,7 +516,7 @@ const CoursePage = () => {
     try {
       setLoadingReviews(true)
 
-      const response = await fetch(`http://localhost:5000/api/reviews/course/${params.id}`)
+      const response = await fetch(`https://medical-backend-loj4.onrender.com/api/reviews/course/${params.id}`)
 
       if (!response.ok) {
         throw new Error(`Failed to fetch reviews: ${response.status}`)
