@@ -13,7 +13,7 @@ import StreakLeaderboard from "./streak-leaderboard"
 import ExamLeaderboard from "./exam-leaderboard"
 import UserBadges from "./user-badges"
 import ProgressInsights from "./progress-insights"
-// import { generateMockBadges } from "./badge-utils"
+import { generateMockBadges } from "./badge-utils"
 import type { Badge, LeaderboardEntry, StreakEntry } from "./types"
 
 interface UserStats {
@@ -104,95 +104,134 @@ export default function GamifiedLeaderboard() {
     streaks: true,
     exams: true,
   })
-  const [isMounted, setIsMounted] = useState(false)
+
   const [specialtyRankings, setSpecialtyRankings] = useState<SpecialtyRankingResponse | null>(null)
   const [userSpecialtyStats, setUserSpecialtyStats] = useState<UserSpecialtyStats | null>(null)
   const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null)
   const [filteredSpecialtyRankings, setFilteredSpecialtyRankings] = useState<SpecialtyRanking[]>([])
 
   const [loggedInUserId, setLoggedInUserId] = useState<string | null>(null)
-  // Add this useEffect near your other useEffects:
-useEffect(() => {
-  setIsMounted(true)
-}, [])
-
-  // Set loggedInUserId from localStorage
-useEffect(() => {
-  const userId = localStorage.getItem("Medical_User_Id")
-  if (userId) {
-    setLoggedInUserId(userId)
-  }
-}, []) // Empty dependency array means it only runs once on mount
   const [activeTab, setActiveTab] = useState<TabType>("all-time")
   const [initialLoadComplete, setInitialLoadComplete] = useState(false)
   const [userBadges, setUserBadges] = useState<Badge[]>([])
   const [targetExam, setTargetExam] = useState<string | null>(null)
-  const [attemptedFetch, setAttemptedFetch] = useState<{
-    weekly: boolean
-    monthly: boolean
-    "all-time": boolean
-  }>({
-    weekly: false,
-    monthly: false,
-    "all-time": false,
-  })
 
- // The issue is in the fetchLeaderboardData function, where it keeps refetching
-// when a user has no data. I'll modify this function to prevent infinite loops.
+  const fetchLeaderboardData = useCallback(
+    async (timeFrame: "weekly" | "monthly" | "all-time") => {
+      try {
+        setLoading((prev) => ({ ...prev, [timeFrame]: true }))
 
-const fetchLeaderboardData = useCallback(
-  async (timeFrame: "weekly" | "monthly" | "all-time") => {
-    try {
-      setLoading((prev) => ({ ...prev, [timeFrame]: true }))
+        const userId = localStorage.getItem("Medical_User_Id")
 
-      const userId = localStorage.getItem("Medical_User_Id")
+        // Remove this part to prevent the infinite loop
+        // if (userId && !loggedInUserId) {
+        //   setLoggedInUserId(userId)
+        // }
 
-      // Fetch leaderboard data
-      const leaderboardRes = await fetch(
-        `https://medical-backend-loj4.onrender.com/api/test/leaderboard2?timeFrame=${timeFrame}`,
-      )
+        // Fetch leaderboard data
+        const leaderboardRes = await fetch(
+          `https://medical-backend-loj4.onrender.com/api/test/leaderboard2?timeFrame=${timeFrame}`,
+        )
 
-      if (!leaderboardRes.ok) {
-        throw new Error(`Failed to fetch leaderboard data: ${leaderboardRes.status}`)
-      }
+        if (!leaderboardRes.ok) {
+          throw new Error(`Failed to fetch leaderboard data: ${leaderboardRes.status}`)
+        }
 
-      const leaderboardData = await leaderboardRes.json()
+        const leaderboardData = await leaderboardRes.json()
 
-      if (leaderboardData.success) {
-        setLeaderboardData((prev) => ({
-          ...prev,
-          [timeFrame]: leaderboardData.data.leaderboard,
-        }))
-      }
+        if (leaderboardData.success) {
+          setLeaderboardData((prev) => ({
+            ...prev,
+            [timeFrame]: leaderboardData.data.leaderboard,
+          }))
+        }
 
-      // Fetch user stats if user is logged in
-      if (userId) {
-        try {
-          const userStatsRes = await fetch(
-            `https://medical-backend-loj4.onrender.com/api/test/leaderboard2/player/${userId}?timeFrame=${timeFrame}`,
-          )
+        // Fetch user stats if user is logged in
+        if (userId) {
+          try {
+            const userStatsRes = await fetch(
+              `https://medical-backend-loj4.onrender.com/api/test/leaderboard2/player/${userId}?timeFrame=${timeFrame}`,
+            )
 
-          if (userStatsRes.ok) {
-            const userStatsData = await userStatsRes.json()
+            if (userStatsRes.ok) {
+              const userStatsData = await userStatsRes.json()
 
-            if (userStatsData.success) {
-              setUserStatsData((prev) => ({
-                ...prev,
-                [timeFrame]: userStatsData.data,
-              }));
+              if (userStatsData.success) {
+                setUserStatsData((prev) => ({
+                  ...prev,
+                  [timeFrame]: userStatsData.data,
+                }))
+              } else {
+                console.error(`User stats API returned success: false for ${timeFrame}`)
+
+                // If we have leaderboard data but no user stats, create a placeholder
+                if (leaderboardData.success && leaderboardData.data.leaderboard.length > 0) {
+                  // Find the user in the leaderboard
+                  const userInLeaderboard = leaderboardData.data.leaderboard.find(
+                    (entry: any) => entry.userId === userId,
+                  )
+
+                  if (userInLeaderboard) {
+                    // Create user stats from leaderboard data
+                    const userRank =
+                      leaderboardData.data.leaderboard.findIndex((entry: any) => entry.userId === userId) + 1
+
+                    // Get nearby players (2 above and 2 below)
+                    const startIndex = Math.max(0, userRank - 3)
+                    const endIndex = Math.min(leaderboardData.data.leaderboard.length - 1, userRank + 2)
+                    const nearbyPlayers = leaderboardData.data.leaderboard.slice(startIndex, endIndex + 1)
+
+                    setUserStatsData((prev) => ({
+                      ...prev,
+                      [timeFrame]: {
+                        rank: userRank,
+                        player: userInLeaderboard,
+                        nearbyPlayers: nearbyPlayers,
+                      },
+                    }))
+                  }
+                }
+              }
             } else {
-              console.error(`User stats API returned success: false for ${timeFrame}`);
-            
-              // Fallback: extract user from leaderboard
-              const leaderboard = leaderboardData.data?.leaderboard || [];
-              const userInLeaderboard = leaderboard.find((entry: any) => entry.userId === userId);
-            
+              console.error(`User stats API returned status ${userStatsRes.status} for ${timeFrame}`)
+
+              // Same fallback logic as above
+              if (leaderboardData.success && leaderboardData.data.leaderboard.length > 0) {
+                const userInLeaderboard = leaderboardData.data.leaderboard.find((entry: any) => entry.userId === userId)
+
+                if (userInLeaderboard) {
+                  const userRank =
+                    leaderboardData.data.leaderboard.findIndex((entry: any) => entry.userId === userId) + 1
+
+                  const startIndex = Math.max(0, userRank - 3)
+                  const endIndex = Math.min(leaderboardData.data.leaderboard.length - 1, userRank + 2)
+                  const nearbyPlayers = leaderboardData.data.leaderboard.slice(startIndex, endIndex + 1)
+
+                  setUserStatsData((prev) => ({
+                    ...prev,
+                    [timeFrame]: {
+                      rank: userRank,
+                      player: userInLeaderboard,
+                      nearbyPlayers: nearbyPlayers,
+                    },
+                  }))
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching user stats for ${timeFrame}:`, error)
+
+            // Same fallback logic
+            if (leaderboardData.success && leaderboardData.data.leaderboard.length > 0) {
+              const userInLeaderboard = leaderboardData.data.leaderboard.find((entry: any) => entry.userId === userId)
+
               if (userInLeaderboard) {
-                const userRank = leaderboard.findIndex((entry: any) => entry.userId === userId) + 1;
-                const startIndex = Math.max(0, userRank - 3);
-                const endIndex = Math.min(leaderboard.length - 1, userRank + 2);
-                const nearbyPlayers = leaderboard.slice(startIndex, endIndex + 1);
-            
+                const userRank = leaderboardData.data.leaderboard.findIndex((entry: any) => entry.userId === userId) + 1
+
+                const startIndex = Math.max(0, userRank - 3)
+                const endIndex = Math.min(leaderboardData.data.leaderboard.length - 1, userRank + 2)
+                const nearbyPlayers = leaderboardData.data.leaderboard.slice(startIndex, endIndex + 1)
+
                 setUserStatsData((prev) => ({
                   ...prev,
                   [timeFrame]: {
@@ -200,94 +239,170 @@ const fetchLeaderboardData = useCallback(
                     player: userInLeaderboard,
                     nearbyPlayers: nearbyPlayers,
                   },
-                }));
+                }))
               }
             }
-            
-          } else {
-            console.error(`User stats API returned status ${userStatsRes.status} for ${timeFrame}`)
-            
-            // For new users with no data, set a placeholder but don't trigger refetching
-            setUserStatsData((prev) => ({
-              ...prev,
-              [timeFrame]: { rank: null, player: null, nearbyPlayers: [] },
-            }))
           }
-        } catch (error) {
-          console.error(`Error fetching user stats for ${timeFrame}:`, error)
-          
-          // For new users with no data, set a placeholder but don't trigger refetching
-          setUserStatsData((prev) => ({
-            ...prev,
-            [timeFrame]: { rank: null, player: null, nearbyPlayers: [] },
-          }))
         }
+      } catch (error) {
+        console.error(`Error fetching ${timeFrame} data:`, error)
+      } finally {
+        setLoading((prev) => ({ ...prev, [timeFrame]: false }))
+      }
+    },
+    [
+      /* Remove loggedInUserId from dependencies */
+    ],
+  )
+
+  // Add a separate useEffect to set the loggedInUserId once on component mount
+  useEffect(() => {
+    const userId = localStorage.getItem("Medical_User_Id")
+    if (userId) {
+      setLoggedInUserId(userId)
+    }
+  }, [])
+
+  const fetchUserBadges = useCallback(async () => {
+    try {
+      const userId = localStorage.getItem("Medical_User_Id")
+      if (!userId) return
+
+      // In a real implementation, we would fetch badges from the backend
+      // For now, we'll generate mock badges based on the user's score
+      const userStats = userStatsData["all-time"]
+      if (userStats && userStats.player) {
+        const mockBadges = generateMockBadges(userId, userStats.player.score, userSpecialtyStats?.specialty)
+        setUserBadges(mockBadges)
       }
     } catch (error) {
-      console.error(`Error fetching ${timeFrame} data:`, error)
-    } finally {
-      setLoading((prev) => ({ ...prev, [timeFrame]: false }))
-      setAttemptedFetch(prev => ({ ...prev, [timeFrame]: true }))
+      console.error("Error fetching user badges:", error)
     }
-  },
-  []
-);
+  }, [userStatsData, userSpecialtyStats])
 
-// Fetch specialty rankings data
-const fetchSpecialtyRankings = useCallback(async () => {
-  try {
-    setLoading((prev) => ({ ...prev, specialty: true }));
+  const extractUserSpecialtyStats = useCallback((data: SpecialtyRankingResponse, userId: string) => {
+    // Find the user in each specialty
+    let userFound = false
+    let bestSpecialty: UserSpecialtyStats | null = null
 
-    const response = await fetch(`${API_BASE_URL}/specialty-ranking`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch specialty rankings: ${response.status}`);
+    for (const specialty of data.rankings) {
+      const userIndex = specialty.users.findIndex((user) => user.userId === userId)
+
+      if (userIndex >= 0) {
+        userFound = true
+        const user = specialty.users[userIndex]
+
+        // Get nearby users (2 above and 2 below)
+        const startIndex = Math.max(0, userIndex - 2)
+        const endIndex = Math.min(specialty.users.length - 1, userIndex + 2)
+        const nearbyUsers = specialty.users.slice(startIndex, endIndex + 1)
+
+        const specialtyStats: UserSpecialtyStats = {
+          specialty: specialty.specialty,
+          rank: user.rank,
+          successRate: user.successRate,
+          questionsAttempted: user.questionsAttempted,
+          correctAnswers: user.correctAnswers,
+          averageTimePerQuestion: user.averageTimePerQuestion,
+          bestScore: user.bestTest.score,
+          nearbyUsers: nearbyUsers,
+        }
+
+        // If this is the first specialty found or has a better rank than previous best
+        if (!bestSpecialty || user.rank < bestSpecialty.rank) {
+          bestSpecialty = specialtyStats
+          setSelectedSpecialty(specialty.specialty)
+        }
+      }
     }
 
-    const data = await response.json();
-    if (data.success) {
-      setSpecialtyRankings(data.rankings);
+    if (userFound && bestSpecialty) {
+      setUserSpecialtyStats(bestSpecialty)
     } else {
-      console.error("Specialty rankings API returned success: false");
+      setUserSpecialtyStats(null)
     }
-  } catch (error) {
-    console.error("Error fetching specialty rankings:", error);
-  } finally {
-    setLoading((prev) => ({ ...prev, specialty: false }));
-  }
-}, []);
+  }, [])
 
-// Also modify the useEffect that checks if we need to refetch data
-// This is the effect that's causing the infinite loop for new users
-useEffect(() => {
-  if (initialLoadComplete) {
-    if (activeTab === "specialty") {
-      if (!specialtyRankings) {
-        fetchSpecialtyRankings()
+  const fetchSpecialtyRankings = useCallback(async () => {
+    try {
+      setLoading((prev) => ({ ...prev, specialty: true }))
+      const response = await fetch(`${API_BASE_URL}/specialty-ranking`)
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch specialty rankings: ${response.status}`)
       }
-    } else if (activeTab !== "country" && activeTab !== "streaks" && activeTab !== "exams") {
-      // Only fetch data for weekly, monthly, all-time tabs
-      // Add check to prevent refetching for new users with no data (when we've already set a placeholder)
-      if (
-        !attemptedFetch[activeTab] &&  // Add this line to check if we've already attempted
-        (leaderboardData[activeTab].length === 0 || 
-        (userStatsData[activeTab] === null)) && 
-        !loading[activeTab as keyof typeof loading]
-      ) {
-        fetchLeaderboardData(activeTab)
+
+      const data = await response.json()
+      setSpecialtyRankings(data)
+
+      // Initialize filtered rankings with all specialties
+      setFilteredSpecialtyRankings(data.rankings)
+
+      // Extract user's specialty stats if logged in
+      const userId = localStorage.getItem("Medical_User_Id")
+      if (userId) {
+        extractUserSpecialtyStats(data, userId)
+      }
+    } catch (error) {
+      console.error("Error fetching specialty rankings:", error)
+    } finally {
+      setLoading((prev) => ({ ...prev, specialty: false }))
+    }
+  }, [extractUserSpecialtyStats])
+
+  // Initial data load
+  useEffect(() => {
+    const loadInitialData = async () => {
+      const userId = localStorage.getItem("Medical_User_Id")
+      if (userId) {
+        // setLoggedInUserId(userId) // Moved to separate useEffect
+
+        // Set a mock target exam based on user ID
+        if (userId) {
+          const hash = userId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0)
+          const exams = ["USMLE Step 1", "USMLE Step 2 CK", "ENARE 2025", "MCCQE Part I"]
+          setTargetExam(exams[hash % exams.length])
+        }
+      }
+
+      // Load all-time data first
+      await fetchLeaderboardData("all-time")
+      setInitialLoadComplete(true)
+    }
+
+    loadInitialData()
+  }, [fetchLeaderboardData])
+
+  // Fetch badges when user stats are loaded
+  useEffect(() => {
+    if (userStatsData["all-time"] && loggedInUserId) {
+      fetchUserBadges()
+    }
+  }, [userStatsData, loggedInUserId, fetchUserBadges])
+
+  // Load data for the active tab when it changes
+  useEffect(() => {
+    if (initialLoadComplete) {
+      if (activeTab === "specialty") {
+        if (!specialtyRankings) {
+          fetchSpecialtyRankings()
+        }
+      } else if (activeTab !== "country" && activeTab !== "streaks" && activeTab !== "exams") {
+        // Only fetch data for weekly, monthly, all-time tabs
+        if (leaderboardData[activeTab].length === 0 || !userStatsData[activeTab]) {
+          fetchLeaderboardData(activeTab)
+        }
       }
     }
-  }
-}, [
-  activeTab,
-  fetchLeaderboardData,
-  fetchSpecialtyRankings,
-  initialLoadComplete,
-  specialtyRankings,
-  leaderboardData,
-  userStatsData,
-  loading,
-  attemptedFetch
-])
+  }, [
+    activeTab,
+    fetchLeaderboardData,
+    fetchSpecialtyRankings,
+    initialLoadComplete,
+    specialtyRankings,
+    leaderboardData,
+    userStatsData,
+  ])
 
   // Handle specialty filtering
   useEffect(() => {
@@ -300,23 +415,6 @@ useEffect(() => {
       }
     }
   }, [selectedSpecialty, specialtyRankings])
-  // Safety timeout to ensure loading completes
-useEffect(() => {
-  // Force all loading states to be false after 8 seconds
-  const timer = setTimeout(() => {
-    setInitialLoadComplete(true)
-    setLoading({
-      weekly: false,
-      monthly: false,
-      "all-time": false,
-      specialty: false,
-      streaks: false,
-      exams: false
-    })
-  }, 8000)
-  
-  return () => clearTimeout(timer)
-}, []) // Empty dependency array so it only runs once on mount
 
   const formatTime = (totalTime: number) => {
     const minutes = Math.floor(totalTime / 60)
@@ -464,30 +562,15 @@ useEffect(() => {
       ? userStatsData[activeTab]
       : null
 
-      const isCurrentTabLoading = loading[activeTab as keyof typeof loading] || false
+  const isCurrentTabLoading = loading[activeTab as keyof typeof loading] || false
 
-      // Add a simple safety timeout for loading states
-      useEffect(() => {
-        // If loading persists for more than 8 seconds, automatically reset it
-        const timer = setTimeout(() => {
-          if (isCurrentTabLoading) {
-            setLoading(prev => ({
-              ...prev,
-              [activeTab]: false
-            }))
-          }
-        }, 8000)
-        
-        return () => clearTimeout(timer)
-      }, [activeTab, isCurrentTabLoading])
-      
-      if (!initialLoadComplete) {
-        return (
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-          </div>
-        )
-      }
+  if (!initialLoadComplete) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col md:flex-row gap-6 w-full max-w-7xl mx-auto p-4">
@@ -502,7 +585,96 @@ useEffect(() => {
               </p>
             </div>
 
-            {activeTab === "specialty" ? (
+            {/* Personal Progress Insights - New component */}
+            {loggedInUserId && currentUserStats?.player && (
+              <ProgressInsights
+                userId={loggedInUserId}
+                score={currentUserStats.player.score}
+                specialty={activeTab === "specialty" ? selectedSpecialty || undefined : undefined}
+                targetExam={targetExam || undefined}
+                rank={currentUserStats.rank}
+                totalUsers={
+                  ["weekly", "monthly", "all-time"].includes(activeTab as "weekly" | "monthly" | "all-time")
+                    ? leaderboardData[activeTab as "weekly" | "monthly" | "all-time"].length
+                    : 0
+                }
+              />
+            )}
+
+            {activeTab !== "specialty" ? (
+              // Regular leaderboard stats
+              <>
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="p-3 rounded-full bg-primary/10">
+                      <User className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{currentUserStats?.player?.name || "Not Available"}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {currentUserStats ? `Rank #${currentUserStats.rank}` : "Take a test to get ranked!"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 rounded-lg bg-background">
+                      <p className="text-sm text-muted-foreground mb-1">Score</p>
+                      <div className="flex items-center gap-2">
+                        <Star className="h-4 w-4 text-primary" />
+                        <span className="text-lg font-bold">{currentUserStats?.player?.score || 0}</span>
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-background">
+                      <p className="text-sm text-muted-foreground mb-1">Time</p>
+                      <div className="flex items-center gap-2">
+                        <Timer className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-lg font-bold">
+                          {currentUserStats?.player?.totalTime
+                            ? formatTime(currentUserStats.player.totalTime)
+                            : "0m 0s"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {currentUserStats && currentUserStats.nearbyPlayers && currentUserStats.nearbyPlayers.length > 0 ? (
+                  <div>
+                    <h4 className="text-sm font-medium mb-3">Nearby Players</h4>
+                    <div className="space-y-2">
+                      {currentUserStats.nearbyPlayers.map((player) => (
+                        <div
+                          key={player._id}
+                          className={`p-2 rounded-lg ${
+                            player.userId === loggedInUserId ? "bg-primary/10 dark:bg-primary/20" : "hover:bg-muted/50"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">#{player.rank}</span>
+                              <span className="text-sm">{player.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Star className="h-3 w-3 text-primary" />
+                              <span className="text-sm font-medium">{player.score}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-lg bg-muted/30 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      {isCurrentTabLoading
+                        ? "Loading nearby players..."
+                        : "Take a test to see how you compare with other players!"}
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
               // Specialty stats
               <>
                 {userSpecialtyStats ? (
@@ -597,81 +769,6 @@ useEffect(() => {
                       {loading.specialty
                         ? "Loading your specialty stats..."
                         : "No specialty data available for your profile. Take a test to get ranked!"}
-                    </p>
-                  </div>
-                )}
-              </>
-            ) : (
-              // Regular leaderboard stats
-              <>
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="p-3 rounded-full bg-primary/10">
-                      <User className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                    <p className="font-medium">
-  {currentUserStats?.player?.name ?? currentUserStats?.player?.userId ?? "Not Available"}
-</p>
-<p className="text-sm text-muted-foreground">
-  {currentUserStats?.rank ? `Rank #${currentUserStats.rank}` : "Take a test to get ranked!"}
-</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 rounded-lg bg-background">
-                      <p className="text-sm text-muted-foreground mb-1">Score</p>
-                      <div className="flex items-center gap-2">
-                        <Star className="h-4 w-4 text-primary" />
-                        <span className="text-lg font-bold">{currentUserStats?.player?.score || 0}</span>
-                      </div>
-                    </div>
-                    <div className="p-3 rounded-lg bg-background">
-                      <p className="text-sm text-muted-foreground mb-1">Time</p>
-                      <div className="flex items-center gap-2">
-                        <Timer className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-lg font-bold">
-                          {currentUserStats?.player?.totalTime
-                            ? formatTime(currentUserStats.player.totalTime)
-                            : "0m 0s"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {currentUserStats && currentUserStats.nearbyPlayers && currentUserStats.nearbyPlayers.length > 0 ? (
-                  <div>
-                    <h4 className="text-sm font-medium mb-3">Nearby Players</h4>
-                    <div className="space-y-2">
-                      {currentUserStats.nearbyPlayers.map((player) => (
-                        <div
-                          key={player._id}
-                          className={`p-2 rounded-lg ${
-                            player.userId === loggedInUserId ? "bg-primary/10 dark:bg-primary/20" : "hover:bg-muted/50"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">#{player.rank}</span>
-                              <span className="text-sm">{player.name}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Star className="h-3 w-3 text-primary" />
-                              <span className="text-sm font-medium">{player.score}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4 rounded-lg bg-muted/30 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      {isCurrentTabLoading
-                        ? "Loading nearby players..."
-                        : "Take a test to see how you compare with other players!"}
                     </p>
                   </div>
                 )}
@@ -791,249 +888,232 @@ useEffect(() => {
         </Card>
       )}
 
-      {/* Main Leaderboard Card */}
-      <Card className="flex-1">
-        <div className="p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-            <div>
-              <h2 className="text-2xl font-bold">Leaderboard</h2>
-              <p className="text-sm text-muted-foreground">{getTimeFrameLabel()}</p>
-            </div>
-
-            <Tabs
-              defaultValue="all-time"
-              value={activeTab}
-              onValueChange={(value) => setActiveTab(value as TabType)}
-              className="w-full sm:w-auto"
-            >
-              <TabsList className="grid grid-cols-3 sm:grid-cols-7 w-full">
-                <TabsTrigger value="weekly">Weekly</TabsTrigger>
-                <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                <TabsTrigger value="all-time">All Time</TabsTrigger>
-                <TabsTrigger value="specialty">Specialty</TabsTrigger>
-                {/* <TabsTrigger value="country">Country</TabsTrigger> */}
-                <TabsTrigger value="streaks">Streaks</TabsTrigger>
-                <TabsTrigger value="exams">Exams</TabsTrigger>
-              </TabsList>
-            </Tabs>
+      {/* Main Leaderboard */}
+      <Card className="flex-1 p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <div>
+            <h2 className="text-2xl font-bold">Contenders</h2>
+            <p className="text-sm text-muted-foreground">See who&apos;s leading the pack</p>
           </div>
+        </div>
+
+        <Tabs defaultValue="all-time" value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)}>
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-4 md:grid-cols-7 mb-4 gap-1 overflow-x-auto">
+            <TabsTrigger value="weekly" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              Weekly
+            </TabsTrigger>
+            <TabsTrigger value="monthly" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              Monthly
+            </TabsTrigger>
+            <TabsTrigger value="all-time" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              All Time
+            </TabsTrigger>
+            <TabsTrigger value="specialty" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              Specialty
+            </TabsTrigger>
+            {/* <TabsTrigger value="country">Country</TabsTrigger> */}
+            <TabsTrigger value="streaks" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              Streaks
+            </TabsTrigger>
+            <TabsTrigger value="exams" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+              Exams
+            </TabsTrigger>
+          </TabsList>
 
           {/* Specialty Filters - Only show when specialty tab is active */}
-          {activeTab === "specialty" && (
-            <div className="mb-6">
-              <SpecialtyFilters
-                specialties={getAllSpecialties()}
-                selectedSpecialty={selectedSpecialty || "all"}
-                onSpecialtySelect={handleSpecialtySelect}
-              />
-            </div>
+          {activeTab === "specialty" && specialtyRankings && (
+            <SpecialtyFilters
+              specialties={getAllSpecialties()}
+              selectedSpecialty={selectedSpecialty}
+              onSpecialtySelect={handleSpecialtySelect}
+              className="mb-4"
+            />
           )}
 
-          <div className="relative">
-            {isCurrentTabLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10 rounded-md">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-              </div>
-            )}
+          {activeTab !== "specialty" && activeTab !== "country" && activeTab !== "streaks" && activeTab !== "exams" && (
+            <div className="relative">
+              {isCurrentTabLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10 rounded-md">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                </div>
+              )}
 
-            {activeTab === "specialty" && (
-              <div className="relative">
-                {loading.specialty && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10 rounded-md">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                  </div>
-                )}
-
-                <ScrollArea className="h-[600px] w-full rounded-md border">
-                  {specialtyRankings && filteredSpecialtyRankings.length > 0 ? (
-                    <div className="space-y-6 p-4">
-                      {filteredSpecialtyRankings.map((specialtyData) => (
-                        <div key={specialtyData.specialty} className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-bold">{specialtyData.specialty}</h3>
-                            <span className="text-sm text-muted-foreground">{specialtyData.userCount} users</span>
-                          </div>
-
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="w-16">Rank</TableHead>
-                                <TableHead>Player</TableHead>
-                                <TableHead className="text-right">Success Rate</TableHead>
-                                <TableHead className="text-right">Questions</TableHead>
-                                <TableHead className="text-right">Avg. Time</TableHead>
-                                <TableHead className="text-right">Best Score</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {specialtyData.users.map((user) => (
-                                <TableRow
-                                  key={`${specialtyData.specialty}-${user.userId}`}
-                                  className={`${user.rank <= 3 ? getRowStyle(user.rank) : ""} ${user.userId === loggedInUserId ? "border-l-2 border-primary" : ""}`}
-                                >
-                                  <TableCell className="font-medium">
-                                    <div className="flex items-center gap-2">
-                                      {getRankIcon(user.rank)}
-                                      {user.rank}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex items-center gap-2">
-                                      {user.rank <= 3 && <Crown className="h-4 w-4 text-primary" />}
-                                      {user.userName}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <span
-                                        className={`font-medium ${user.successRate >= 90 ? "text-green-500" : user.successRate >= 70 ? "text-amber-500" : "text-red-500"}`}
-                                      >
-                                        {user.successRate.toFixed(1)}%
-                                      </span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <span>
-                                        {user.correctAnswers}/{user.questionsAttempted}
-                                      </span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <Timer className="h-4 w-4 text-muted-foreground" />
-                                      <span>{user.averageTimePerQuestion}s</span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                      <Star className="h-4 w-4 text-primary" />
-                                      <span className="font-medium">{user.bestTest.score}</span>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      ))}
-                      <div className="text-xs text-muted-foreground text-right pt-2">
-                        Last updated:{" "}
-                        {specialtyRankings ? new Date(specialtyRankings.lastUpdated).toLocaleString() : ""}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center h-40">
-                      <p className="text-muted-foreground">
-                        {loading.specialty ? "Loading specialty rankings..." : "No specialty ranking data available"}
-                      </p>
-                    </div>
-                  )}
-                </ScrollArea>
-              </div>
-              
-            )}
-
-            {/* {activeTab === "country" && (
-              <CountryLeaderboard
-                timeFrame="all-time"
-                loggedInUserId={loggedInUserId}
-                globalLeaderboard={leaderboardData["all-time"]}
-              />
-            )} */}
-
-            {activeTab === "streaks" && (
-              <StreakLeaderboard
-                timeFrame="all-time"
-                loggedInUserId={loggedInUserId}
-                globalLeaderboard={leaderboardData["all-time"] as unknown as StreakEntry[]}
-              />
-            )}
-
-            {activeTab === "exams" && (
-              <ExamLeaderboard loggedInUserId={loggedInUserId} globalLeaderboard={leaderboardData["all-time"]} />
-            )}
-
-            {activeTab !== "specialty" &&
-              activeTab !== "country" &&
-              activeTab !== "streaks" &&
-              activeTab !== "exams" && (
+              <ScrollArea className="h-[600px] w-full rounded-md border">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <TableRow>
-                      <TableHead className="w-16">Rank</TableHead>
+                      <TableHead className="w-20">Rank</TableHead>
                       <TableHead>Player</TableHead>
                       <TableHead className="text-right">Score</TableHead>
                       <TableHead className="text-right">Time</TableHead>
-                      <TableHead className="text-right">Tests</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {currentLeaderboard.length > 0 ? (
-                      currentLeaderboard.map((player) => (
+                      currentLeaderboard.map((entry, index) => (
                         <TableRow
-                          key={player._id}
-                          className={`${(player.rank ?? 0) <= 3 ? getRowStyle(player.rank ?? 0) : ""} ${player.userId === loggedInUserId ? "border-l-2 border-primary" : ""}`}
+                          key={entry._id}
+                          className={`${getRowStyle(index + 1)} ${entry.userId === loggedInUserId ? "border-l-2 border-primary" : ""}`}
                         >
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
-                              {getRankIcon(player.rank ?? 0)}
-                              {player.rank}
+                              {getRankIcon(index + 1)}
+                              {index + 1}
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              {(player.rank ?? 0) <= 3 && <Crown className="h-4 w-4 text-primary" />}
-                              {player.name}
+                              {index < 3 && <Crown className="h-4 w-4 text-primary" />}
+                              {entry.name}
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
                               <Star className="h-4 w-4 text-primary" />
-                              <span className="font-medium">{player.score}</span>
+                              {entry.score}
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
                               <Timer className="h-4 w-4 text-muted-foreground" />
-                              <span>{formatTime(player.totalTime)}</span>
+                              {formatTime(entry.totalTime)}
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">{player.testCount || 0}</TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
-                          {isCurrentTabLoading ? (
-                            <span className="text-muted-foreground">Loading leaderboard data...</span>
-                          ) : (
-                            <span className="text-muted-foreground">No leaderboard data available</span>
-                          )}
+                        <TableCell colSpan={4} className="text-center py-8">
+                          <p className="text-muted-foreground">
+                            {isCurrentTabLoading
+                              ? "Loading leaderboard data..."
+                              : "No data available for this time period"}
+                          </p>
                         </TableCell>
                       </TableRow>
                     )}
                   </TableBody>
                 </Table>
-              )}
-          </div>
+              </ScrollArea>
+            </div>
+          )}
 
-          {/* Personal Progress Insights - New component */}
-          {loggedInUserId && currentUserStats?.player && (
-            <ProgressInsights
-              userId={loggedInUserId}
-              score={currentUserStats.player.score}
-              specialty={activeTab === "specialty" ? selectedSpecialty || undefined : undefined}
-              targetExam={targetExam || undefined}
-              rank={currentUserStats.rank}
-              totalUsers={
-                ["weekly", "monthly", "all-time"].includes(activeTab as "weekly" | "monthly" | "all-time")
-                  ? leaderboardData[activeTab as "weekly" | "monthly" | "all-time"].length
-                  : 0
-              }
+          {activeTab === "specialty" && (
+            <div className="relative">
+              {loading.specialty && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10 rounded-md">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                </div>
+              )}
+
+              <ScrollArea className="h-[600px] w-full rounded-md border">
+                {specialtyRankings && filteredSpecialtyRankings.length > 0 ? (
+                  <div className="space-y-6 p-4">
+                    {filteredSpecialtyRankings.map((specialtyData) => (
+                      <div key={specialtyData.specialty} className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-bold">{specialtyData.specialty}</h3>
+                          <span className="text-sm text-muted-foreground">{specialtyData.userCount} users</span>
+                        </div>
+
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-16">Rank</TableHead>
+                              <TableHead>Player</TableHead>
+                              <TableHead className="text-right">Success Rate</TableHead>
+                              <TableHead className="text-right">Questions</TableHead>
+                              <TableHead className="text-right">Avg. Time</TableHead>
+                              <TableHead className="text-right">Best Score</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {specialtyData.users.map((user) => (
+                              <TableRow
+                                key={`${specialtyData.specialty}-${user.userId}`}
+                                className={`${user.rank <= 3 ? getRowStyle(user.rank) : ""} ${user.userId === loggedInUserId ? "border-l-2 border-primary" : ""}`}
+                              >
+                                <TableCell className="font-medium">
+                                  <div className="flex items-center gap-2">
+                                    {getRankIcon(user.rank)}
+                                    {user.rank}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    {user.rank <= 3 && <Crown className="h-4 w-4 text-primary" />}
+                                    {user.userName}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <span
+                                      className={`font-medium ${user.successRate >= 90 ? "text-green-500" : user.successRate >= 70 ? "text-amber-500" : "text-red-500"}`}
+                                    >
+                                      {user.successRate.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <span>
+                                      {user.correctAnswers}/{user.questionsAttempted}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Timer className="h-4 w-4 text-muted-foreground" />
+                                    <span>{user.averageTimePerQuestion}s</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Star className="h-4 w-4 text-primary" />
+                                    <span className="font-medium">{user.bestTest.score}</span>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ))}
+                    <div className="text-xs text-muted-foreground text-right pt-2">
+                      Last updated: {specialtyRankings ? new Date(specialtyRankings.lastUpdated).toLocaleString() : ""}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-40">
+                    <p className="text-muted-foreground">
+                      {loading.specialty ? "Loading specialty rankings..." : "No specialty ranking data available"}
+                    </p>
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          )}
+
+          {/* {activeTab === "country" && (
+            <CountryLeaderboard
+              timeFrame="all-time"
+              loggedInUserId={loggedInUserId}
+              globalLeaderboard={leaderboardData["all-time"]}
+            />
+          )} */}
+
+          {activeTab === "streaks" && (
+            <StreakLeaderboard
+              timeFrame="all-time"
+              loggedInUserId={loggedInUserId}
+              globalLeaderboard={leaderboardData["all-time"] as unknown as StreakEntry[]}
             />
           )}
-        </div>
+
+          {activeTab === "exams" && (
+            <ExamLeaderboard loggedInUserId={loggedInUserId} globalLeaderboard={leaderboardData["all-time"]} />
+          )}
+        </Tabs>
       </Card>
     </div>
   )

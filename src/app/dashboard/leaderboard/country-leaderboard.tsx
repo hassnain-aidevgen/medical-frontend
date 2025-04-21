@@ -15,7 +15,6 @@ interface LeaderboardEntry {
   rank?: number
   country?: string // Added for our hybrid approach
   countryRank?: number // Added for our hybrid approach
-  testCount?: number // Added testCount property
 }
 
 interface CountryUserStats {
