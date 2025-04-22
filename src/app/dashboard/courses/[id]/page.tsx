@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 
 import type React from "react"
 
-import { loadStripe } from "@stripe/stripe-js"
+// import { loadStripe } from "@stripe/stripe-js"
 import {
   ArrowLeft,
   BarChart,
@@ -61,7 +61,7 @@ import { Label } from "@/components/ui/label"
 import { format } from "date-fns"
 
 // Initialize Stripe
-loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "")
+// loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "")
 
 // Import the Course type from the types directory
 import type { Course } from "@/types"
@@ -137,7 +137,7 @@ const CoursePage = () => {
   // Check if user has purchased the course
   useEffect(() => {
     const checkPurchaseStatus = async () => {
-      if (!params.id || !session?.user?.id) {
+      if (!params.id ) {
         setHasPurchased(false)
         return
       }
@@ -147,7 +147,8 @@ const CoursePage = () => {
 
         // Get token from localStorage
         const token = localStorage.getItem("token")
-        if (!token) {
+        const userId = localStorage.getItem("Medical_User_Id")
+        if (!userId) {
           setHasPurchased(false)
           return
         }
@@ -159,7 +160,7 @@ const CoursePage = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            userId: localStorage.getItem("Medical_User_Id"),
+            userId: userId,
           }),
         })
 
@@ -168,11 +169,16 @@ const CoursePage = () => {
         }
 
         const data = await response.json()
-        setHasPurchased(data.purchased)
-
-        // For development/testing purposes, you can force a specific state:
-        // setHasPurchased(true); // Always show as purchased
-        // setHasPurchased(false); // Always show as not purchased
+        console.log("Purchase verification response:", data)
+        if (data.success && data.purchased) {
+          setHasPurchased(true)
+          // If success URL has query param, show success toast
+          if (typeof window !== 'undefined' && window.location.search.includes('success=true')) {
+            toast.success("Purchase successful! You now have full access to this course.")
+          }
+        } else {
+          setHasPurchased(false)
+        }
       } catch (error) {
         console.error("Error checking purchase status:", error)
         setHasPurchased(false)
@@ -182,7 +188,18 @@ const CoursePage = () => {
     }
 
     checkPurchaseStatus()
-  }, [params.id, session?.user?.id])
+
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const success = urlParams.get('success');
+      if (success === 'true') {
+        toast.success("Purchase successful! Preparing your course content...");
+        // Clean up the URL
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    }
+  }, [params.id])
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -340,8 +357,8 @@ const CoursePage = () => {
       setAddingToCart(true)
 
       // Get token from localStorage
-      const token = localStorage.getItem("token")
-      if (!token) {
+      const userId = localStorage.getItem("Medical_User_Id")
+      if (!userId) {
         toast.error("Please log in to purchase this course")
         router.push("/login?redirect=" + encodeURIComponent(window.location.pathname))
         return
@@ -357,7 +374,7 @@ const CoursePage = () => {
           items: [{ type: "course", id: course._id }],
           successUrl: `${window.location.origin}/dashboard?success=true`,
           cancelUrl: `${window.location.origin}/courses/${course._id}?canceled=true`,
-          userId: localStorage.getItem("Medical_User_Id"),
+          userId: userId,
         }),
       })
 
@@ -379,6 +396,16 @@ const CoursePage = () => {
       }
       setAddingToCart(false)
     }
+    
+  }
+
+  const handleAccessCourse = () => {
+    // Scroll to course content tab
+    const curriculumTab = document.querySelector('[data-value="curriculum"]')
+    if (curriculumTab) {
+      (curriculumTab as HTMLElement).click()
+    }
+    toast.success("You already own this course. Enjoy your learning!")
   }
   // Function to handle video play attempt
   const handleVideoPlayAttempt = () => {
@@ -548,14 +575,6 @@ const CoursePage = () => {
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col">
-        {/* <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                    <div className="container flex h-16 items-center">
-                        <MainNav />
-                        <div className="ml-auto flex items-center space-x-4">
-                            <UserNav />
-                        </div>
-                    </div>
-                </header> */}
         <main className="flex-1 py-6 md:py-10">
           <div className="container">
             <div className="mb-8">
@@ -591,14 +610,6 @@ const CoursePage = () => {
   if (!course) {
     return (
       <div className="flex min-h-screen flex-col">
-        {/* <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                    <div className="container flex h-16 items-center">
-                        <MainNav />
-                        <div className="ml-auto flex items-center space-x-4">
-                            <UserNav />
-                        </div>
-                    </div>
-                </header> */}
         <main className="flex-1 py-6 md:py-10">
           <div className="container">
             <div className="mb-8">
@@ -627,14 +638,6 @@ const CoursePage = () => {
 
   return (
     <div className="flex min-h-screen flex-col">
-      {/* <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-                <div className="container flex h-16 items-center">
-                    <MainNav />
-                    <div className="ml-auto flex items-center space-x-4">
-                        <UserNav />
-                    </div>
-                </div>
-            </header> */}
       <main className="flex-1 py-6 md:py-10">
         <div className="container">
           <div className="mb-8">
@@ -688,12 +691,21 @@ const CoursePage = () => {
                     {course.source}
                   </Badge>
                 </div>
+                
+                {/* Add purchased badge if user owns the course */}
+                {hasPurchased && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default" className="bg-green-500 text-white">
+                      Purchased
+                    </Badge>
+                  </div>
+                )}
               </div>
 
               <Tabs defaultValue="overview">
                 <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="curriculum">Course Content</TabsTrigger>
+                  <TabsTrigger value="curriculum" data-value="curriculum">Course Content</TabsTrigger>
                   <TabsTrigger value="instructor">Instructor</TabsTrigger>
                   <TabsTrigger value="reviews">Reviews</TabsTrigger>
                 </TabsList>
@@ -757,6 +769,18 @@ const CoursePage = () => {
                         {/* Video Player Section */}
                         {(course.videos && course.videos.length > 0) || course.videoUrl ? (
                           <div className="space-y-6">
+                            {/* Show a purchase success banner for purchased courses */}
+                            {hasPurchased && (
+                              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                                <div className="flex items-center">
+                                  <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                                  <p className="text-green-700 font-medium">
+                                    You own this course. Enjoy full access to all content!
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            
                             {/* Video Navigation Tabs */}
                             {course.videos && course.videos.length > 1 && (
                               <div className="flex overflow-x-auto gap-2 pb-2">
@@ -820,7 +844,7 @@ const CoursePage = () => {
                                   // User has not purchased - show locked content overlay
                                   <div
                                     className="aspect-video bg-muted/30 rounded-md overflow-hidden relative cursor-pointer"
-                                    onClick={handleVideoPlayAttempt}
+                                    onClick={() => setShowPurchaseDialog(true)}
                                   >
                                     {/* Thumbnail or placeholder */}
                                     <div className="w-full h-full">
@@ -1141,8 +1165,10 @@ const CoursePage = () => {
                   <CardDescription>One-time purchase, lifetime access</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Button className="w-full gap-2" size="lg" onClick={() => setShowPurchaseDialog(true)}>
-                    Purchase Course
+                  <Button disabled={hasPurchased} className="w-full gap-2" size="lg" onClick={() => setShowPurchaseDialog(true)}>
+                    {hasPurchased ? "Purchased" : "Purchase Course"}
+                    {hasPurchased ? <CheckCircle className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />}
+                    {/* Purchase Course */}
                   </Button>
                   <div className="hidden">
                     <Button className="w-full gap-2" size="lg" onClick={handleBuyNow} disabled={addingToCart}>
@@ -1178,11 +1204,11 @@ const CoursePage = () => {
                     </ul>
                   </div>
                 </CardContent>
-                <CardFooter className="flex justify-center">
+                {/* <CardFooter className="flex justify-center">
                   <Button variant="link" size="sm">
                     30-Day Money-Back Guarantee
                   </Button>
-                </CardFooter>
+                </CardFooter> */}
               </Card>
             </div>
           </div>

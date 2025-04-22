@@ -63,7 +63,7 @@ export default function MentorsPage() {
     const [expertiseFilter, setExpertiseFilter] = useState<string[]>([])
     const [ratingFilter, setRatingFilter] = useState<number>(0)
     const [priceRange, setPriceRange] = useState([0, 500])
-    const [availabilityFilter, setAvailabilityFilter] = useState("")
+    // const [availabilityFilter, setAvailabilityFilter] = useState("")
 
     // Available expertise areas (will be populated from mentors data)
     const [expertiseOptions, setExpertiseOptions] = useState<string[]>([])
@@ -125,26 +125,26 @@ export default function MentorsPage() {
         }
 
         // Availability filter
-        if (availabilityFilter) {
-            const today = new Date()
-            const selectedDate = new Date(availabilityFilter)
+        // if (availabilityFilter) {
+        //     const today = new Date()
+        //     const selectedDate = new Date(availabilityFilter)
 
-            filtered = filtered.filter((mentor) =>
-                mentor.availability?.some((avail) => {
-                    const availDate = new Date(avail.date)
-                    return (
-                        availDate >= today &&
-                        availDate.getDate() === selectedDate.getDate() &&
-                        availDate.getMonth() === selectedDate.getMonth() &&
-                        availDate.getFullYear() === selectedDate.getFullYear() &&
-                        avail.slots.length > 0
-                    )
-                }),
-            )
-        }
+        //     filtered = filtered.filter((mentor) =>
+        //         mentor.availability?.some((avail) => {
+        //             const availDate = new Date(avail.date)
+        //             return (
+        //                 availDate >= today &&
+        //                 availDate.getDate() === selectedDate.getDate() &&
+        //                 availDate.getMonth() === selectedDate.getMonth() &&
+        //                 availDate.getFullYear() === selectedDate.getFullYear() &&
+        //                 avail.slots.length > 0
+        //             )
+        //         }),
+        //     )
+        // }
 
         setFilteredMentors(filtered)
-    }, [searchQuery, expertiseFilter, ratingFilter, availabilityFilter, mentors])
+    }, [searchQuery, expertiseFilter, ratingFilter,  mentors])
 
     const handleExpertiseFilterChange = (expertise: string) => {
         setExpertiseFilter((prev) => {
@@ -161,7 +161,7 @@ export default function MentorsPage() {
         setExpertiseFilter([])
         setRatingFilter(0)
         setPriceRange([0, 500])
-        setAvailabilityFilter("")
+        // setAvailabilityFilter("")
         console.log(priceRange)
     }
 
@@ -228,7 +228,7 @@ export default function MentorsPage() {
 
                                     <Separator />
 
-                                    <div className="space-y-4">
+                                    {/* <div className="space-y-4">
                                         <h3 className="text-sm font-medium">Availability</h3>
                                         <Input
                                             type="date"
@@ -236,7 +236,7 @@ export default function MentorsPage() {
                                             onChange={(e) => setAvailabilityFilter(e.target.value)}
                                             min={new Date().toISOString().split("T")[0]}
                                         />
-                                    </div>
+                                    </div> */}
 
                                     <div className="flex justify-between pt-4">
                                         <Button variant="outline" onClick={resetFilters}>
@@ -309,7 +309,7 @@ export default function MentorsPage() {
 
                         <Separator />
 
-                        <div>
+                        {/* <div>
                             <h3 className="font-medium mb-3">Availability</h3>
                             <Input
                                 type="date"
@@ -317,7 +317,7 @@ export default function MentorsPage() {
                                 onChange={(e) => setAvailabilityFilter(e.target.value)}
                                 min={new Date().toISOString().split("T")[0]}
                             />
-                        </div>
+                        </div> */}
 
                         <Button variant="outline" onClick={resetFilters} className="w-full">
                             Reset Filters

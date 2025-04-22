@@ -10,7 +10,7 @@ import axios from "axios"
 import { Briefcase, Building, CalendarIcon, ChevronLeft, Star, CheckCircle, XCircle } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { JSX, useCallback, useEffect, useState } from "react"
+import { type JSX, useCallback, useEffect, useState } from "react"
 import toast from "react-hot-toast"
 import { MentorBadgeSet } from "../MentorBadgeSet"
 import { SuggestedMentorships } from "../SuggestedMentorships"
@@ -35,9 +35,9 @@ interface Mentor {
     createdAt?: string
     price: number
     duration: string
-
   }>
   reviews: Array<{
+    userName: string
     userId: string
     comment: string
     rating: number
@@ -128,6 +128,9 @@ export default function MentorDetailPage() {
     message: "",
   })
   const [reviewRating, setReviewRating] = useState<Record<string, number>>({})
+  const [isProcessingPayment, setIsProcessingPayment] = useState<Record<number, boolean>>({})
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [reviewError, setReviewError] = useState<Record<string, string | null>>({})
 
   // Add state to track payment status for each mentorship
   const [paidMentorships, setPaidMentorships] = useState<Record<number, boolean>>({})
@@ -173,38 +176,37 @@ export default function MentorDetailPage() {
   // Add function to fetch user bookings
   const fetchUserBookings = useCallback(async () => {
     try {
-      setBookingsLoading(true);
-  
+      setBookingsLoading(true)
+
       // Get the user ID from localStorage
-      const userId = localStorage.getItem("Medical_User_Id");
-  
+      const userId = localStorage.getItem("Medical_User_Id")
+
       if (!userId) {
-        console.error("❌ No user ID found in localStorage.");
-        setBookingsLoading(false);
-        return;
+        console.error("❌ No user ID found in localStorage.")
+        setBookingsLoading(false)
+        return
       }
-  
-      console.log("🔍 Fetching bookings for user ID:", userId);
-  
+
+      console.log("🔍 Fetching bookings for user ID:", userId)
+
       const response = await axios.get("https://medical-backend-loj4.onrender.com/api/bookings/user", {
         params: {
           userId: userId,
         },
-      });
-  
-      console.log("✅ Bookings fetch response:", response.data);
-  
+      })
+
+      console.log("✅ Bookings fetch response:", response.data)
+
       if (response.data.success) {
-        setBookings(response.data.data);
+        setBookings(response.data.data)
       }
-  
-      setBookingsLoading(false);
+
+      setBookingsLoading(false)
     } catch (error) {
-      console.error("❌ Error fetching bookings:", error);
-      setBookingsLoading(false);
+      console.error("❌ Error fetching bookings:", error)
+      setBookingsLoading(false)
     }
-  }, []);
-  
+  }, [])
 
   useEffect(() => {
     if (params.id) {
@@ -234,52 +236,52 @@ export default function MentorDetailPage() {
   }, [selectedDate, mentor])
 
   // Function to render mentorship reviews
- 
-  // Updated renderMentorshipReviews function for MentorDetailPage.js
-const renderMentorshipReviews = (mentorshipId: string): JSX.Element => {
-  interface Review {
-    userId: string;
-    comment: string;
-    rating: number;
-    createdAt?: string;
-    updatedAt?: string;
-  }
 
-  // First try to get mentorship-specific reviews
-  const mentorshipSpecificReviews: Review[] = mentorshipReviews[mentorshipId] || [];
-  
-  // If no mentorship-specific reviews, fallback to mentor's general reviews
-  const reviews: Review[] = mentorshipSpecificReviews.length > 0 ? mentorshipSpecificReviews : mentor?.reviews || [];
-  
-  if (reviews.length === 0)
-    return <p className="text-muted-foreground text-sm">No reviews yet for this mentorship.</p>;
-    
-  return (
-    <div className="space-y-4 mt-4">
-      {reviews.map((review, idx) => (
-        <div key={idx} className="border rounded p-3">
-          <div className="flex items-center justify-between">
-            {/* Display the user's name here instead of ID/email */}
-            <strong>{review.userId}</strong>
-            <span className="text-xs text-muted-foreground">
-              {new Date(review.createdAt || "").toLocaleDateString()}
-              {review.updatedAt && " (Updated)"}
-            </span>
+  // Updated renderMentorshipReviews function for MentorDetailPage.js
+  const renderMentorshipReviews = (mentorshipId: string): JSX.Element => {
+    interface Review {
+      userId: string
+      comment: string
+      rating: number
+      createdAt?: string
+      updatedAt?: string
+    }
+
+    // First try to get mentorship-specific reviews
+    const mentorshipSpecificReviews: Review[] = mentorshipReviews[mentorshipId] || []
+
+    // If no mentorship-specific reviews, fallback to mentor's general reviews
+    const reviews: Review[] = mentorshipSpecificReviews.length > 0 ? mentorshipSpecificReviews : mentor?.reviews || []
+
+    if (reviews.length === 0)
+      return <p className="text-muted-foreground text-sm">No reviews yet for this mentorship.</p>
+
+    return (
+      <div className="space-y-4 mt-4">
+        {reviews.map((review, idx) => (
+          <div key={idx} className="border rounded p-3">
+            <div className="flex items-center justify-between">
+              {/* Display the user's name here instead of ID/email */}
+              <strong>{review.userId}</strong>
+              <span className="text-xs text-muted-foreground">
+                {new Date(review.createdAt || "").toLocaleDateString()}
+                {review.updatedAt && " (Updated)"}
+              </span>
+            </div>
+            <div className="flex mt-1">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Star
+                  key={i}
+                  className={`h-4 w-4 ${i <= review.rating ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"}`}
+                />
+              ))}
+            </div>
+            <p className="text-sm mt-2">{review.comment}</p>
           </div>
-          <div className="flex mt-1">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Star
-                key={i}
-                className={`h-4 w-4 ${i <= review.rating ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"}`}
-              />
-            ))}
-          </div>
-          <p className="text-sm mt-2">{review.comment}</p>
-        </div>
-      ))}
-    </div>
-  );
-};
+        ))}
+      </div>
+    )
+  }
 
   // Utility function to check if a user can rebook the mentorship
   const canBookMentorship = (mentorshipId: string, bookings: Booking[]) => {
@@ -295,63 +297,59 @@ const renderMentorshipReviews = (mentorshipId: string): JSX.Element => {
   }
 
   // Submit review function
-// Updated handleSubmitReview function for MentorDetailPage.js
+  // Updated handleSubmitReview function for MentorDetailPage.js
 
-// Updated handleSubmitReview function for mentor-only reviews
-const handleSubmitReview = async (
-  bookingId: string,
-  mentorId: string
-): Promise<void> => {
-  const userId: string | null = localStorage.getItem("Medical_User_Id");
+  // Updated handleSubmitReview function for mentor-only reviews
+  const handleSubmitReview = async (bookingId: string, mentorId: string): Promise<void> => {
+    const userId: string | null = localStorage.getItem("Medical_User_Id")
 
-  if (!userId) {
-    toast.error("Login required to submit a review");
-    return;
-  }
-
-  try {
-    setReviewSubmitting(true);
-
-    // Step 1: Check if user has already submitted a review for this mentor
-    interface CheckUserReviewResponse {
-      hasReview: boolean;
+    if (!userId) {
+      toast.error("Login required to submit a review")
+      return
     }
 
-    const response = await axios.get<CheckUserReviewResponse>(
-      `https://medical-backend-loj4.onrender.com/api/reviews/check-user-review/${mentorId}?userId=${userId}`
-    );
+    try {
+      setReviewSubmitting(true)
 
-    const { hasReview } = response.data;
+      // Step 1: Check if user has already submitted a review for this mentor
+      interface CheckUserReviewResponse {
+        hasReview: boolean
+      }
 
-    const reviewPayload = {
-      mentorId,
-      userId,
-      comment: reviewInput,
-      rating: reviewRating[bookingId] || 0,
-    };
+      const response = await axios.get<CheckUserReviewResponse>(
+        `https://medical-backend-loj4.onrender.com/api/reviews/check-user-review/${mentorId}?userId=${userId}`,
+      )
 
-    // Step 2: Submit or update the review
-    if (hasReview) {
-      await axios.put("https://medical-backend-loj4.onrender.com/api/reviews/updatereview", reviewPayload);
-      toast.success("Review updated successfully");
-    } else {
-      await axios.post("https://medical-backend-loj4.onrender.com/api/reviews/addreview", reviewPayload);
-      toast.success("Review submitted successfully");
+      const { hasReview } = response.data
+
+      const reviewPayload = {
+        mentorId,
+        userId,
+        comment: reviewInput,
+        rating: reviewRating[bookingId] || 0,
+      }
+
+      // Step 2: Submit or update the review
+      if (hasReview) {
+        await axios.put("https://medical-backend-loj4.onrender.com/api/reviews/updatereview", reviewPayload)
+        toast.success("Review updated successfully")
+      } else {
+        await axios.post("https://medical-backend-loj4.onrender.com/api/reviews/addreview", reviewPayload)
+        toast.success("Review submitted successfully")
+      }
+
+      // Step 3: Reset UI state
+      setReviewInput("")
+      setReviewRating((prev) => ({ ...prev, [bookingId]: 0 }))
+      setShowReviewForm((prev) => ({ ...prev, [bookingId]: false }))
+      fetchMentor(params.id as string)
+    } catch (error: any) {
+      console.error("Review submission error:", error)
+      toast.error(error?.response?.data?.error || "Failed to submit review")
+    } finally {
+      setReviewSubmitting(false)
     }
-
-    // Step 3: Reset UI state
-    setReviewInput("");
-    setReviewRating((prev) => ({ ...prev, [bookingId]: 0 }));
-    setShowReviewForm((prev) => ({ ...prev, [bookingId]: false }));
-    fetchMentor(params.id as string);
-  } catch (error: any) {
-    console.error("Review submission error:", error);
-    toast.error(error?.response?.data?.error || "Failed to submit review");
-  } finally {
-    setReviewSubmitting(false);
   }
-};
-
 
   // Function to handle booking a session
   const handleBookSession = useCallback(
@@ -361,23 +359,23 @@ const handleSubmitReview = async (
         toast.error("Please complete payment before booking")
         return
       }
-  
+
       const mentorship = mentor?.mentorships[mentorshipIndex]
       if (!mentorship) {
         toast.error("Invalid mentorship selected")
         return
       }
-  
+
       try {
         setBookingStatus({
           loading: true,
           success: false,
           message: "Submitting your booking request...",
         })
-  
+
         // Get token from localStorage
         const user_id = localStorage.getItem("Medical_User_Id")
-  
+
         if (!user_id) {
           toast.error("You need to be logged in to book a session. Please log in and try again.")
           setBookingStatus({
@@ -387,14 +385,14 @@ const handleSubmitReview = async (
           })
           return
         }
-  
+
         // Create mentorship object to pass to API
         const mentorshipData = {
           _id: mentorship._id,
           title: mentorship.title,
           duration: mentorship.duration || "60 minutes",
         }
-  
+
         console.log("Sending booking request with data:", {
           mentorshipId: mentorship._id,
           mentorId: mentor._id,
@@ -402,7 +400,7 @@ const handleSubmitReview = async (
           date: "pending-admin-assignment",
           time: "pending-admin-assignment",
         })
-  
+
         // Use x-auth-token header
         const response = await axios.post(
           "https://medical-backend-loj4.onrender.com/api/bookings",
@@ -417,13 +415,12 @@ const handleSubmitReview = async (
           {
             headers: {
               "Content-Type": "application/json",
-
             },
           },
         )
-  
+
         console.log("Booking response:", response.data)
-  
+
         if (response.data.success) {
           setBookingStatus({
             loading: false,
@@ -431,7 +428,7 @@ const handleSubmitReview = async (
             message:
               "Your booking request has been submitted and is pending admin approval. The admin will assign a suitable date and time for your session. You'll receive an email once it's scheduled.",
           })
-  
+
           // Refresh bookings list to show the new pending booking
           setTimeout(() => {
             fetchUserBookings()
@@ -457,17 +454,115 @@ const handleSubmitReview = async (
     [mentor, paidMentorships, fetchUserBookings],
   )
 
-  // Handle payment for a mentorship
-  const handlePayment = (mentorshipIndex: number, price: number) => {
-    // Show payment confirmation alert
-    if (window.confirm(`Thanks for paying $${price} for this mentor! Click OK to confirm.`)) {
-      // Mark this mentorship as paid
-      setPaidMentorships((prev) => ({
-        ...prev,
-        [mentorshipIndex]: true,
-      }))
+  useEffect(() => {
+    // Check if this is a redirect from payment
+    const query = new URLSearchParams(window.location.search)
+    const sessionId = query.get("session_id")
+    const mentorId = query.get("mentor_id")
+    const mentorshipId = query.get("mentorship_id")
+    const status = query.get("status")
 
-      toast.success("Payment successful! You can now book this mentorship.")
+    if (sessionId && mentorId && mentorshipId && status === "success" && mentor) {
+      // Find the mentorship index to mark it as paid
+      const mentorshipIndex = mentor.mentorships.findIndex((m) => m._id === mentorshipId)
+
+      if (mentorshipIndex >= 0) {
+        setPaidMentorships((prev) => ({
+          ...prev,
+          [mentorshipIndex]: true,
+        }))
+        toast.success("Payment successful! You can now book this mentorship.")
+
+        // Clear the URL parameters to prevent confusion on page refresh
+        if (window.history.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname)
+        }
+      }
+    }
+  }, [mentor])
+
+  const verifyPaymentStatus = useCallback(async (mentorId: string, mentorshipId: string) => {
+    try {
+      const userId = localStorage.getItem("Medical_User_Id")
+      if (!userId) {
+        console.error("User ID not found")
+        return false
+      }
+
+      const response = await axios.post(
+        `https://medical-backend-loj4.onrender.com/api/mentorship-payments/verify/${mentorId}/${mentorshipId}`,
+        { userId },
+      )
+
+      return response.data.success && response.data.paid
+    } catch (error) {
+      console.error("Error verifying payment status:", error)
+      return false
+    }
+  }, [])
+
+  useEffect(() => {
+    const loadPaymentStatus = async () => {
+      if (mentor?.mentorships) {
+        const newPaidStatus: Record<number, boolean> = {}
+
+        for (let i = 0; i < mentor.mentorships.length; i++) {
+          const mentorship = mentor.mentorships[i]
+          const isPaid = await verifyPaymentStatus(mentor._id, mentorship._id)
+          if (isPaid) {
+            newPaidStatus[i] = true
+          }
+        }
+
+        setPaidMentorships(newPaidStatus)
+      }
+    }
+
+    if (mentor) {
+      loadPaymentStatus()
+    }
+  }, [mentor, verifyPaymentStatus])
+
+  // Handle payment for a mentorship
+  const handlePayment = async (mentorshipIndex: number, price: number) => {
+    try {
+      setIsProcessingPayment((prev) => ({ ...prev, [mentorshipIndex]: true }))
+      setPaymentError(null)
+
+      const userId = localStorage.getItem("Medical_User_Id")
+      if (!userId) {
+        toast.error("Please log in to continue with payment")
+        setIsProcessingPayment((prev) => ({ ...prev, [mentorshipIndex]: false }))
+        return
+      }
+
+      const mentorship = mentor?.mentorships[mentorshipIndex]
+      if (!mentorship) {
+        toast.error("Mentorship information not found")
+        setIsProcessingPayment((prev) => ({ ...prev, [mentorshipIndex]: false }))
+        return
+      }
+
+      // Create checkout session
+      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/mentorship-payments/create-checkout-session", {
+        mentorId: mentor._id,
+        mentorshipId: mentorship._id,
+        userId,
+        successUrl: `${window.location.href.split("?")[0]}?status=success&mentor_id=${mentor._id}&mentorship_id=${mentorship._id}&session_id=COMPLETED`,
+        cancelUrl: window.location.href.split("?")[0],
+      })
+
+      if (response.data.success) {
+        // Redirect to Stripe's hosted checkout page
+        window.location.href = response.data.url
+      } else {
+        throw new Error(response.data.message || "Failed to create payment session")
+      }
+    } catch (error: any) {
+      console.error("Payment error:", error)
+      setPaymentError(error?.response?.data?.message || error.message || "Payment processing failed")
+      toast.error(error?.response?.data?.message || error.message || "Payment processing failed")
+      setIsProcessingPayment((prev) => ({ ...prev, [mentorshipIndex]: false }))
     }
   }
 
@@ -654,14 +749,24 @@ const handleSubmitReview = async (
 
                           <p className="text-muted-foreground mb-4">{mentorship.description}</p>
 
-                          {/* MODIFIED: Added payment button and placed both buttons in a single line */}
+                          {/* Display payment error if any */}
+                          {paymentError && (
+                            <div className="bg-red-50 p-3 rounded-md mb-4 text-red-600 text-sm">
+                              <p>{paymentError}</p>
+                            </div>
+                          )}
+
+                          {/* Payment and booking buttons */}
                           <div className="flex items-center gap-3">
                             <Button
                               variant="outline"
                               className="flex items-center gap-2"
                               onClick={() => handlePayment(index, mentorship.price)}
-                              disabled={paidMentorships[index]} // Disable if already paid
+                              disabled={paidMentorships[index] || isProcessingPayment[index]}
                             >
+                              {isProcessingPayment[index] && (
+                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-primary mr-1"></div>
+                              )}
                               {paidMentorships[index] ? "Paid" : `Pay $${mentorship.price}`}
                             </Button>
                             <Button
@@ -675,7 +780,8 @@ const handleSubmitReview = async (
                           {/* Payment status indicator */}
                           {paidMentorships[index] && (
                             <p className="text-sm text-green-600 mt-2">
-                              ✓ Payment complete. You can now book this mentorship.
+                              <CheckCircle className="inline-block h-4 w-4 mr-1" />
+                              Payment complete. You can now book this mentorship.
                             </p>
                           )}
                         </div>
@@ -695,224 +801,227 @@ const handleSubmitReview = async (
                 </CardContent>
               </Card>
             </TabsContent>
-<TabsContent value="reviews">
-  <Card>
-    <CardHeader>
-      <CardTitle>Reviews for {mentor.name}</CardTitle>
-    </CardHeader>
-    <CardContent>
-      {mentor.reviews && mentor.reviews.length > 0 ? (
-        <div className="space-y-4">
-          {mentor.reviews.map((review, idx) => (
-            <div key={idx} className="border rounded p-3">
-              <div className="flex items-center justify-between">
-                <strong>{review.userId}</strong>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(review.createdAt || "").toLocaleDateString()}
-                  {review.updatedAt && " (Updated)"}
-                </span>
-              </div>
-              <div className="flex mt-1">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Star
-                    key={i}
-                    className={`h-4 w-4 ${i <= review.rating ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"}`}
-                  />
-                ))}
-              </div>
-              <p className="text-sm mt-2">{review.comment}</p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-muted-foreground text-sm">No reviews yet for this mentor.</p>
-      )}
-    </CardContent>
-  </Card>
-</TabsContent>
-<TabsContent value="schedule">
-  <Card>
-    <CardHeader>
-      <CardTitle>Your Bookings</CardTitle>
-      <CardDescription>View and manage your bookings with {mentor.name}</CardDescription>
-    </CardHeader>
-    <CardContent>
-      {/* Display bookings section */}
-      {bookingsLoading ? (
-        <div className="flex justify-center items-center py-4">
-          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      ) : bookings.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground mb-4">You don&apos;t have any bookings with this mentor yet</p>
-          <Button onClick={() => setActiveTab("mentorships")}>Book a Session</Button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <h3 className="text-md font-medium mb-2">Booking Status</h3>
-          {/* Filter bookings for this mentor */}
-          {bookings
-            .filter((booking) => booking.mentorId === mentor._id)
-            .map((booking) => (
-              <div
-                key={booking._id}
-                className={`p-4 border rounded-md ${
-                  booking.status === "pending"
-                    ? "border-yellow-300 bg-yellow-50"
-                    : booking.status === "approved"
-                      ? "border-green-300 bg-green-50"
-                      : booking.status === "rejected"
-                        ? "border-red-300 bg-red-50"
-                        : "border-gray-200"
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="font-medium">{booking.mentorship.title}</h4>
-                    <div className="flex items-center mt-1 text-sm">
-                      <CalendarIcon className="h-3 w-3 mr-1 text-muted-foreground" />
-                      <span className="text-muted-foreground">
-                        {booking.date === "pending-admin-assignment" 
-                          ? "Date to be assigned by admin" 
-                          : booking.date}
-                        {booking.date !== "pending-admin-assignment" && booking.time !== "pending-admin-assignment" && 
-                          ` at ${booking.time}`}
-                        {booking.date !== "pending-admin-assignment" && booking.time === "pending-admin-assignment" && 
-                          " (time to be assigned by admin)"}
-                      </span>
-                    </div>
-                  </div>
-                  <Badge
-                    variant={
-                      booking.status === "pending"
-                        ? "outline"
-                        : booking.status === "approved"
-                          ? "default"
-                          : booking.status === "rejected"
-                            ? "destructive"
-                            : "secondary"
-                    }
-                  >
-                    {booking.status === "pending"
-                      ? "Pending Approval"
-                      : booking.status === "approved"
-                        ? "Approved"
-                        : booking.status === "rejected"
-                          ? "Rejected"
-                          : booking.status}
-                  </Badge>
-                </div>
-
-                {booking.status === "pending" && (
-                  <div className="mt-2 p-2 bg-yellow-50 rounded">
-                    <p className="text-sm text-yellow-700">
-                      <strong>Waiting for admin approval.</strong> Your booking is being processed, and the admin will assign a date and time for your session.
-                    </p>
-                  </div>
-                )}
-
-                {booking.status === "rejected" && booking.rejectionReason && (
-                  <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
-                    <p>
-                      <strong>Reason:</strong> {booking.rejectionReason}
-                    </p>
-                  </div>
-                )}
-
-                {booking.status === "rejected" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => {
-                      setActiveTab("mentorships")
-                    }}
-                  >
-                    Book Another Session
-                  </Button>
-                )}
-
-                {booking.status === "approved" && (
-                  <div className="mt-2">
-                    <div className="p-2 bg-green-50 rounded">
-                      <p className="text-sm text-green-700">
-                        <strong>Session confirmed!</strong> Be sure to join on time.
-                      </p>
-                    </div>
-
-                    {/* Add review button for approved bookings */}
-                    <div className="mt-2">
-                      <Button
-                        onClick={() =>
-                          setShowReviewForm((prev) => ({
-                            ...prev,
-                            [booking._id]: !prev[booking._id],
-                          }))
-                        }
-                        variant="outline"
-                        size="sm"
-                      >
-                        {showReviewForm[booking._id] ? "Cancel" : "Leave a Review"}
-                      </Button>
-
-                      {showReviewForm[booking._id] && (
-                        <div className="mt-2">
-                          <textarea
-                            className="w-full border rounded p-2 text-sm"
-                            placeholder="Write your feedback..."
-                            value={reviewInput}
-                            onChange={(e) => setReviewInput(e.target.value)}
-                          />
-                          <div className="flex items-center mt-2 mb-2">
-                            <span className="text-sm mr-2">Rating:</span>
-                            <div className="flex">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                  key={star}
-                                  className={`h-5 w-5 cursor-pointer ${
-                                    (reviewRating[booking._id] || 0) >= star
-                                      ? "text-yellow-500 fill-yellow-500"
-                                      : "text-gray-300"
-                                  }`}
-                                  onClick={() =>
-                                    setReviewRating((prev) => ({ ...prev, [booking._id]: star }))
-                                  }
-                                />
-                              ))}
-                            </div>
+            <TabsContent value="reviews">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Reviews for {mentor.name}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {mentor.reviews && mentor.reviews.length > 0 ? (
+                    <div className="space-y-4">
+                      {mentor.reviews.map((review, idx) => (
+                        <div key={idx} className="border rounded p-3">
+                          <div className="flex items-center justify-between">
+                            <strong>{review.userName}</strong>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(review.createdAt || "").toLocaleDateString()}
+                              {review.updatedAt && " (Updated)"}
+                            </span>
                           </div>
-                          <Button
-                            size="sm"
-                            className="mt-2"
-                            disabled={!reviewInput.trim() || reviewSubmitting}
-                            onClick={() =>
-                              handleSubmitReview(booking._id, booking.mentorId)
-                            }
-                          >
-                            Submit Review
-                          </Button>
+                          <div className="flex mt-1">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${i <= review.rating ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground"}`}
+                              />
+                            ))}
+                          </div>
+                          <p className="text-sm mt-2">{review.comment}</p>
                         </div>
-                      )}
+                      ))}
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  ) : (
+                    <p className="text-muted-foreground text-sm">No reviews yet for this mentor.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="schedule">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Your Bookings</CardTitle>
+                  <CardDescription>View and manage your bookings with {mentor.name}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {/* Display bookings section */}
+                  {bookingsLoading ? (
+                    <div className="flex justify-center items-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
+                    </div>
+                  ) : bookings.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground mb-4">
+                        You don&apos;t have any bookings with this mentor yet
+                      </p>
+                      <Button onClick={() => setActiveTab("mentorships")}>Book a Session</Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <h3 className="text-md font-medium mb-2">Booking Status</h3>
+                      {/* Filter bookings for this mentor */}
+                      {bookings
+                        .filter((booking) => booking.mentorId === mentor._id)
+                        .map((booking) => (
+                          <div
+                            key={booking._id}
+                            className={`p-4 border rounded-md ${
+                              booking.status === "pending"
+                                ? "border-yellow-300 bg-yellow-50"
+                                : booking.status === "approved"
+                                  ? "border-green-300 bg-green-50"
+                                  : booking.status === "rejected"
+                                    ? "border-red-300 bg-red-50"
+                                    : "border-gray-200"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h4 className="font-medium">{booking.mentorship.title}</h4>
+                                <div className="flex items-center mt-1 text-sm">
+                                  <CalendarIcon className="h-3 w-3 mr-1 text-muted-foreground" />
+                                  <span className="text-muted-foreground">
+                                    {booking.date === "pending-admin-assignment"
+                                      ? "Date to be assigned by admin"
+                                      : booking.date}
+                                    {booking.date !== "pending-admin-assignment" &&
+                                      booking.time !== "pending-admin-assignment" &&
+                                      ` at ${booking.time}`}
+                                    {booking.date !== "pending-admin-assignment" &&
+                                      booking.time === "pending-admin-assignment" &&
+                                      " (time to be assigned by admin)"}
+                                  </span>
+                                </div>
+                              </div>
+                              <Badge
+                                variant={
+                                  booking.status === "pending"
+                                    ? "outline"
+                                    : booking.status === "approved"
+                                      ? "default"
+                                      : booking.status === "rejected"
+                                        ? "destructive"
+                                        : "secondary"
+                                }
+                              >
+                                {booking.status === "pending"
+                                  ? "Pending Approval"
+                                  : booking.status === "approved"
+                                    ? "Approved"
+                                    : booking.status === "rejected"
+                                      ? "Rejected"
+                                      : booking.status}
+                              </Badge>
+                            </div>
 
-          {/* No bookings with this specific mentor */}
-          {bookings.length > 0 &&
-            bookings.filter((booking) => booking.mentorId === mentor._id).length === 0 && (
-              <div className="text-center py-4">
-                <p className="text-muted-foreground mb-4">
-                  You don&apos;t have any bookings with this mentor yet
-                </p>
-                <Button onClick={() => setActiveTab("mentorships")}>Book Your First Session</Button>
-              </div>
-            )}
-        </div>
-      )}
-              </CardContent>
-            </Card>
+                            {booking.status === "pending" && (
+                              <div className="mt-2 p-2 bg-yellow-50 rounded">
+                                <p className="text-sm text-yellow-700">
+                                  <strong>Waiting for admin approval.</strong> Your booking is being processed, and the
+                                  admin will assign a date and time for your session.
+                                </p>
+                              </div>
+                            )}
+
+                            {booking.status === "rejected" && booking.rejectionReason && (
+                              <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
+                                <p>
+                                  <strong>Reason:</strong> {booking.rejectionReason}
+                                </p>
+                              </div>
+                            )}
+
+                            {booking.status === "rejected" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-2"
+                                onClick={() => {
+                                  setActiveTab("mentorships")
+                                }}
+                              >
+                                Book Another Session
+                              </Button>
+                            )}
+
+                            {booking.status === "approved" && (
+                              <div className="mt-2">
+                                <div className="p-2 bg-green-50 rounded">
+                                  <p className="text-sm text-green-700">
+                                    <strong>Session confirmed!</strong> Be sure to join on time.
+                                  </p>
+                                </div>
+
+                                {/* Add review button for approved bookings */}
+                                <div className="mt-2">
+                                  <Button
+                                    onClick={() =>
+                                      setShowReviewForm((prev) => ({
+                                        ...prev,
+                                        [booking._id]: !prev[booking._id],
+                                      }))
+                                    }
+                                    variant="outline"
+                                    size="sm"
+                                  >
+                                    {showReviewForm[booking._id] ? "Cancel" : "Leave a Review"}
+                                  </Button>
+
+                                  {showReviewForm[booking._id] && (
+                                    <div className="mt-2">
+                                      <textarea
+                                        className="w-full border rounded p-2 text-sm"
+                                        placeholder="Write your feedback..."
+                                        value={reviewInput}
+                                        onChange={(e) => setReviewInput(e.target.value)}
+                                      />
+                                      <div className="flex items-center mt-2 mb-2">
+                                        <span className="text-sm mr-2">Rating:</span>
+                                        <div className="flex">
+                                          {[1, 2, 3, 4, 5].map((star) => (
+                                            <Star
+                                              key={star}
+                                              className={`h-5 w-5 cursor-pointer ${
+                                                (reviewRating[booking._id] || 0) >= star
+                                                  ? "text-yellow-500 fill-yellow-500"
+                                                  : "text-gray-300"
+                                              }`}
+                                              onClick={() =>
+                                                setReviewRating((prev) => ({ ...prev, [booking._id]: star }))
+                                              }
+                                            />
+                                          ))}
+                                        </div>
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        className="mt-2"
+                                        disabled={!reviewInput.trim() || reviewSubmitting}
+                                        onClick={() => handleSubmitReview(booking._id, booking.mentorId)}
+                                      >
+                                        Submit Review
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+
+                      {/* No bookings with this specific mentor */}
+                      {bookings.length > 0 &&
+                        bookings.filter((booking) => booking.mentorId === mentor._id).length === 0 && (
+                          <div className="text-center py-4">
+                            <p className="text-muted-foreground mb-4">
+                              You don&apos;t have any bookings with this mentor yet
+                            </p>
+                            <Button onClick={() => setActiveTab("mentorships")}>Book Your First Session</Button>
+                          </div>
+                        )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </div>
@@ -958,36 +1067,106 @@ const handleSubmitReview = async (
                     </Button>
 
                     {showReviewForm[booking._id] && (
-                      <div className="mt-2">
-                        <textarea
-                          className="w-full border rounded p-2"
-                          placeholder="Write your feedback..."
-                          value={reviewInput}
-                          onChange={(e) => setReviewInput(e.target.value)}
-                        />
-                        <div className="flex items-center mt-2 mb-2">
-                          <span className="text-sm mr-2">Rating:</span>
-                          <div className="flex">
+                      <div className="mt-4 border rounded-md p-4 bg-gray-50">
+                        <h5 className="font-medium mb-3">Share Your Experience</h5>
+
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium mb-1">Rating</label>
+                          <div className="flex items-center">
                             {[1, 2, 3, 4, 5].map((star) => (
                               <Star
                                 key={star}
-                                className={`h-5 w-5 cursor-pointer ${
+                                className={`h-6 w-6 cursor-pointer transition-colors ${
                                   (reviewRating[booking._id] || 0) >= star
                                     ? "text-yellow-500 fill-yellow-500"
-                                    : "text-gray-300"
+                                    : "text-gray-300 hover:text-yellow-300"
                                 }`}
                                 onClick={() => setReviewRating((prev) => ({ ...prev, [booking._id]: star }))}
                               />
                             ))}
+                            <span className="ml-2 text-sm">
+                              {reviewRating[booking._id]
+                                ? `${reviewRating[booking._id]} star${reviewRating[booking._id] > 1 ? "s" : ""}`
+                                : "Select rating"}
+                            </span>
                           </div>
+                          {reviewError[booking._id] && reviewError[booking._id]?.includes("rating") && (
+                            <p className="text-red-500 text-xs mt-1">{reviewError[booking._id]}</p>
+                          )}
                         </div>
-                        <Button
-                          className="mt-2"
-                          disabled={!reviewInput.trim() || reviewSubmitting}
-                          onClick={() => handleSubmitReview(booking._id, booking.mentorId)}
-                        >
-                          Submit Review
-                        </Button>
+
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium mb-1">Your Review</label>
+                          <textarea
+                            className="w-full border rounded p-3 min-h-[120px]"
+                            placeholder="What did you like or dislike about this mentorship? Was it helpful for your career? Would you recommend it to others?"
+                            value={reviewInput}
+                            onChange={(e) => setReviewInput(e.target.value)}
+                          />
+                          {reviewError[booking._id] && reviewError[booking._id]?.includes("comment") && (
+                            <p className="text-red-500 text-xs mt-1">{reviewError[booking._id]}</p>
+                          )}
+                        </div>
+
+                        {/* Display submission status */}
+                        {reviewSubmitting && (
+                          <div className="mb-4 p-2 bg-blue-50 rounded text-sm text-blue-700">
+                            <div className="flex items-center">
+                              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-700 mr-2"></div>
+                              Submitting your review...
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setShowReviewForm((prev) => ({ ...prev, [booking._id]: false }))
+                              setReviewInput("")
+                              setReviewRating((prev) => ({ ...prev, [booking._id]: 0 }))
+                              setReviewError((prev) => ({ ...prev, [booking._id]: null }))
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            disabled={reviewSubmitting}
+                            onClick={() => {
+                              // Validate before submission
+                              if (!reviewRating[booking._id] || reviewRating[booking._id] < 1) {
+                                setReviewError((prev) => ({
+                                  ...prev,
+                                  [booking._id]: "Please select a rating for your review",
+                                }))
+                                return
+                              }
+
+                              if (!reviewInput.trim()) {
+                                setReviewError((prev) => ({
+                                  ...prev,
+                                  [booking._id]: "Please write a comment for your review",
+                                }))
+                                return
+                              }
+
+                              // Clear any previous errors
+                              setReviewError((prev) => ({ ...prev, [booking._id]: null }))
+
+                              // Submit the review
+                              handleSubmitReview(booking._id, booking.mentorId)
+                            }}
+                          >
+                            {reviewSubmitting ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                                Submitting...
+                              </>
+                            ) : (
+                              "Submit Review"
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>

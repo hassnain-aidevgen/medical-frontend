@@ -28,8 +28,17 @@ import type { Course } from "@/types"
 // Add the missing properties to the Course type
 declare module "@/types" {
   interface Course {
-    // Only add reviewCount since rating already exists
     reviewCount?: number
+    examTags?: string[]
+    videoUrl?: string
+    videos?: {
+      title: string
+      url: string
+      description?: string
+      thumbnail?: string
+      order?: number
+    }[]
+    contentLinks: string[]
   }
 }
 
@@ -42,6 +51,7 @@ export default function CoursesPage() {
   const [levelFilter, setLevelFilter] = useState("all")
   const [priceRange, setPriceRange] = useState([0, 1000])
   const [sourceFilter, setSourceFilter] = useState<string[]>([])
+  const [purchasedCourses, setPurchasedCourses] = useState<Course[]>([])
 
   // New filter states
   const [topicFilter, setTopicFilter] = useState("all")
@@ -52,22 +62,31 @@ export default function CoursesPage() {
     const fetchCourses = async () => {
       try {
         setLoading(true)
-        const data = await apiClient.get<Course[]>("/courses")
+        const response = await fetch("https://medical-backend-loj4.onrender.com/api/courses/all-courses")
+        if (!response.ok) {
+          throw new Error("Failed to fetch courses")
+        }
+        const result = await response.json()
+        if (!Array.isArray(result.data)) {
+          console.error("Expected an array but got:", result.data)
+          return
+        }
 
         // Add mock ratings for testing
-        const dataWithRatings = data.map((course) => ({
+        const dataWithRatings = result.data.map((course: any) => ({
           ...course,
           rating: Math.random() * 4 + 1, // Random rating between 1-5
           reviewCount: Math.floor(Math.random() * 100) + 1, // Random number of reviews
         }))
 
         setCourses(dataWithRatings)
-        setFilteredCourses(dataWithRatings)
+        // setFilteredCourses(dataWithRatings)
 
         // Extract medical topics from course data
         const topics = extractMedicalTopics(dataWithRatings)
         console.log("Extracted medical topics:", topics)
         setMedicalTopics(topics.length > 0 ? topics : ["Cardiology", "Emergency Medicine", "Family Medicine"])
+        await fetchPurchasedCourses()
       } catch (error) {
         console.error("Error fetching courses:", error)
         toast.error("Failed to load courses")
@@ -81,6 +100,13 @@ export default function CoursesPage() {
 
   useEffect(() => {
     let filtered = [...courses]
+
+    if (purchasedCourses.length > 0) {
+      console.log("Purchased courses:", purchasedCourses)
+      const purchasedIds = purchasedCourses.map(course => course._id)
+      filtered = filtered.filter(course => !purchasedIds.includes(course._id))
+    }
+    console.log("Filtered courses:", filtered)
 
     // Apply search filter
     if (searchQuery) {
@@ -113,7 +139,7 @@ export default function CoursesPage() {
     filtered = applyTopicAndPriceFilters(filtered, topicFilter, priceCeiling) as Course[]
 
     setFilteredCourses(filtered)
-  }, [searchQuery, categoryFilter, levelFilter, priceRange, sourceFilter, courses, topicFilter, priceCeiling])
+  }, [searchQuery, categoryFilter, levelFilter, priceRange, sourceFilter, courses, topicFilter, priceCeiling, purchasedCourses])
 
   const categories = ["Development", "Design", "Data Science", "Business", "Marketing"]
   const levels: Array<Course["level"]> = ["Beginner", "Intermediate", "Advanced"]
@@ -128,7 +154,45 @@ export default function CoursesPage() {
       }
     })
   }
-
+  const fetchPurchasedCourses = async () => {
+    try {
+      // Assuming we have the user ID stored somewhere (e.g., in localStorage or context)
+      const userId = localStorage.getItem('Medical_User_Id') // Replace with your actual user ID source
+      
+      if (!userId) {
+        console.log("User not logged in, skipping purchased courses fetch")
+        return
+      }
+      
+      const response = await fetch(`https://medical-backend-loj4.onrender.com/api/course-purchase/user-courses?userId=${userId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          // "Authorization": `Bearer ${localStorage.getItem('token')}` // Assuming you use JWT
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch purchased courses")
+      }
+      
+      const { success, courses } = await response.json()
+      
+      if (success) {
+        // Add ratings to purchased courses as well
+        const purchasedWithRatings = courses.map((course: any) => ({
+          ...course,
+          rating: Math.random() * 4 + 1,
+          reviewCount: Math.floor(Math.random() * 100) + 1,
+        }))
+        
+        setPurchasedCourses(purchasedWithRatings)
+      }
+    } catch (error) {
+      console.error("Error fetching purchased courses:", error)
+      toast.error("Failed to load purchased courses")
+    }
+  }
   return (
     <div className="flex min-h-screen flex-col">
       {/* <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -295,7 +359,59 @@ export default function CoursesPage() {
             </div>
           </div>
 
+          {purchasedCourses.length > 0 && (
+  <div className="mb-12">
+    <h2 className="text-2xl font-bold tracking-tight mb-6">Your Courses</h2>
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {purchasedCourses.map((course) => (
+        <Card key={course._id} className="overflow-hidden flex flex-col">
+          <CardHeader className="p-0">
+            {typeof course.thumbnail === "string" && course.thumbnail.startsWith("http") ? (
+              <Image
+                src={course.thumbnail || "/placeholder.svg"}
+                alt={course.title}
+                width={384}
+                height={192}
+                className="h-48 w-full object-cover"
+                onError={(e) => {
+                  // Fall back to placeholder if image fails to load
+                  e.currentTarget.src = "/placeholder.svg"
+                }}
+              />
+            ) : (
+              <div className="h-48 w-full bg-muted flex items-center justify-center">
+                <span className="text-muted-foreground">No image available</span>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent className="p-6 flex-1">
+            <div className="flex items-center justify-between mb-2">
+              <Badge>{course.category}</Badge>
+              <Badge variant="outline">{course.level}</Badge>
+            </div>
+            <CardTitle className="mb-2 line-clamp-1">{course.title}</CardTitle>
+            <CourseRating rating={course.rating} reviewCount={course.reviewCount} size="sm" className="mb-2" />
+            <CardDescription className="line-clamp-2 mb-2">{course.description}</CardDescription>
+            <div className="flex items-center text-sm text-muted-foreground">
+              <span>Instructor: {course.instructor}</span>
+            </div>
+          </CardContent>
+          <CardFooter className="flex justify-between p-6 pt-0 mt-auto">
+            <div className="flex items-center">
+              <Badge variant="success" className="bg-green-100 text-green-800">Purchased</Badge>
+            </div>
+            <Link href={`/dashboard/courses/${course._id}`}>
+              <Button size="sm">View Course</Button>
+            </Link>
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
+  </div>
+)}
+         <h2 className="text-2xl font-bold tracking-tight mb-6">All Courses</h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          
             {loading ? (
               Array(8)
                 .fill(0)
