@@ -176,7 +176,7 @@ export default function DashboardStudyPlan() {
             <h3 className="text-lg font-medium text-gray-700 mb-2">No Study Plan Found</h3>
             <p className="text-gray-500 mb-6">You haven&apos;t created a personalized study plan yet.</p>
             <button
-              onClick={() => router.push("/smart-study")}
+              onClick={() => router.push("/dashboard/study-planner")}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
               Create Study Plan
