@@ -1,12 +1,12 @@
 "use client"
 
+import { Card, CardContent } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import apiService, { type Flashcard } from "@/services/api-service"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent } from "@/components/ui/card"
-import StudyTab from "../flash-cards/study-tab"
 import ReviewsTab from "../flash-cards/reviews-tab"
-import apiService, { type Flashcard } from "@/services/api-service"
+import StudyTab from "../flash-cards/study-tab"
 
 export default function FlashcardSuggestions() {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([])
@@ -305,7 +305,7 @@ export default function FlashcardSuggestions() {
                   markCardAsKnown={markCardAsKnown}
                   markCardForReview={markCardForReview} setIsNewCardDialogOpen={function (isOpen: boolean): void {
                     throw new Error("Function not implemented.")
-                  } }                />
+                  }} />
               </TabsContent>
 
               <TabsContent value="reviews" className="mt-6 focus-visible:outline-none focus-visible:ring-0">
@@ -319,6 +319,9 @@ export default function FlashcardSuggestions() {
                   fetchReviewCards={fetchReviewCards}
                   markCardAsKnown={markCardAsKnown}
                   markCardForReview={markCardForReview}
+                  totalReviewCards={reviewCards.length}
+                  reviewedCardIds={new Set(reviewCards.map((card) => card.id).filter((id): id is string => id !== undefined))}
+                  userId={userId}
                 />
               </TabsContent>
             </Tabs>
