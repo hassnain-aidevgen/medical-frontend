@@ -564,164 +564,6 @@ export default function DashboardPage() {
             <DashboardStudyPlan />
           </div>
 
-          {/* Exam Type Stats Section */}
-          <Card className="mb-6">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div>
-                <CardTitle>Exam Performance Analytics</CardTitle>
-                <CardDescription>Performance metrics across different exam types</CardDescription>
-              </div>
-              <PieChart className="h-5 w-5 text-purple-500" />
-            </CardHeader>
-            <CardContent>
-              {examTypeStatsLoading ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="text-lg">Loading exam statistics...</div>
-                </div>
-              ) : examTypeStats.length === 0 ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="text-lg text-muted-foreground">No exam data available yet</div>
-                </div>
-              ) : (
-                <div>
-                  <Tabs
-                    defaultValue="accuracy"
-                    className="w-full"
-                    onValueChange={(value) => setActiveExamStatsTab(value as any)}
-                  >
-                    <TabsList className="grid w-full grid-cols-3 mb-6">
-                      <TabsTrigger value="accuracy">Accuracy</TabsTrigger>
-                      <TabsTrigger value="questions">Questions</TabsTrigger>
-                      <TabsTrigger value="time">Time Spent</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="accuracy" className="mt-0">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="h-[300px] flex items-center justify-center">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <RPieChart>
-                              <Pie
-                                data={pieChartData}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                outerRadius={80}
-                                fill="#8884d8"
-                                dataKey="value"
-                                label={({ name, value }) => `${name}: ${value}%`}
-                              >
-                                {pieChartData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                              </Pie>
-                              <Tooltip formatter={(value) => `${value}%`} />
-                              <Legend />
-                            </RPieChart>
-                          </ResponsiveContainer>
-                        </div>
-                        <div className="flex flex-col justify-center">
-                          <h3 className="text-lg font-semibold mb-4">Accuracy Breakdown</h3>
-                          <div className="space-y-4">
-                            {examTypeStats.map((stat, index) => (
-                              <div key={stat.exam_type} className="space-y-1">
-                                <div className="flex justify-between">
-                                  <span className="font-medium">{formatExamType(stat.exam_type)}</span>
-                                  <span className="font-semibold">{stat.accuracy}%</span>
-                                </div>
-                                <Progress
-                                  value={stat.accuracy}
-                                  className="h-2"
-                                  style={
-                                    {
-                                      backgroundColor: "rgba(0,0,0,0.1)",
-                                      "--tw-progress-fill": COLORS[index % COLORS.length],
-                                    } as any
-                                  }
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="questions" className="mt-0">
-                      <div className="h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={questionsBarData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="total" name="Total Questions" fill="#8884d8" />
-                            <Bar dataKey="correct" name="Correct Answers" fill="#82ca9d" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        {examTypeStats.map((stat) => (
-                          <Card key={stat.exam_type} className="bg-muted/40">
-                            <CardContent className="p-4">
-                              <h4 className="font-semibold">{formatExamType(stat.exam_type)}</h4>
-                              <div className="mt-2 space-y-1 text-sm">
-                                <div className="flex justify-between">
-                                  <span>Total Questions:</span>
-                                  <span className="font-medium">{stat.totalQuestions}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Correct Answers:</span>
-                                  <span className="font-medium">{stat.correctAnswers}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>Accuracy:</span>
-                                  <span className="font-medium">{stat.accuracy}%</span>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="time" className="mt-0">
-                      <div className="h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={timeBarData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip formatter={(value) => `${value} min`} />
-                            <Legend />
-                            <Bar dataKey="time" name="Average Time (minutes)" fill="#ff8042" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="mt-4">
-                        <h3 className="text-lg font-semibold mb-2">Time Analysis</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Average time spent per question across different exam types
-                        </p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                          {examTypeStats.map((stat, index) => (
-                            <div
-                              key={stat.exam_type}
-                              className="p-4 rounded-lg flex flex-col items-center justify-center text-center"
-                              style={{ backgroundColor: `${COLORS[index % COLORS.length]}20` }}
-                            >
-                              <Clock className="h-5 w-5 mb-2" style={{ color: COLORS[index % COLORS.length] }} />
-                              <div className="text-sm font-medium">{formatExamType(stat.exam_type)}</div>
-                              <div className="text-xl font-bold mt-1">{stat.averageTimeSpent.toFixed(1)} min</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
 
         {/* Right Side (1/3 width) */}
@@ -828,6 +670,166 @@ export default function DashboardPage() {
                   </Button>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+
+
+           {/* Exam Type Stats Section */}
+           <Card className="mb-6">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle>Target Exam Panel</CardTitle>
+                <CardDescription>Performance metrics across different exam types</CardDescription>
+              </div>
+              <PieChart className="h-5 w-5 text-purple-500" />
+            </CardHeader>
+            <CardContent>
+              {examTypeStatsLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-lg">Loading exam statistics...</div>
+                </div>
+              ) : examTypeStats.length === 0 ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-lg text-muted-foreground">No exam data available yet</div>
+                </div>
+              ) : (
+                <div>
+                  <Tabs
+                    defaultValue="accuracy"
+                    className="w-full"
+                    onValueChange={(value) => setActiveExamStatsTab(value as any)}
+                  >
+                    <TabsList className="grid w-full grid-cols-3 mb-6">
+                      <TabsTrigger value="accuracy">Accuracy</TabsTrigger>
+                      <TabsTrigger value="questions">Questions</TabsTrigger>
+                      <TabsTrigger value="time">Time Spent</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="accuracy" className="mt-0">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="h-[250px] flex items-center justify-start">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RPieChart>
+                              <Pie
+                                data={pieChartData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                outerRadius={80}
+                                fill="#8884d8"
+                                dataKey="value"
+                                label={({ name, value }) => `${name}: ${value}%`}
+                              >
+                                {pieChartData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip formatter={(value) => `${value}%`} />
+                              <Legend />
+                            </RPieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="flex flex-col justify-start">
+                          <h3 className="text-lg font-semibold mb-4">Accuracy Breakdown</h3>
+                          <div className="space-y-4">
+                            {examTypeStats.map((stat, index) => (
+                              <div key={stat.exam_type} className="space-y-1">
+                                <div className="flex justify-between">
+                                  <span className="font-medium">{formatExamType(stat.exam_type)}</span>
+                                  <span className="font-semibold">{stat.accuracy}%</span>
+                                </div>
+                                <Progress
+                                  value={stat.accuracy}
+                                  className="h-2"
+                                  style={
+                                    {
+                                      backgroundColor: "rgba(0,0,0,0.1)",
+                                      "--tw-progress-fill": COLORS[index % COLORS.length],
+                                    } as any
+                                  }
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="questions" className="mt-0">
+                      <div className="h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={questionsBarData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <Bar dataKey="total" name="Total Questions" fill="#8884d8" />
+                            <Bar dataKey="correct" name="Correct Answers" fill="#82ca9d" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {examTypeStats.map((stat) => (
+                          <Card key={stat.exam_type} className="bg-muted/40">
+                            <CardContent className="p-4">
+                              <h4 className="font-semibold">{formatExamType(stat.exam_type)}</h4>
+                              <div className="mt-2 space-y-1 text-sm">
+                                <div className="flex justify-between">
+                                  <span>Total Questions:</span>
+                                  <span className="font-medium">{stat.totalQuestions}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Correct Answers:</span>
+                                  <span className="font-medium">{stat.correctAnswers}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>Accuracy:</span>
+                                  <span className="font-medium">{stat.accuracy}%</span>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="time" className="mt-0">
+                      <div className="h-[250]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={timeBarData} margin={{ top: 20, right: 10, left: 10, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip formatter={(value) => `${value} min`} />
+                            <Legend />
+                            <Bar dataKey="time" name="Average Time (minutes)" fill="#ff8042" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="mt-4">
+                        <h3 className="text-lg font-semibold mb-2">Time Analysis</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Average time spent per question across different exam types
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-4">
+                          {examTypeStats.map((stat, index) => (
+                            <div
+                              key={stat.exam_type}
+                              className="p-2 rounded-lg flex flex-col items-center justify-center text-center"
+                              style={{ backgroundColor: `${COLORS[index % COLORS.length]}20` }}
+                            >
+                              <Clock className="h-5 w-5 mb-2" style={{ color: COLORS[index % COLORS.length] }} />
+                              <div className="text-sm font-medium">{formatExamType(stat.exam_type)}</div>
+                              <div className="text-xl font-bold mt-1">{stat.averageTimeSpent.toFixed(1)} min</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

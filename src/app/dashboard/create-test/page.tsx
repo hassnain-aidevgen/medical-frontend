@@ -125,7 +125,7 @@ const RecentTests: React.FC<{ performanceData: TestResult[]; isLoading: boolean 
       <div className="p-6">
         <h2 className="text-2xl font-semibold mb-4 flex items-center text-gray-700">
           <BookOpen className="mr-2" size={24} />
-          Recent Tests
+          Tests History
         </h2>
 
         {isLoading ? (
@@ -164,13 +164,12 @@ const RecentTests: React.FC<{ performanceData: TestResult[]; isLoading: boolean 
                         </p>
                       </div>
                       <div
-                        className={`w-2 h-10 rounded-full ${
-                          test.percentage >= 70
+                        className={`w-2 h-10 rounded-full ${test.percentage >= 70
                             ? "bg-green-500"
                             : test.percentage >= 50
                               ? "bg-yellow-500"
                               : "bg-red-500"
-                        }`}
+                          }`}
                       ></div>
                     </div>
                   </div>
@@ -225,7 +224,7 @@ export default function CreateTest() {
   const [showRecommendations, setShowRecommendations] = useState(false)
   const [examTypes, setExamTypes] = useState<string[]>([]);
   const [examType, setExamType] = useState("ALL_USMLE_TYPES");
-const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   // Add this new state to track if recommendations are being added to the test
   const [recommendedQuestionsToAdd, setRecommendedQuestionsToAdd] = useState<Recommendation[]>([])
@@ -350,7 +349,7 @@ const [loading, setLoading] = useState(true);
         setLoading(false);
       }
     };
-  
+
     fetchExamTypes();
   }, []);
 
@@ -417,15 +416,15 @@ const [loading, setLoading] = useState(true);
       // Also update the examType filter to match the saved exam
       setExamType(
         savedExam as
-          | "USMLE_STEP1"
-          | "USMLE_STEP2"
-          | "USMLE_STEP3"
-          | "ALL_USMLE_TYPES"
-          | "NEET"
-          | "PLAB"
-          | "MCAT"
-          | "NCLEX"
-          | "COMLEX",
+        | "USMLE_STEP1"
+        | "USMLE_STEP2"
+        | "USMLE_STEP3"
+        | "ALL_USMLE_TYPES"
+        | "NEET"
+        | "PLAB"
+        | "MCAT"
+        | "NCLEX"
+        | "COMLEX",
       )
     }
 
@@ -802,45 +801,9 @@ const [loading, setLoading] = useState(true);
     // <div className="max-h-[85dvh] overflow-y-auto overflow-x-hidden bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8 rounded-md border border-slate-200">
     <div className="">
       <Toaster position="top-right" />
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8 text-center text-gray-800">Create Your Test</h1>
+      <div className="max-w-full lg:max-w-6xl mx-auto">
+        <h1 className=" text-2xl md:text-3xl font-bold mb-8  text-gray-800">Create Your Test</h1>
 
-        <div className="mb-8">
-          <AITestSuggestions
-            // API_BASE_URL={API_BASE_URL}
-            mode={mode}
-          />
-        </div>
-        {/* Keep the TargetExamSelector component commented out */}
-        {/* <TargetExamSelector
-          selectedExam={selectedExam}
-          onExamChange={(exam) => {
-            setSelectedExam(exam);
-            localStorage.setItem("selectedExam", exam);
-            
-            // Update examType based on selection when user changes the target exam
-            if (exam) {
-              setExamType(exam as "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3" | "ALL_USMLE_TYPES" | "NEET" | "PLAB" | "MCAT" | "NCLEX" | "COMLEX");
-              
-              // Reset filters to ensure compatibility with the selected exam type
-              setDifficulty("ALL_DIFFICULTY_LEVELS");
-              setQuestionType("ALL_QUESTION_TYPES");
-              setYear("ALL_YEARS");
-            } else {
-              // If no exam is selected, revert to default
-              setExamType("ALL_USMLE_TYPES");
-            }
-          }}
-          examDate={examDate}
-          onDateChange={(date) => {
-            setExamDate(date);
-            localStorage.setItem("examDate", date);
-          }}
-        /> */}
-        {/* Add ExamSimulation component at the top for quick tests */}
-        <div className="mb-8">
-          <ExamSimulation />
-        </div>
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <form onSubmit={handleSubmit} className="p-6 space-y-8">
             <div>
@@ -851,18 +814,16 @@ const [loading, setLoading] = useState(true);
               <div className="flex space-x-4">
                 <button
                   type="button"
-                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                    mode === "tutor" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${mode === "tutor" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
                   onClick={() => setMode("tutor")}
                 >
                   Tutor Mode
                 </button>
                 <button
                   type="button"
-                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                    mode === "timer" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${mode === "timer" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
                   onClick={() => setMode("timer")}
                 >
                   Timer Mode
@@ -886,11 +847,10 @@ const [loading, setLoading] = useState(true);
                       type="button"
                       onClick={handleCreateRecommendedTest}
                       disabled={isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 shadow ${
-                        isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 shadow ${isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest
                           ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                           : "bg-amber-500 text-white hover:bg-amber-600"
-                      }`}
+                        }`}
                     >
                       {isCreatingRecommendedTest ? (
                         "Creating..."
@@ -924,11 +884,10 @@ const [loading, setLoading] = useState(true);
                             <button
                               type="button"
                               onClick={() => addRecommendedQuestion(recommendation)}
-                              className={`ml-2 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                                selectedRecommendations.includes(recommendation.questionText)
+                              className={`ml-2 px-3 py-1 text-xs font-medium rounded-full transition-colors ${selectedRecommendations.includes(recommendation.questionText)
                                   ? "bg-green-100 text-green-800 hover:bg-green-200"
                                   : "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                              }`}
+                                }`}
                             >
                               {selectedRecommendations.includes(recommendation.questionText)
                                 ? "Added ✓"
@@ -1011,29 +970,29 @@ const [loading, setLoading] = useState(true);
 
             {/* Filters section */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-  <h2 className="text-lg font-semibold mb-2">Exam Type</h2>
-  <Select
-    value={examType}
-    onValueChange={(value: typeof examType) => handleFilterChange(value, setExamType)}
-  >
-    <SelectTrigger>
-      <SelectValue placeholder="Select exam type" />
-    </SelectTrigger>
-    <SelectContent>
-    {!loading && (
-  <>
-    <SelectItem value="ALL_USMLE_TYPES">All USMLE Types</SelectItem>
-    {examTypes.map((type) => (
-      <SelectItem key={type} value={type}>
-        {type}
-      </SelectItem>
-    ))}
-  </>
-)}
-    </SelectContent>
-  </Select>
-</div>
+              <div>
+                <h2 className="text-lg font-semibold mb-2">Exam Type</h2>
+                <Select
+                  value={examType}
+                  onValueChange={(value: typeof examType) => handleFilterChange(value, setExamType)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select exam type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {!loading && (
+                      <>
+                        <SelectItem value="ALL_USMLE_TYPES">All USMLE Types</SelectItem>
+                        {examTypes.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
 
 
               <div>
@@ -1151,13 +1110,12 @@ const [loading, setLoading] = useState(true);
                   }))
                 }}
                 disabled={isFilterLoading || maxQuestions === 0}
-                className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:outline-none transition-colors duration-200 ${
-                  maxQuestions === 0
+                className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:outline-none transition-colors duration-200 ${maxQuestions === 0
                     ? "bg-gray-100 text-gray-400 border-gray-200"
                     : validation.questionCount.isValid
                       ? "border-green-400 focus:border-green-500 focus:ring-green-200"
                       : "border-red-400 focus:border-red-500 focus:ring-red-200"
-                }`}
+                  }`}
                 placeholder="Enter number of questions"
                 aria-label="Total number of questions"
                 aria-describedby="questions-hint"
@@ -1240,14 +1198,13 @@ const [loading, setLoading] = useState(true);
                 selectedSubjects.length === 0 ||
                 selectedSubsections.length === 0 // Explicitly check for selections
               }
-              className={`w-full py-3 px-6 rounded-lg text-lg font-semibold transition-colors duration-200 shadow-md ${
-                isLoading ||
-                isFilterLoading ||
-                (!validation.overall.isValid && recommendedQuestionsToAdd.length === 0) ||
-                (selectedSubjects.length === 0 || selectedSubsections.length === 0)
+              className={`w-full py-3 px-6 rounded-lg text-lg font-semibold transition-colors duration-200 shadow-md ${isLoading ||
+                  isFilterLoading ||
+                  (!validation.overall.isValid && recommendedQuestionsToAdd.length === 0) ||
+                  (selectedSubjects.length === 0 || selectedSubsections.length === 0)
                   ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                   : "bg-primary text-white hover:bg-primary-dark"
-              }`}
+                }`}
             >
               {isLoading || isFilterLoading
                 ? "Loading..."
@@ -1256,6 +1213,43 @@ const [loading, setLoading] = useState(true);
                   : "Generate Test"}
             </button>
           </form>
+        </div>
+
+        <div className="mb-8 mt-8">
+          <AITestSuggestions
+            // API_BASE_URL={API_BASE_URL}
+            mode={mode}
+          />
+        </div>
+        {/* Keep the TargetExamSelector component commented out */}
+        {/* <TargetExamSelector
+          selectedExam={selectedExam}
+          onExamChange={(exam) => {
+            setSelectedExam(exam);
+            localStorage.setItem("selectedExam", exam);
+            
+            // Update examType based on selection when user changes the target exam
+            if (exam) {
+              setExamType(exam as "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3" | "ALL_USMLE_TYPES" | "NEET" | "PLAB" | "MCAT" | "NCLEX" | "COMLEX");
+              
+              // Reset filters to ensure compatibility with the selected exam type
+              setDifficulty("ALL_DIFFICULTY_LEVELS");
+              setQuestionType("ALL_QUESTION_TYPES");
+              setYear("ALL_YEARS");
+            } else {
+              // If no exam is selected, revert to default
+              setExamType("ALL_USMLE_TYPES");
+            }
+          }}
+          examDate={examDate}
+          onDateChange={(date) => {
+            setExamDate(date);
+            localStorage.setItem("examDate", date);
+          }}
+        /> */}
+        {/* Add ExamSimulation component at the top for quick tests */}
+        <div className="mb-8">
+          <ExamSimulation />
         </div>
 
         <div className="mt-8">

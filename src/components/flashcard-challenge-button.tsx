@@ -11,7 +11,7 @@ interface FlashcardChallengeButtonProps extends ButtonProps {
 }
 
 export function FlashcardChallengeButton({
-    label = "Daily Flashcard Challenge",
+    label = "Daily Flashcards",
     ...buttonProps
 }: FlashcardChallengeButtonProps) {
     const [isOpen, setIsOpen] = useState<boolean>(false)
