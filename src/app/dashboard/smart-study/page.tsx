@@ -2,6 +2,25 @@
 
 import type React from "react"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import WeeklyStreak from "@/components/weekly-streak"
 import axios from "axios"
 import { Calendar, ChevronLeft, ChevronRight, Clock, FileText, Plus, RefreshCw, Trash2 } from "lucide-react"
@@ -76,6 +95,11 @@ const SmartStudyCalendar = () => {
   const [weeklyStudyPlan, setWeeklyStudyPlan] = useState<PlanTask[]>([])
   const [showUndoButton, setShowUndoButton] = useState(false)
   const [activeTab, setActiveTab] = useState("calendar") // calendar, performance, today
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false)
+  const [showRescheduleDialog, setShowRescheduleDialog] = useState(false)
+  const [currentTestId, setCurrentTestId] = useState<string>("")
+  const [isCompleting, setIsCompleting] = useState(false)
+  const [rescheduleDate, setRescheduleDate] = useState("")
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -257,21 +281,148 @@ const SmartStudyCalendar = () => {
       toast.error("User ID not found. Please log in.")
       return
     }
+
+    setCurrentTestId(id)
+    setIsCompleting(completed)
+    setShowCompletionDialog(true)
+  }
+
+  const confirmToggleCompletion = async () => {
+    setShowCompletionDialog(false)
+
+    if (!currentTestId) return
+
     setIsLoading(true)
     try {
-      const response = await axios.patch(
-        `https://medical-backend-loj4.onrender.com/api/test/calender/completion/${id}`,
-        { completed },
-      )
+      const response = await axios.patch(`https://medical-backend-loj4.onrender.com/api/test/calender/completion/${currentTestId}`, {
+        completed: isCompleting,
+      })
       if (response.data && response.data._id) {
-        setTests(tests.map((test) => (test._id === id ? { ...test, completed: response.data.completed } : test)))
-        toast.success(`Test marked as ${completed ? "completed" : "incomplete"}`)
+        setTests(
+          tests.map((test) => (test._id === currentTestId ? { ...test, completed: response.data.completed } : test)),
+        )
+        toast.success(`Test marked as ${isCompleting ? "completed" : "incomplete"}`)
       } else {
         throw new Error("Invalid response from server")
       }
     } catch (error) {
       console.error(error)
       toast.error("Failed to update test status. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleRescheduleTest = (id: string) => {
+    const test = tests.find((t) => t._id === id)
+    if (test) {
+      setCurrentTestId(id)
+      setRescheduleDate(new Date().toISOString().split("T")[0])
+      setShowRescheduleDialog(true)
+    }
+  }
+
+  // Reschedule dialog
+  const RescheduleDialog = () => {
+    // Use local state for the date input to prevent rerenders of the parent component
+    const [localDate, setLocalDate] = useState(rescheduleDate)
+
+    // Only update the parent state when the dialog is closed/confirmed
+    useEffect(() => {
+      if (showRescheduleDialog) {
+        setLocalDate(rescheduleDate)
+      }
+    }, [showRescheduleDialog, rescheduleDate])
+
+    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setLocalDate(e.target.value)
+    }
+
+    const handleConfirm = () => {
+      // Update the parent state with the selected date before confirming
+      setRescheduleDate(localDate)
+      confirmRescheduleTest(localDate)
+    }
+
+    return (
+      <Dialog open={showRescheduleDialog} onOpenChange={setShowRescheduleDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Reschedule Test</DialogTitle>
+            <DialogDescription>
+              Select a new date for this test.
+              {completionDialogContent && (
+                <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                  <p>
+                    <strong>Subject:</strong> {completionDialogContent.subjectName}
+                  </p>
+                  <p>
+                    <strong>Topic:</strong> {completionDialogContent.testTopic}
+                  </p>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <label htmlFor="reschedule-date" className="text-sm font-medium">
+                New Date
+              </label>
+              <input
+                id="reschedule-date"
+                type="date"
+                value={localDate}
+                onChange={handleDateChange}
+                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                min={new Date().toISOString().split("T")[0]}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRescheduleDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirm} className="bg-yellow-500 hover:bg-yellow-600">
+              Reschedule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  // Also update the confirmRescheduleTest function to use the current rescheduleDate state:
+
+  const confirmRescheduleTest = async (dateToUse?: string) => {
+    setShowRescheduleDialog(false)
+
+    // Use the passed date parameter if provided, otherwise use the state
+    const dateToSchedule = dateToUse || rescheduleDate
+
+    if (!currentTestId || !dateToSchedule) return
+
+    // Check if the date is in the future
+    const selectedDate = new Date(dateToSchedule)
+    if (selectedDate < new Date(new Date().setHours(0, 0, 0, 0))) {
+      toast.error("Cannot reschedule to past dates")
+      return
+    }
+
+    // Update the test date
+    setIsLoading(true)
+    try {
+      const response = await axios.patch(`https://medical-backend-loj4.onrender.com/api/test/calender/${currentTestId}`, {
+        date: dateToSchedule,
+      })
+      if (response.data && response.data._id) {
+        setTests(tests.map((t) => (t._id === currentTestId ? { ...t, date: dateToSchedule } : t)))
+        toast.success("Test rescheduled successfully")
+      } else {
+        throw new Error("Invalid response from server")
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error("Failed to reschedule test. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -311,9 +462,8 @@ const SmartStudyCalendar = () => {
       days.push(
         <div
           key={day}
-          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${
-            isSelected ? "bg-blue-500 text-white" : ""
-          }`}
+          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${isSelected ? "bg-blue-500 text-white" : ""
+            }`}
           onClick={() => setSelectedDate(date)}
         >
           {day}
@@ -340,9 +490,8 @@ const SmartStudyCalendar = () => {
                     key={index}
                     className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: dotColor }}
-                    title={`${test.subjectName}: ${test.testTopic} - ${
-                      test.completed ? "Complete" : testDate < today ? "Missed" : "Incomplete"
-                    }`}
+                    title={`${test.subjectName}: ${test.testTopic} - ${test.completed ? "Complete" : testDate < today ? "Missed" : "Incomplete"
+                      }`}
                   />
                 )
               })}
@@ -355,6 +504,41 @@ const SmartStudyCalendar = () => {
   }
 
   const selectedDateTests = tests.filter((test) => new Date(test.date).toDateString() === selectedDate.toDateString())
+
+  const completionDialogContent = tests.find((test) => test._id === currentTestId)
+
+  // Completion confirmation dialog
+  const CompletionDialog = () => (
+    <AlertDialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirm Status Change</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to mark this test as {isCompleting ? "completed" : "incomplete"}?
+            {completionDialogContent && (
+              <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                <p>
+                  <strong>Subject:</strong> {completionDialogContent.subjectName}
+                </p>
+                <p>
+                  <strong>Topic:</strong> {completionDialogContent.testTopic}
+                </p>
+              </div>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={confirmToggleCompletion}
+            className={isCompleting ? "bg-green-500 hover:bg-green-600" : "bg-gray-500 hover:bg-gray-600"}
+          >
+            Confirm
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
 
   return (
     <div className="container mx-auto p-4">
@@ -389,36 +573,32 @@ const SmartStudyCalendar = () => {
         <div className="flex border-b">
           <button
             onClick={() => setActiveTab("calendar")}
-            className={`px-4 py-3 font-medium flex items-center ${
-              activeTab === "calendar" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
-            }`}
+            className={`px-4 py-3 font-medium flex items-center ${activeTab === "calendar" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
+              }`}
           >
             <Calendar size={18} className="mr-2" />
             Calendar
           </button>
           <button
             onClick={() => setActiveTab("add")}
-            className={`px-4 py-3 font-medium flex items-center ${
-              activeTab === "add" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
-            }`}
+            className={`px-4 py-3 font-medium flex items-center ${activeTab === "add" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
+              }`}
           >
             <Plus size={18} className="mr-2" />
             Add Test
           </button>
           <button
             onClick={() => setActiveTab("sync")}
-            className={`px-4 py-3 font-medium flex items-center ${
-              activeTab === "sync" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
-            }`}
+            className={`px-4 py-3 font-medium flex items-center ${activeTab === "sync" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
+              }`}
           >
             <RefreshCw size={18} className="mr-2" />
             AI Sync
           </button>
           <button
             onClick={() => setActiveTab("performance")}
-            className={`px-4 py-3 font-medium flex items-center ${
-              activeTab === "performance" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
-            }`}
+            className={`px-4 py-3 font-medium flex items-center ${activeTab === "performance" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
+              }`}
           >
             <FileText size={18} className="mr-2" />
             Performance
@@ -488,27 +668,23 @@ const SmartStudyCalendar = () => {
                               <Trash2 size={18} />
                             </button>
                             {new Date(test.date) < new Date(new Date().setHours(0, 0, 0, 0)) ? (
-  <button
-    onClick={() => {
-      // You can define a real reschedule flow later
-      console.log("Reschedule button clicked for:", test)
-    }}
-    className="bg-yellow-500 text-white py-1 px-3 rounded hover:bg-yellow-600 transition-colors text-sm"
-    disabled={isLoading}
-  >
-    Reschedule Test
-  </button>
-) : (
-  <button
-    onClick={() => test._id && handleToggleCompletion(test._id, !test.completed)}
-    className={`${
-      test.completed ? "bg-gray-500" : "bg-green-500"
-    } text-white py-1 px-3 rounded hover:opacity-90 transition-colors text-sm`}
-    disabled={isLoading}
-  >
-    {test.completed ? "Mark Incomplete" : "Complete"}
-  </button>
-)}
+                              <button
+                                onClick={() => test._id && handleRescheduleTest(test._id)}
+                                className="bg-yellow-500 text-white py-1 px-3 rounded hover:bg-yellow-600 transition-colors text-sm"
+                                disabled={isLoading}
+                              >
+                                Reschedule Test
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => test._id && handleToggleCompletion(test._id, !test.completed)}
+                                className={`${test.completed ? "bg-gray-500" : "bg-green-500"
+                                  } text-white py-1 px-3 rounded hover:opacity-90 transition-colors text-sm`}
+                                disabled={isLoading}
+                              >
+                                {test.completed ? "Mark Incomplete" : "Complete"}
+                              </button>
+                            )}
                           </div>
                         </li>
                       ))}
@@ -739,6 +915,10 @@ const SmartStudyCalendar = () => {
       <div id="exam-simulation">
         <ExamInterface tests={getExamTests()} />
       </div>
+
+      {/* Add these lines just before the final closing div */}
+      <CompletionDialog />
+      <RescheduleDialog />
     </div>
   )
 }

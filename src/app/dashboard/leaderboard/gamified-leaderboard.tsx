@@ -5,16 +5,16 @@ import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Award, Crown, Medal, Share2, Star, Timer, Trophy, User, Target } from "lucide-react"
+import { Award, Crown, Medal, Share2, Star, Target, Timer, Trophy, User } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import SpecialtyFilters from "./specialty-filters"
 // import CountryLeaderboard from "./country-leaderboard"
-import StreakLeaderboard from "./streak-leaderboard"
-import ExamLeaderboard from "./exam-leaderboard"
-import UserBadges from "./user-badges"
-import ProgressInsights from "./progress-insights"
 import { generateMockBadges } from "./badge-utils"
+import ExamLeaderboard from "./exam-leaderboard"
+import ProgressInsights from "./progress-insights"
+import StreakLeaderboard from "./streak-leaderboard"
 import type { Badge, LeaderboardEntry, StreakEntry } from "./types"
+import UserBadges from "./user-badges"
 
 interface UserStats {
   rank: number
@@ -123,11 +123,6 @@ export default function GamifiedLeaderboard() {
 
         const userId = localStorage.getItem("Medical_User_Id")
 
-        // Remove this part to prevent the infinite loop
-        // if (userId && !loggedInUserId) {
-        //   setLoggedInUserId(userId)
-        // }
-
         // Fetch leaderboard data
         const leaderboardRes = await fetch(
           `https://medical-backend-loj4.onrender.com/api/test/leaderboard2?timeFrame=${timeFrame}`,
@@ -150,7 +145,7 @@ export default function GamifiedLeaderboard() {
         if (userId) {
           try {
             const userStatsRes = await fetch(
-              `https://medical-backend-loj4.onrender.com/api/test/leaderboard2/player/${userId}?timeFrame=${timeFrame}`,
+              `https://medical-backend-loj4.onrender.com/api/test/leaderboard/player/${userId}?timeFrame=${timeFrame}`,
             )
 
             if (userStatsRes.ok) {
@@ -250,9 +245,7 @@ export default function GamifiedLeaderboard() {
         setLoading((prev) => ({ ...prev, [timeFrame]: false }))
       }
     },
-    [
-      /* Remove loggedInUserId from dependencies */
-    ],
+    [], // Empty dependency array since this function doesn't depend on any props or state
   )
 
   // Add a separate useEffect to set the loggedInUserId once on component mount
@@ -646,9 +639,8 @@ export default function GamifiedLeaderboard() {
                       {currentUserStats.nearbyPlayers.map((player) => (
                         <div
                           key={player._id}
-                          className={`p-2 rounded-lg ${
-                            player.userId === loggedInUserId ? "bg-primary/10 dark:bg-primary/20" : "hover:bg-muted/50"
-                          }`}
+                          className={`p-2 rounded-lg ${player.userId === loggedInUserId ? "bg-primary/10 dark:bg-primary/20" : "hover:bg-muted/50"
+                            }`}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -695,13 +687,12 @@ export default function GamifiedLeaderboard() {
                           <p className="text-sm text-muted-foreground mb-1">Success Rate</p>
                           <div className="flex items-center gap-2">
                             <span
-                              className={`text-lg font-bold ${
-                                userSpecialtyStats.successRate >= 90
-                                  ? "text-green-500"
-                                  : userSpecialtyStats.successRate >= 70
-                                    ? "text-amber-500"
-                                    : "text-red-500"
-                              }`}
+                              className={`text-lg font-bold ${userSpecialtyStats.successRate >= 90
+                                ? "text-green-500"
+                                : userSpecialtyStats.successRate >= 70
+                                  ? "text-amber-500"
+                                  : "text-red-500"
+                                }`}
                             >
                               {userSpecialtyStats.successRate.toFixed(1)}%
                             </span>
@@ -742,11 +733,10 @@ export default function GamifiedLeaderboard() {
                           {userSpecialtyStats.nearbyUsers.map((user) => (
                             <div
                               key={user.userId}
-                              className={`p-2 rounded-lg ${
-                                user.userId === loggedInUserId
-                                  ? "bg-primary/10 dark:bg-primary/20"
-                                  : "hover:bg-muted/50"
-                              }`}
+                              className={`p-2 rounded-lg ${user.userId === loggedInUserId
+                                ? "bg-primary/10 dark:bg-primary/20"
+                                : "hover:bg-muted/50"
+                                }`}
                             >
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">

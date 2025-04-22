@@ -1,6 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import type { Flashcard } from "@/services/api-service"
+import axios from "axios"
+import { addMonths, isBefore } from "date-fns"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   CheckCircle2,
@@ -13,11 +18,10 @@ import {
   Tag,
   XCircle,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import { useCallback, useEffect, useRef, useState } from "react"
 import toast from "react-hot-toast"
-import type { Flashcard } from "@/services/api-service"
+import RatingDialog from "./rating-dialog"
+import ScheduleReviewDialog from "./schedule-review-dialog"
 
 interface ReviewsTabProps {
   reviewCards: Flashcard[]
@@ -29,6 +33,10 @@ interface ReviewsTabProps {
   fetchReviewCards: () => Promise<void>
   markCardAsKnown: (card: Flashcard) => Promise<boolean>
   markCardForReview: (card: Flashcard) => Promise<boolean>
+  handleShuffleReviewCards?: (shuffledCards: Flashcard[]) => void
+  totalReviewCards: number
+  reviewedCardIds: Set<string>
+  userId: string
 }
 
 export default function ReviewsTab({
@@ -41,9 +49,114 @@ export default function ReviewsTab({
   fetchReviewCards,
   markCardAsKnown,
   markCardForReview,
+  handleShuffleReviewCards,
+  totalReviewCards,
+  reviewedCardIds,
+  userId,
 }: ReviewsTabProps) {
   const [showReviewAnswer, setShowReviewAnswer] = useState(false)
   const [reviewFlipping, setReviewFlipping] = useState(false)
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false)
+  const [isRatingDialogOpen, setIsRatingDialogOpen] = useState(false)
+  const [sessionDuration, setSessionDuration] = useState<number>(0)
+  const [cardsReviewedCount, setCardsReviewedCount] = useState(0)
+  const [isCheckingLastRating, setIsCheckingLastRating] = useState(false)
+
+  // Use refs for values that shouldn't trigger re-renders
+  const sessionStartTimeRef = useRef<Date | null>(null)
+  const hasShownRatingDialogRef = useRef<boolean>(false)
+  const previousReviewedCountRef = useRef<number>(0)
+  const lastRatingDateRef = useRef<Date | null>(null)
+
+  // Check if a month has passed since the last rating
+  const shouldShowRatingDialog = useCallback(async () => {
+    if (!userId) return false
+
+    try {
+      setIsCheckingLastRating(true)
+      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/ratings/last-rating/${userId}`)
+
+      if (response.data.lastRatingDate) {
+        // Parse the date and add one month
+        const lastRatingDate = new Date(response.data.lastRatingDate)
+        const nextEligibleDate = addMonths(lastRatingDate, 1)
+
+        // Store the last rating date in the ref
+        lastRatingDateRef.current = lastRatingDate
+
+        // Only show dialog if a month has passed
+        return isBefore(nextEligibleDate, new Date())
+      } else {
+        // No previous rating, so we should show the dialog
+        return true
+      }
+    } catch (error) {
+      console.error("Error checking last rating date:", error)
+      // If there's an error, default to not showing the dialog
+      return false
+    } finally {
+      setIsCheckingLastRating(false)
+    }
+  }, [userId])
+
+  // Start session timer when component mounts or when cards are loaded
+  useEffect(() => {
+    if (reviewCards.length > 0 && !sessionStartTimeRef.current) {
+      sessionStartTimeRef.current = new Date()
+      hasShownRatingDialogRef.current = false
+    }
+  }, [reviewCards.length])
+
+  // Reset refs when component unmounts
+  useEffect(() => {
+    return () => {
+      sessionStartTimeRef.current = null
+      hasShownRatingDialogRef.current = false
+    }
+  }, [])
+
+  // Check if all cards have been reviewed - using a separate effect with minimal dependencies
+  useEffect(() => {
+    // Only check if we have cards to review and haven't shown the dialog yet
+    if (
+      totalReviewCards > 0 &&
+      reviewedCardIds.size > 0 &&
+      reviewedCardIds.size >= totalReviewCards &&
+      !hasShownRatingDialogRef.current &&
+      !isRatingDialogOpen &&
+      !isCheckingLastRating
+    ) {
+      // Calculate session duration
+      if (sessionStartTimeRef.current) {
+        const duration = Math.floor((new Date().getTime() - sessionStartTimeRef.current.getTime()) / 1000)
+        setSessionDuration(duration)
+      }
+
+      setCardsReviewedCount(reviewedCardIds.size)
+
+      // Check if we should show the rating dialog (based on last rating date)
+      const checkAndShowRatingDialog = async () => {
+        const shouldShow = await shouldShowRatingDialog()
+
+        if (shouldShow) {
+          hasShownRatingDialogRef.current = true
+          // Use setTimeout to break the render cycle
+          setTimeout(() => {
+            setIsRatingDialogOpen(true)
+          }, 100)
+        } else {
+          // If we're not showing the dialog, still mark as shown to prevent rechecking
+          hasShownRatingDialogRef.current = true
+          console.log("Rating dialog skipped - less than a month since last rating")
+        }
+      }
+
+      checkAndShowRatingDialog()
+    }
+
+    // Track the previous count to detect changes
+    previousReviewedCountRef.current = reviewedCardIds.size
+  }, [reviewedCardIds.size, totalReviewCards, isRatingDialogOpen, isCheckingLastRating, shouldShowRatingDialog])
 
   // Navigation functions
   const nextReviewCard = () => {
@@ -51,7 +164,7 @@ export default function ReviewsTab({
     setCurrentReviewCard((currentReviewCard + 1) % reviewCards.length)
     setShowReviewAnswer(false)
   }
-  
+
   const prevReviewCard = () => {
     if (reviewCards.length === 0) return
     setCurrentReviewCard((currentReviewCard - 1 + reviewCards.length) % reviewCards.length)
@@ -72,8 +185,17 @@ export default function ReviewsTab({
       return
     }
 
+    // Create a copy of the review cards array
     const shuffled = [...reviewCards].sort(() => Math.random() - 0.5)
-    setCurrentReviewCard(0)
+
+    // If the parent component provided a handler, use it
+    if (handleShuffleReviewCards) {
+      handleShuffleReviewCards(shuffled)
+    } else {
+      // Otherwise just reset the current card index
+      setCurrentReviewCard(0)
+    }
+
     setShowReviewAnswer(false)
     toast.success("Review cards shuffled")
   }
@@ -89,9 +211,37 @@ export default function ReviewsTab({
       if (reviewCards.length <= 1) {
         toast.success("All cards reviewed! Great job!")
       } else {
-        nextReviewCard()
+        // Check if this is the last card in the array
+        const isLastCard = currentReviewCard === reviewCards.length - 1
+
+        // If it's the last card, go to the previous card instead of the next one
+        if (isLastCard) {
+          setCurrentReviewCard(currentReviewCard - 1)
+        } else {
+          // Stay at the same index, which will now contain the next card
+          // (since the current card will be removed)
+          setCurrentReviewCard(currentReviewCard)
+        }
+
         toast.success("Card mastered and removed from review")
       }
+    }
+  }
+
+  const openScheduleDialog = () => {
+    setIsScheduleDialogOpen(true)
+  }
+
+  const closeScheduleDialog = () => {
+    setIsScheduleDialogOpen(false)
+  }
+
+  const closeRatingDialog = () => {
+    setIsRatingDialogOpen(false)
+    // Reset session tracking after rating is complete
+    sessionStartTimeRef.current = null
+    if (reviewCards.length > 0) {
+      sessionStartTimeRef.current = new Date()
     }
   }
 
@@ -106,6 +256,15 @@ export default function ReviewsTab({
       toast("Card kept for later review", { icon: "📝" })
     }
   }
+
+  // Calculate review progress percentage
+  const calculateReviewProgress = () => {
+    if (totalReviewCards === 0) return 0
+    return Math.round((reviewedCardIds.size / totalReviewCards) * 100)
+  }
+
+  // Get current card
+  const currentCard = reviewCards.length > 0 ? reviewCards[currentReviewCard] : null
 
   return (
     <>
@@ -122,7 +281,29 @@ export default function ReviewsTab({
         </p>
       </div>
 
-      {isReviewLoading ? (
+      {!isReviewLoading && !reviewError && totalReviewCards > 0 && (
+        <div className="mb-6 bg-white dark:bg-slate-800 rounded-lg p-4 shadow-sm">
+          <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Review Progress</h3>
+          <div className="flex items-center gap-4">
+            <div className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-green-500 transition-all duration-500"
+                style={{
+                  width: `${calculateReviewProgress()}%`,
+                }}
+              ></div>
+            </div>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
+              {calculateReviewProgress()}% Reviewed
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {reviewedCardIds.size} of {totalReviewCards} cards have been reviewed
+          </p>
+        </div>
+      )}
+
+      {isReviewLoading || isCheckingLastRating ? (
         <div className="flex justify-center items-center h-[28rem]">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
         </div>
@@ -238,7 +419,7 @@ export default function ReviewsTab({
 
                 <CardFooter className="p-0 flex flex-col gap-4">
                   <div className="flex flex-wrap gap-2 mb-2">
-                    {reviewCards[currentReviewCard]?.tags.map((tag) => (
+                    {reviewCards[currentReviewCard]?.tags?.map((tag) => (
                       <Badge key={tag} variant="outline" className="flex items-center gap-1">
                         <Tag className="h-3 w-3 mr-1" />
                         {tag}
@@ -256,18 +437,26 @@ export default function ReviewsTab({
                     </Badge>
                   </div>
                   {showReviewAnswer ? (
-                    <div className="grid grid-cols-2 gap-4 w-full">
+                    <div className="grid grid-cols-3 gap-2 w-full">
+                      <Button
+                        variant="outline"
+                        onClick={openScheduleDialog}
+                        className="border-blue-200 text-blue-600 hover:bg-blue-50"
+                      >
+                        <Clock className="h-4 w-4 mr-1" />
+                        Schedule
+                      </Button>
                       <Button
                         variant="outline"
                         onClick={keepReviewCardForLater}
                         className="border-amber-200 text-amber-600 hover:bg-amber-50"
                       >
-                        <Clock className="h-5 w-5 mr-2" />
+                        <Clock className="h-4 w-4 mr-1" />
                         Review Later
                       </Button>
                       <Button onClick={markReviewCardAsKnown} className="bg-green-500 hover:bg-green-600 text-white">
-                        <CheckCircle2 className="h-5 w-5 mr-2" />
-                        Now I Know It
+                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        Got It
                       </Button>
                     </div>
                   ) : (
@@ -302,6 +491,27 @@ export default function ReviewsTab({
           </div>
         </div>
       )}
+
+      {/* Schedule Review Dialog */}
+      {currentCard && (
+        <ScheduleReviewDialog
+          isOpen={isScheduleDialogOpen}
+          onClose={closeScheduleDialog}
+          userId={userId}
+          cardCategory={currentCard.category || "Uncategorized"}
+          cardQuestion={currentCard.question}
+          cardDifficulty={currentCard.difficulty || "medium"}
+        />
+      )}
+
+      {/* Rating Dialog */}
+      <RatingDialog
+        isOpen={isRatingDialogOpen}
+        onClose={closeRatingDialog}
+        userId={userId}
+        cardsReviewed={cardsReviewedCount}
+        sessionDuration={sessionDuration}
+      />
     </>
   )
 }

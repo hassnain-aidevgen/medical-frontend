@@ -1,23 +1,27 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
 
+import apiService, { type Flashcard } from "@/services/api-service"
 import BrowseTab from "./browse-tab"
-import StudyTab from "./study-tab"
+import FlashcardForm from "./flashcard-form"
+import InfographicsTab from "./infographics-tab"
+import PdfExportButton from "./pdf-export-button"
 import ReviewsTab from "./reviews-tab"
 import StatsTab from "./stats-tab"
-import FlashcardForm from "./flashcard-form"
-import apiService, { type Flashcard } from "@/services/api-service"
+import StudyTab from "./study-tab"
 
 export default function FlashcardsPage() {
   // State for flashcards and filtering
   const [flashcards, setFlashcards] = useState<Flashcard[]>([])
   const [filteredCards, setFilteredCards] = useState<Flashcard[]>([])
   const [reviewCards, setReviewCards] = useState<Flashcard[]>([])
+  const [totalReviewCards, setTotalReviewCards] = useState<number>(0)
+  const [reviewedCardIds, setReviewedCardIds] = useState<Set<string>>(new Set())
   const [currentCard, setCurrentCard] = useState(0)
   const [currentReviewCard, setCurrentReviewCard] = useState(0)
 
@@ -34,7 +38,7 @@ export default function FlashcardsPage() {
   const [editingCard, setEditingCard] = useState<Flashcard | null>(null)
   const [studyProgress, setStudyProgress] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
-  const [isReviewLoading, setIsReviewLoading] = useState(true)
+  const [isReviewLoading, setIsReviewLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [reviewError, setReviewError] = useState<string | null>(null)
@@ -145,7 +149,13 @@ export default function FlashcardsPage() {
       const response = await apiService.getFlashcards({ userId })
 
       // Filter cards with low mastery (marked for review)
-      const cardsForReview = response.data.filter((card: Flashcard) => card.mastery < 30 && card.reviewCount > 0)
+      const cardsForReview = response.data.filter((card: Flashcard) => card.mastery < 30 || card.reviewCount === 0)
+
+      // Store the total number of cards that need review
+      setTotalReviewCards(cardsForReview.length)
+
+      // Reset the reviewed cards set when fetching new review cards
+      setReviewedCardIds(new Set())
 
       setReviewCards(cardsForReview)
       setCurrentReviewCard(0)
@@ -159,10 +169,17 @@ export default function FlashcardsPage() {
       }
 
       setReviewCards([])
+      setTotalReviewCards(0)
     } finally {
       setIsReviewLoading(false)
     }
   }, [userId])
+
+  // Add this function to handle shuffled cards
+  const handleShuffleReviewCards = (shuffledCards: Flashcard[]) => {
+    setReviewCards(shuffledCards)
+    setCurrentReviewCard(0)
+  }
 
   // Initial data load
   useEffect(() => {
@@ -323,6 +340,15 @@ export default function FlashcardsPage() {
       setFlashcards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
       setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
 
+      // Add this card ID to the set of reviewed cards
+      if (card.id) {
+        setReviewedCardIds((prev) => {
+          const newSet = new Set(prev)
+          newSet.add(card.id!)
+          return newSet
+        })
+      }
+
       // Remove from review cards if mastery is now above threshold
       if (newMastery >= 30) {
         setReviewCards((prevCards) => prevCards.filter((c) => c.id !== response.data.id))
@@ -368,6 +394,15 @@ export default function FlashcardsPage() {
       setFlashcards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
       setFilteredCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
 
+      // Add this card ID to the set of reviewed cards
+      if (card.id) {
+        setReviewedCardIds((prev) => {
+          const newSet = new Set(prev)
+          newSet.add(card.id!)
+          return newSet
+        })
+      }
+
       // Add to review cards if not already there
       if (!reviewCards.some((c) => c.id === response.data.id)) {
         setReviewCards((prevCards) => [...prevCards, response.data])
@@ -401,16 +436,26 @@ export default function FlashcardsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <main className="max-w-7xl mx-auto px-4 py-6">
-        <div>
+        <div className="flex justify-between items-center mb-4">
           <h1 className="text-4xl text-gray-700 font-bold">Flashcards</h1>
+          <div className="flex gap-2">
+            <PdfExportButton
+              flashcards={flashcards}
+              filteredCards={filteredCards}
+              categoryFilter={categoryFilter}
+              difficultyFilter={difficultyFilter}
+              tagFilter={tagFilter}
+            />
+          </div>
         </div>
         {/* Tabs */}
         <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="mb-6">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-4">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-5">
             <TabsTrigger value="browse">Browse</TabsTrigger>
             <TabsTrigger value="study">Study</TabsTrigger>
             <TabsTrigger value="reviews">Reviews</TabsTrigger>
             <TabsTrigger value="stats">Stats</TabsTrigger>
+            <TabsTrigger value="insights">Insights</TabsTrigger>
           </TabsList>
 
           <TabsContent value="browse" className="mt-6">
@@ -468,11 +513,19 @@ export default function FlashcardsPage() {
               fetchReviewCards={fetchReviewCards}
               markCardAsKnown={markCardAsKnown}
               markCardForReview={markCardForReview}
+              handleShuffleReviewCards={handleShuffleReviewCards}
+              totalReviewCards={totalReviewCards}
+              reviewedCardIds={reviewedCardIds}
+              userId={userId}
             />
           </TabsContent>
 
           <TabsContent value="stats" className="mt-6">
             <StatsTab flashcards={flashcards} />
+          </TabsContent>
+
+          <TabsContent value="insights" className="mt-6">
+            <InfographicsTab userId={userId} />
           </TabsContent>
         </Tabs>
       </main>
@@ -524,6 +577,8 @@ export default function FlashcardsPage() {
             <p>Cards: {flashcards.length}</p>
             <p>Filtered: {filteredCards.length}</p>
             <p>Review: {reviewCards.length}</p>
+            <p>Total Review: {totalReviewCards}</p>
+            <p>Reviewed IDs: {reviewedCardIds.size}</p>
             <p>Current: {currentCard}</p>
             <p>Category: {categoryFilter || "All"}</p>
             <p>Error: {error || "None"}</p>

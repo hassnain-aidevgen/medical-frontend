@@ -1,6 +1,6 @@
 "use client"
 
-import { Banknote, BarChart2, BookOpen, BotIcon, Clock, Dna, FileQuestion, GraduationCap, Home, Info, LaptopMinimalCheck, ScanSearch, Settings, Users, X } from "lucide-react"
+import { Banknote, BarChart2, BookOpen, BotIcon, Clock, Dna, FileQuestion, GraduationCap, Home, Info, LaptopMinimalCheck, Settings, Users, X } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { PiRankingDuotone } from "react-icons/pi"
@@ -16,7 +16,7 @@ const sidebarItems = [
   // { name: "Digital Error Notebook", href: "/dashboard/digital-error-notebook", icon: Users },
   { name: "Pomodoro Timer", href: "/dashboard/pomodoro-timer", icon: Clock },
   { name: "Payments", icon: Banknote, href: "/dashboard/payments", color: "bg-blue-500" },
-  { name: "Reviews", icon: ScanSearch, href: "/dashboard/review", color: "bg-blue-500" },
+  // { name: "Reviews", icon: ScanSearch, href: "/dashboard/review", color: "bg-blue-500" },
   { name: "Inquiries", icon: Info, href: "/dashboard/inquiries", color: "bg-blue-500" },
   { name: "Courses", icon: LaptopMinimalCheck, href: "/dashboard/courses", color: "bg-blue-500" },
   { name: "Mentor", icon: GraduationCap, href: "/dashboard/mentor", color: "bg-blue-500" },
