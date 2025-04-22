@@ -53,7 +53,7 @@ export default function PerformanceCalendar() {
       if (response.data && Array.isArray(response.data.streakData)) {
         const activityData = response.data.streakData
         
-        let daysToDisplay = view === "week" 
+        const daysToDisplay = view === "week" 
           ? getWeekDays(currentDate)
           : getMonthDays(selectedYear, selectedMonth)
         
