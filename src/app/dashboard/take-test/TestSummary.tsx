@@ -19,6 +19,7 @@ import {
   Loader2,
   Share2,
   Sparkles,
+  BookOpenCheck
 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -71,6 +72,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showIncorrectOnly, setShowIncorrectOnly] = useState(false)
+  const [isAddingToFlashcards, setIsAddingToFlashcards] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -318,6 +320,8 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     }
   }
 
+  // Function to add incorrect questions to flashcards
+
   return (
     <div className="container mx-auto px-4 py-8">
       <Toaster position="top-right" />
@@ -439,6 +443,22 @@ const TestSummary: React.FC<TestSummaryProps> = ({
                 <CheckCircle className="mr-2" />
                 {loading ? "Submitting..." : "Save Results"}
               </Button>
+              
+              {/* New button for adding incorrect questions to flashcards */}
+              {/* <Button 
+                onClick={addIncorrectQuestionsToFlashcards} 
+                disabled={isAddingToFlashcards || incorrectCount === 0} 
+                className="w-full bg-amber-500 hover:bg-amber-600"
+              >
+                <BookOpenCheck className="mr-2" />
+                {isAddingToFlashcards 
+                  ? "Adding to Flashcards..." 
+                  : incorrectCount === 0 
+                    ? "No incorrect questions" 
+                    : `Add ${incorrectCount} Incorrect ${incorrectCount === 1 ? 'Question' : 'Questions'} to Flashcards`
+                }
+              </Button> */}
+              
               <Button onClick={() => router.push("/dashboard")} variant="outline" className="w-full">
                 <Share2 className="mr-2" />
                 Back to Dashboard

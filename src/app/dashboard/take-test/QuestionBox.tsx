@@ -61,6 +61,7 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
   const [aiExplanation, setAiExplanation] = useState<string | null>(null)
   const [isLoadingAiExplanation, setIsLoadingAiExplanation] = useState(false)
   const [aiExplanationError, setAiExplanationError] = useState<string | null>(null)
+  const [hasAttemptedAiExplanation, setHasAttemptedAiExplanation] = useState(false)
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -68,8 +69,8 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
         setIsLoadingAnalytics(true)
         setAnalyticsError(null)
 
-        // Check if this is a recommended question (starts with 'rec-')
-        if (question._id.startsWith('rec-')) {
+        // Check if this is a recommended question (starts with 'rec-' or 'rec_')
+        if (question._id.startsWith('rec-') || question._id.startsWith('rec_')) {
           // Provide default analytics for recommended questions
           setTimeout(() => {
             setAnalytics({
@@ -83,12 +84,21 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
         }
 
         try {
+          // Question analytics API call
           const response = await axios.get(
-            `https://medical-backend-loj4.onrender.com/api/test/take-test/question-analytics/${question._id}`,
+            `http://localhost:5000/api/test/take-test/question-analytics/${question._id}`,
           )
           setAnalytics(response.data)
         } catch (error) {
           console.error("Error fetching question analytics:", error)
+          
+          // Set default analytics data even when there's an error
+          setAnalytics({
+            totalAttempts: 3,
+            avgResponseTime: 35,
+            correctPercentage: 70
+          });
+          
           setAnalyticsError("Failed to load question analytics")
         } finally {
           setIsLoadingAnalytics(false)
@@ -102,17 +112,22 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
   // Fetch AI explanation when answer is shown
   useEffect(() => {
     const fetchAiExplanation = async () => {
-      if (showCorrectAnswer) {
+      // Only fetch if showing correct answer AND we haven't attempted to fetch yet
+      if (showCorrectAnswer && !hasAttemptedAiExplanation) {
         setIsLoadingAiExplanation(true)
         setAiExplanationError(null)
+        setHasAttemptedAiExplanation(true)  // Mark that we've attempted a fetch
 
         try {
+          // Make sure options is properly formatted before sending
+          const safeOptions = Array.isArray(question.options) ? question.options : [];
+          
           // Call your backend API that will use OpenAI
           const response = await axios.post(
-            `https://medical-backend-loj4.onrender.com/api/test/ai-explain`,
+            `http://localhost:5000/api/test/ai-explain`,
             {
               question: question.question,
-              options: question.options,
+              options: safeOptions,
               correctAnswer: question.answer,
               userAnswer: selectedAnswer || "No answer provided"
             }
@@ -121,6 +136,21 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
           setAiExplanation(response.data.explanation)
         } catch (error) {
           console.error("Error fetching AI explanation:", error)
+          
+          // Create a basic fallback explanation in case the server fails completely
+          const localFallbackExplanation = `
+The correct answer is: ${question.answer}
+
+This question tests your understanding of medical concepts related to ${
+  question.subsectionDisplay || question.subjectDisplay || "this topic"
+}.
+
+To remember this concept: Focus on connecting the key symptoms or findings with the most appropriate medical approach.
+
+Note: A more detailed explanation will be available when our explanation service is fully online.
+          `;
+          
+          setAiExplanation(localFallbackExplanation);
           setAiExplanationError("Failed to load AI explanation")
         } finally {
           setIsLoadingAiExplanation(false)
@@ -129,7 +159,14 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
     }
 
     fetchAiExplanation()
-  }, [showCorrectAnswer, question, selectedAnswer])
+  }, [showCorrectAnswer, question, selectedAnswer, hasAttemptedAiExplanation])
+
+  // Reset the hasAttemptedAiExplanation flag when the question changes
+  useEffect(() => {
+    setHasAttemptedAiExplanation(false)
+    setAiExplanation(null)
+    setAiExplanationError(null)
+  }, [question._id])
 
   useEffect(() => {
     if (showCorrectAnswer) {
@@ -221,12 +258,9 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
           </RadioGroup>
 
           <div className="flex flex-wrap gap-4 mt-8">
-            {!showCorrectAnswer ? (
-              <Button onClick={onSubmit} disabled={!selectedAnswer} className="gap-2">
-                Submit Answer
-                <MoveRight className="h-4 w-4" />
-              </Button>
-            ) : (
+          {!showCorrectAnswer ? (
+  null
+) : (
               <div className="grid grid-cols-2 gap-2 w-full">
                 {/* <Button
                   variant="outline"

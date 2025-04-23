@@ -34,15 +34,15 @@ interface UserAnswer {
 
 // Exam-specific configurations
 const examConfigs: Record<string, SimulationConfig> = {
-  "USMLE Step 1": { duration: 10, totalQuestions: 40, examName: "USMLE Step 1" },
-  NEET: { duration: 10, totalQuestions: 50, examName: "NEET" },
-  PLAB: { duration: 10, totalQuestions: 45, examName: "PLAB" },
-  MCAT: { duration: 10, totalQuestions: 8, examName: "MCAT" },
-  NCLEX: { duration: 10, totalQuestions: 40, examName: "NCLEX" },
-  COMLEX: { duration: 10, totalQuestions: 40, examName: "COMLEX" },
-  // Default config for fallback
-  DEFAULT: { duration: 10, totalQuestions: 30, examName: "Medical Exam" },
+  "USMLE Step 1": { duration: 10, totalQuestions: 10, examName: "USMLE Step 1" },
+  NEET: { duration: 10, totalQuestions: 10, examName: "NEET" },
+  PLAB: { duration: 10, totalQuestions: 10, examName: "PLAB" },
+  MCAT: { duration: 10, totalQuestions: 10, examName: "MCAT" },
+  NCLEX: { duration: 10, totalQuestions: 10, examName: "NCLEX" },
+  COMLEX: { duration: 10, totalQuestions: 10, examName: "COMLEX" },
+  DEFAULT: { duration: 10, totalQuestions: 10, examName: "Medical Exam" },
 }
+
 const ExamSimulation: React.FC = () => {
   // State for simulation
   const [isSimulationActive, setIsSimulationActive] = useState(false)
@@ -470,7 +470,7 @@ const ExamSimulation: React.FC = () => {
     return (
       <div className="bg-white rounded-lg shadow-md p-6 mb-6" id="exam-simulation">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">Exam Simulation</h2>
+          <h2 className="text-xl font-semibold">Quick Test</h2>
           <button onClick={() => setShowHistory(!showHistory)} className="text-blue-600 hover:underline">
             {showHistory ? "Hide History" : "View History"}
           </button>
@@ -524,9 +524,9 @@ const ExamSimulation: React.FC = () => {
           <div className="mb-6">
             {selectedExam ? (
               <div>
-                <h3 className="text-lg font-medium mb-2">Ready to take a {selectedExam} simulation?</h3>
+                <h3 className="text-lg font-medium mb-2">Ready to take a {selectedExam} quick test?</h3>
                 <p className="text-gray-600 mb-2">
-                  This simulation will include {examConfig.totalQuestions} questions to be completed in{" "}
+                  This quick test will include {examConfig.totalQuestions} questions to be completed in{" "}
                   {examConfig.duration} minutes, mimicking the real exam format and timing.
                 </p>
                 <p className="text-gray-600 mb-4">

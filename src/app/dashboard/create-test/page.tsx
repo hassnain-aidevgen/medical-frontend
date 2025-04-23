@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation"
 import type React from "react"
 import { useCallback, useEffect, useState } from "react"
 import { toast, Toaster } from "react-hot-toast"
+import EstimatedTime from "@/components/EstimatedTime"
 interface Subject {
   _id: string
   name: string
@@ -253,10 +254,6 @@ export default function CreateTest() {
         return
       }
 
-      // Update the URL to point to your new endpoint on localhost 
-      // old one
-      // const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations2/${userId}`)
-      // new onne:
       const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations3/${userId}`)
 
       console.log("Recommendation data received:", data) // For debugging
@@ -1131,6 +1128,14 @@ export default function CreateTest() {
                     ? `Maximum questions available: ${maxQuestions}`
                     : "No questions available with current selection"}
                 </p>
+                {/* Add EstimatedTime component here */}
+                {validation.questionCount.isValid && totalQuestions > 0 && (
+                  <EstimatedTime 
+                    questionCount={totalQuestions} 
+                    mode={mode}
+                    difficulty={difficulty}
+                  />
+          )}
                 {error && error.includes("No questions available") && (
                   <div className="mt-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                     <h3 className="text-sm font-semibold text-amber-800 mb-2">
@@ -1221,32 +1226,6 @@ export default function CreateTest() {
             mode={mode}
           />
         </div>
-        {/* Keep the TargetExamSelector component commented out */}
-        {/* <TargetExamSelector
-          selectedExam={selectedExam}
-          onExamChange={(exam) => {
-            setSelectedExam(exam);
-            localStorage.setItem("selectedExam", exam);
-            
-            // Update examType based on selection when user changes the target exam
-            if (exam) {
-              setExamType(exam as "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3" | "ALL_USMLE_TYPES" | "NEET" | "PLAB" | "MCAT" | "NCLEX" | "COMLEX");
-              
-              // Reset filters to ensure compatibility with the selected exam type
-              setDifficulty("ALL_DIFFICULTY_LEVELS");
-              setQuestionType("ALL_QUESTION_TYPES");
-              setYear("ALL_YEARS");
-            } else {
-              // If no exam is selected, revert to default
-              setExamType("ALL_USMLE_TYPES");
-            }
-          }}
-          examDate={examDate}
-          onDateChange={(date) => {
-            setExamDate(date);
-            localStorage.setItem("examDate", date);
-          }}
-        /> */}
         {/* Add ExamSimulation component at the top for quick tests */}
         <div className="mb-8">
           <ExamSimulation />

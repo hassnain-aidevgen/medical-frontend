@@ -212,7 +212,7 @@ const TestComponent = () => {
                 </Button>
                 {!submittedAnswers[currentQuestionIndex] ? (
                     <Button onClick={handleAnswerSubmit} disabled={!selectedAnswers[currentQuestionIndex]}>
-                        Submit Answer
+                        {/* Submit Answer */}
                     </Button>
                 ) : (
                     <Button onClick={currentQuestionIndex === questions.length - 1 ? handleFinishTest : handleNextQuestion}>

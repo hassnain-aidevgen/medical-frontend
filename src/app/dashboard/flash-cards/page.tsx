@@ -32,7 +32,13 @@ export default function FlashcardsPage() {
   const [searchQuery, setSearchQuery] = useState("")
 
   // UI state
-  const [activeTab, setActiveTab] = useState("browse")
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("flashcardTab") || "browse";
+    }
+    return "browse";
+  });
+  
   const [isNewCardDialogOpen, setIsNewCardDialogOpen] = useState(false)
   const [isEditCardDialogOpen, setIsEditCardDialogOpen] = useState(false)
   const [editingCard, setEditingCard] = useState<Flashcard | null>(null)
