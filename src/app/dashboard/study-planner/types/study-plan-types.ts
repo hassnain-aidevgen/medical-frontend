@@ -113,3 +113,108 @@ export interface StudyPlanResultsProps {
   userData: UserData;
   onReset: () => void;
 }
+// Define types for form data
+export interface FormData {
+  // Personal details
+  name: string
+  email: string
+  currentLevel: "beginner" | "intermediate" | "advanced" | "expert"
+
+  // Exam details
+  targetExam: string
+  examDate: string
+
+  // Subject preferences
+  strongSubjects: string[]
+  weakSubjects: string[]
+
+  // Study preferences
+  availableHours: number
+  daysPerWeek: number
+  preferredTimeOfDay: "morning" | "afternoon" | "evening" | "night" | "mixed"
+  preferredLearningStyle: "visual" | "auditory" | "reading" | "kinesthetic" | "mixed"
+
+  // Goals and objectives
+  targetScore: string
+  specificGoals: string
+
+  // Additional information
+  additionalInfo: string
+  previousScores: string
+
+  // Performance data integration
+  usePerformanceData: boolean
+  weakTopics: string[]
+}
+
+// Define types for form errors
+export interface FormErrors {
+  [key: string]: string
+}
+
+// Define type for performance data
+export interface TopicMasteryData {
+  name: string
+  masteryScore: number
+  masteryLevel: string
+  isQuestPriority?: boolean
+}
+
+// Interface for performance data from the database
+export interface SubjectPerformanceData {
+  subjectId: string
+  subjectName: string
+  subsections: {
+    subsectionId: string
+    subsectionName: string
+    performance: {
+      correctCount: number
+      incorrectCount: number
+      totalCount: number
+      lastAttempted: string
+    }
+  }[]
+  lastUpdated: string
+}
+
+export interface UserPerformanceData {
+  userId: string
+  subjects: SubjectPerformanceData[]
+  lastUpdated: string
+}
+
+// Study plan response type
+// export interface StudyPlanResponse {
+//   planId?: string
+//   plan: {
+//     overview: {
+//       examName: string
+//       examDate?: string
+//       totalWeeks: number
+//       hoursPerWeek: number
+//       focusAreas: string[]
+//     }
+//     weeklyPlans: {
+//       weekNumber: number
+//       theme: string
+//       focus: string[]
+//       days: {
+//         dayOfWeek: string
+//         tasks: {
+//           subject: string
+//           activity: string
+//           duration: string
+//           resources?: string[]
+//         }[]
+//       }[]
+//     }[]
+//     resources: {
+//       [subject: string]: {
+//         primary: string[]
+//         supplementary: string[]
+//         practice: string[]
+//       }
+//     }
+//     recommendations: string[]
+//   }
+// }

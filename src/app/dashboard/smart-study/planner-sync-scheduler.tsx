@@ -1,7 +1,7 @@
 "use client"
 
 import axios from "axios"
-import { Undo2 } from "lucide-react"
+import { Undo2, AlertCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
 
@@ -14,6 +14,7 @@ interface Test {
   completed: boolean
   userId: string
   color: string
+  planId?: string // Add planId to track which plan created this task
 }
 
 // Define the interface for weekly plan tasks
@@ -73,6 +74,15 @@ interface StudyPlanWeek {
   days: StudyPlanDay[]
 }
 
+interface StudyPlan {
+  _id: string
+  plan: {
+    title: string
+    weeklyPlans: StudyPlanWeek[]
+  }
+  isActive: boolean
+}
+
 const PlannerSyncScheduler = ({
   userId,
   onTestsAdded,
@@ -87,11 +97,20 @@ const PlannerSyncScheduler = ({
   const [isProcessing, setIsProcessing] = useState(false)
   const [isUndoing, setIsUndoing] = useState(false)
   const [showUndoButton, setShowUndoButton] = useState(false)
+  const [activePlan, setActivePlan] = useState<StudyPlan | null>(null)
+  const [noActivePlanError, setNoActivePlanError] = useState(false)
 
   // Update showUndoButton based on lastSyncedTests
   useEffect(() => {
     setShowUndoButton(lastSyncedTests.length > 0)
   }, [lastSyncedTests])
+
+  // Fetch active plan on component mount
+  useEffect(() => {
+    if (userId) {
+      fetchActivePlan()
+    }
+  }, [userId])
 
   // Helper function to ensure date is a string
   const formatDateToString = (date: Date | string): string => {
@@ -104,7 +123,26 @@ const PlannerSyncScheduler = ({
     return new Date().toISOString()
   }
 
-  // Update the addTestToCalendar function to use the correct API endpoint
+  // Fetch the active study plan
+  const fetchActivePlan = async () => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/ai-planner/getActivePlan/${userId}`)
+
+      if (response.data.success && response.data.data) {
+        setActivePlan(response.data.data)
+        setNoActivePlanError(false)
+      } else {
+        setActivePlan(null)
+        setNoActivePlanError(true)
+      }
+    } catch (error) {
+      console.error("Error fetching active plan:", error)
+      setActivePlan(null)
+      setNoActivePlanError(true)
+    }
+  }
+
+  // Update the addTestToCalendar function to include planId
   const addTestToCalendar = async (test: Test): Promise<Test | null> => {
     if (!userId) {
       toast.error("User ID not found. Please log in.")
@@ -112,13 +150,14 @@ const PlannerSyncScheduler = ({
     }
 
     try {
-      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/calender", {
+      const response = await axios.post("http://localhost:5000/api/ai-planner/add_ai_plan_to_calender", {
         userId: test.userId,
         subjectName: test.subjectName,
         testTopic: test.testTopic,
         date: formatDateToString(test.date),
         color: test.color,
         completed: test.completed,
+        planId: test.planId || activePlan?._id, // Include the plan ID
       })
 
       if (response.status !== 200 && response.status !== 201) {
@@ -153,7 +192,30 @@ const PlannerSyncScheduler = ({
     }
   }
 
-  // Update the createReviewTasks function to return Test objects
+  // Function to delete all tasks associated with a plan
+  const deleteTasksByPlanId = async (planId: string): Promise<number> => {
+    if (!userId) {
+      toast.error("User ID not found. Please log in.")
+      return 0
+    }
+
+    try {
+      const response = await axios.delete(
+        `http://localhost:5000/api/ai-planner/calender/byPlan/${planId}`,
+      )
+
+      if (response.status !== 200) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      return response.data.deletedCount || 0
+    } catch (error) {
+      console.error("Failed to delete tasks by plan ID:", error)
+      return 0
+    }
+  }
+
+  // Update the createReviewTasks function to include planId
   const createReviewTasks = (test: Test): Test[] => {
     const reviewTasks: Test[] = []
     const testDate = test.date instanceof Date ? test.date : new Date(test.date)
@@ -182,82 +244,89 @@ const PlannerSyncScheduler = ({
         color: "#EF4444", // Red color for review tasks
         completed: false,
         userId: test.userId,
+        planId: test.planId || activePlan?._id, // Include the plan ID
       })
     })
 
     return reviewTasks
   }
 
-  // Updated fetchWeeklyPlan to use props instead of localStorage
+  // Updated fetchWeeklyPlan to use the active plan
   const fetchWeeklyPlan = async (): Promise<PlanTask[]> => {
-    // First check if we have the plan in props
-    if (weeklyStudyPlan && weeklyStudyPlan.length > 0) {
-      return weeklyStudyPlan
-    }
-
-    // If not in props, try to fetch from backend
-    if (userId) {
+    // First check if we have an active plan
+    if (!activePlan) {
+      // Try to fetch the active plan
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/study-plan/${userId}`)
-        if (response.data?.studyPlan) {
-          console.log("Study plan data:", response.data.studyPlan)
+        const response = await axios.get(`http://localhost:5000/api/ai-planner/getActivePlan/${userId}`)
 
-          // Extract tasks from the study plan structure
-          const tasks: PlanTask[] = []
-
-          // Check if the study plan has weeklyPlans
-          if (response.data.studyPlan.plan?.weeklyPlans) {
-            // Iterate through each week
-            response.data.studyPlan.plan.weeklyPlans.forEach((week: StudyPlanWeek) => {
-              // Iterate through each day in the week
-              if (week.days) {
-                week.days.forEach((day: StudyPlanDay) => {
-                  // Iterate through each task in the day
-                  if (day.tasks) {
-                    day.tasks.forEach((task: StudyPlanTask) => {
-                      // Create a date string for the task based on the day of week
-                      const today = new Date()
-                      const dayIndex = [
-                        "sunday",
-                        "monday",
-                        "tuesday",
-                        "wednesday",
-                        "thursday",
-                        "friday",
-                        "saturday",
-                      ].findIndex((d) => d.toLowerCase() === day.dayOfWeek.toLowerCase())
-
-                      // Calculate the date for this day of the week
-                      const taskDate = new Date(today)
-                      const currentDay = today.getDay()
-                      const daysToAdd = (dayIndex - currentDay + 7) % 7
-                      taskDate.setDate(today.getDate() + daysToAdd)
-
-                      // Convert the task to our PlanTask format
-                      tasks.push({
-                        id: `task-${Math.random().toString(36).substring(2, 9)}`,
-                        title: task.activity,
-                        subject: task.subject,
-                        topic: task.activity,
-                        date: taskDate.toISOString().split("T")[0],
-                        duration: task.duration,
-                        priority: determinePriority(task.subject),
-                      })
-                    })
-                  }
-                })
-              }
-            })
-          }
-
-          return tasks
+        if (response.data.success && response.data.data) {
+          setActivePlan(response.data.data)
+          return extractTasksFromPlan(response.data.data)
+        } else {
+          setNoActivePlanError(true)
+          return []
         }
       } catch (error) {
-        console.error("Failed to fetch weekly plan:", error)
+        console.error("Error fetching active plan:", error)
+        setNoActivePlanError(true)
+        return []
       }
     }
 
-    return [] // Return empty array if no plan found
+    // If we already have the active plan, extract tasks from it
+    return extractTasksFromPlan(activePlan)
+  }
+
+  // Helper function to extract tasks from a study plan
+  const extractTasksFromPlan = (studyPlan: StudyPlan): PlanTask[] => {
+    const tasks: PlanTask[] = []
+
+    // Check if the study plan has weeklyPlans
+    if (studyPlan.plan?.weeklyPlans) {
+      // Iterate through each week
+      studyPlan.plan.weeklyPlans.forEach((week: StudyPlanWeek) => {
+        // Iterate through each day in the week
+        if (week.days) {
+          week.days.forEach((day: StudyPlanDay) => {
+            // Iterate through each task in the day
+            if (day.tasks) {
+              day.tasks.forEach((task: StudyPlanTask) => {
+                // Create a date string for the task based on the day of week
+                const today = new Date()
+                const dayIndex = [
+                  "sunday",
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday",
+                  "saturday",
+                ].findIndex((d) => d.toLowerCase() === day.dayOfWeek.toLowerCase())
+
+                // Calculate the date for this day of the week
+                const taskDate = new Date(today)
+                const currentDay = today.getDay()
+                const daysToAdd = (dayIndex - currentDay + 7) % 7
+                taskDate.setDate(today.getDate() + daysToAdd)
+
+                // Convert the task to our PlanTask format
+                tasks.push({
+                  id: `task-${Math.random().toString(36).substring(2, 9)}`,
+                  title: task.activity,
+                  subject: task.subject,
+                  topic: task.activity,
+                  date: taskDate.toISOString().split("T")[0],
+                  duration: task.duration,
+                  priority: determinePriority(task.subject),
+                })
+              })
+            }
+          })
+        }
+      })
+    }
+
+    return tasks
   }
 
   // Add a helper function to determine priority based on subject
@@ -276,7 +345,7 @@ const PlannerSyncScheduler = ({
     }
   }
 
-  // Update the convertPlanTasksToTests function to return Test objects with red color
+  // Update the convertPlanTasksToTests function to include planId
   const convertPlanTasksToTests = (tasks: PlanTask[], userId: string): Test[] => {
     return tasks.map((task) => ({
       _id: `plan-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
@@ -286,6 +355,7 @@ const PlannerSyncScheduler = ({
       color: "#EF4444", // Red color for all tasks
       completed: false,
       userId: userId,
+      planId: activePlan?._id, // Include the plan ID
     }))
   }
 
@@ -330,20 +400,39 @@ const PlannerSyncScheduler = ({
     }
   }
 
-  // Main function to sync planner and add review tasks - updated to use props instead of localStorage
+  // Main function to sync planner and add review tasks - updated to check for active plan
   const syncPlannerAndAddReviews = async () => {
     if (!userId) {
       toast.error("User ID not found. Please log in.")
       return
     }
 
+    // Check if there's an active plan
+    if (!activePlan) {
+      await fetchActivePlan()
+
+      if (!activePlan) {
+        toast.error("No active study plan found. Please activate a plan first.")
+        setNoActivePlanError(true)
+        return
+      }
+    }
+
     setIsProcessing(true)
+    setNoActivePlanError(false)
     toast.loading("Syncing planner and scheduling reviews...")
 
     try {
       console.log("Fetch weekly plan")
       // 1. Fetch weekly plan
       const planTasks = await fetchWeeklyPlan()
+
+      if (planTasks.length === 0) {
+        toast.dismiss()
+        toast.error("No tasks found in the active plan")
+        setIsProcessing(false)
+        return
+      }
 
       console.log("Convert plan tasks to calendar tests")
       // 2. Convert plan tasks to calendar tests
@@ -414,6 +503,36 @@ const PlannerSyncScheduler = ({
     }
   }
 
+  // Function to handle plan deactivation - remove all tasks from calendar
+  const handlePlanDeactivated = async (planId: string) => {
+    if (!planId) return
+
+    try {
+      toast.loading("Removing plan tasks from calendar...")
+      const deletedCount = await deleteTasksByPlanId(planId)
+      toast.dismiss()
+
+      if (deletedCount > 0) {
+        toast.success(`Removed ${deletedCount} tasks from your calendar`)
+
+        // Refresh the calendar data
+        if (onRefresh) {
+          onRefresh()
+        }
+
+        // Clear the last synced tests if they were from this plan
+        if (lastSyncedTests.some((test) => test.planId === planId)) {
+          onLastSyncedTestsChange([])
+          setShowUndoButton(false)
+        }
+      }
+    } catch (error) {
+      console.error("Error removing plan tasks:", error)
+      toast.dismiss()
+      toast.error("Failed to remove plan tasks from calendar")
+    }
+  }
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
       <h2 className="text-xl font-semibold mb-4">AI Planner Sync & Review Scheduler</h2>
@@ -425,6 +544,17 @@ const PlannerSyncScheduler = ({
           </p>
           {lastSyncTime && (
             <p className="text-sm text-gray-500">Last synced: {new Date(lastSyncTime).toLocaleString()}</p>
+          )}
+          {activePlan && (
+            <p className="text-sm text-green-600 font-medium mt-1">
+              Active plan: {activePlan.plan.title || "Unnamed Plan"}
+            </p>
+          )}
+          {noActivePlanError && (
+            <div className="flex items-center text-amber-600 text-sm mt-1">
+              <AlertCircle size={14} className="mr-1.5" />
+              No active plan found. Please activate a plan first.
+            </div>
           )}
         </div>
 
@@ -441,8 +571,10 @@ const PlannerSyncScheduler = ({
           )}
           <button
             onClick={syncPlannerAndAddReviews}
-            disabled={isProcessing || isUndoing}
-            className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 transition-colors disabled:opacity-50"
+            disabled={isProcessing || isUndoing || noActivePlanError}
+            className={`${
+              noActivePlanError ? "bg-gray-400" : "bg-red-500 hover:bg-red-600"
+            } text-white py-2 px-4 rounded transition-colors disabled:opacity-50`}
           >
             {isProcessing ? "Processing..." : "Sync Plan & Schedule Reviews"}
           </button>
