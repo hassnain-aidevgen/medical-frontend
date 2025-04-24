@@ -58,6 +58,7 @@ const UserPlansList: React.FC<UserPlansListProps> = ({
                 day: "numeric",
             })
         } catch (e) {
+            console.error("Error formatting date:", e)
             return "Unknown date"
         }
     }
@@ -71,7 +72,7 @@ const UserPlansList: React.FC<UserPlansListProps> = ({
 
             try {
                 const response = await axios.delete(
-                    `http://localhost:5000/api/ai-planner/deleteStudyPlan/${planId}`,
+                    `https://medical-backend-loj4.onrender.com/api/ai-planner/deleteStudyPlan/${planId}`,
                 )
 
                 if (response.data.success) {
@@ -104,12 +105,12 @@ const UserPlansList: React.FC<UserPlansListProps> = ({
 
         try {
             // First, deactivate all plans
-            await axios.put(`http://localhost:5000/api/ai-planner/deactivateAllPlans`, {
+            await axios.put(`https://medical-backend-loj4.onrender.com/api/ai-planner/deactivateAllPlans`, {
                 userId: localPlans[0]?.userId, // Assuming all plans belong to the same user
             })
 
             // Then activate the selected plan
-            const response = await axios.put(`http://localhost:5000/api/ai-planner/activatePlan/${planId}`)
+            const response = await axios.put(`https://medical-backend-loj4.onrender.com/api/ai-planner/activatePlan/${planId}`)
 
             if (response.data.success) {
                 toast.success("Study plan activated successfully")
@@ -148,7 +149,7 @@ const UserPlansList: React.FC<UserPlansListProps> = ({
 
         try {
             // Deactivate the selected plan
-            const response = await axios.put(`http://localhost:5000/api/ai-planner/deactivatePlan/${planId}`)
+            const response = await axios.put(`https://medical-backend-loj4.onrender.com/api/ai-planner/deactivatePlan/${planId}`)
 
             if (response.data.success) {
                 toast.success("Study plan deactivated successfully")
@@ -164,7 +165,7 @@ const UserPlansList: React.FC<UserPlansListProps> = ({
                 // Remove calendar tasks associated with this plan
                 try {
                     const deleteResponse = await axios.delete(
-                        `http://localhost:5000/api/ai-planner/calender/byPlan/${planId}`,
+                        `https://medical-backend-loj4.onrender.com/api/ai-planner/calender/byPlan/${planId}`,
                     )
                     if (deleteResponse.data.deletedCount > 0) {
                         toast.success(`Removed ${deleteResponse.data.deletedCount} tasks from your calendar`)
@@ -245,7 +246,7 @@ const UserPlansList: React.FC<UserPlansListProps> = ({
                         </div>
                     ) : localPlans.length === 0 ? (
                         <div className="p-8 text-center text-gray-500">
-                            <p>You don't have any saved study plans yet.</p>
+                            <p>You don&apos;t have any saved study plans yet.</p>
                         </div>
                     ) : (
                         <ul className="divide-y">

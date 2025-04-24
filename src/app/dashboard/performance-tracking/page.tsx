@@ -416,7 +416,7 @@ export default function AnalyticsDashboard() {
   const fetchWeakSubjects = async (userId: string) => {
     try {
       // Fetch performance data from your new endpoint
-      const response = await axios.get(`http://localhost:5000/api/test/get-performance/${userId}`)
+      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/get-performance/${userId}`)
 
       if (response.data.success && response.data.data) {
         setUserPerformanceData(response.data.data)
@@ -1840,7 +1840,7 @@ export default function AnalyticsDashboard() {
                                     Based on {subject.totalQuestions} questions
                                   </p>
                                 </div>
-                                <Button variant="ghost" size="sm" className="w-full mt-3">
+                                <Button onClick={() => router.push("/dashboard/courses")} variant="ghost" size="sm" className="w-full mt-3">
                                   Study This Topic
                                 </Button>
                               </motion.div>
@@ -2016,9 +2016,9 @@ export default function AnalyticsDashboard() {
                               <MasteryBadge level={topic.masteryLevel} />
                             </div>
                           </div>
-                          <Button size="sm" variant="outline">
+                          {/* <Button size="sm" variant="outline">
                             Study
-                          </Button>
+                          </Button> */}
                         </motion.div>
                       ))}
                   </CardContent>
@@ -2058,9 +2058,9 @@ export default function AnalyticsDashboard() {
                               </p>
                               <div className="mt-3 flex items-center justify-between">
                                 <MasteryBadge level={topic.masteryLevel} />
-                                <Button size="sm" variant="outline">
+                                {/* <Button size="sm" variant="outline">
                                   Start
-                                </Button>
+                                </Button> */}
                               </div>
                             </motion.div>
                           ))}

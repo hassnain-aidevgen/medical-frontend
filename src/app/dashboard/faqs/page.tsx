@@ -198,7 +198,7 @@ export default function FAQPage() {
       if (searchQuery && filteredFAQs.length === 0) {
         setIsLoadingAi(true);
         try {
-          const response = await axios.post("http://localhost:5000/api/test/answer", {
+          const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/answer", {
             question: searchQuery
           });
           

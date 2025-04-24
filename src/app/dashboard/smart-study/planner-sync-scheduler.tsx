@@ -5,7 +5,7 @@ import { Undo2, AlertCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
 
-// Update the interface to match the Test interface in page.tsx
+// Update the Test interface to include source and additional information
 interface Test {
   _id: string
   date: Date | string
@@ -14,7 +14,21 @@ interface Test {
   completed: boolean
   userId: string
   color: string
-  planId?: string // Add planId to track which plan created this task
+  planId?: string
+  taskType?: "study" | "review" | "practice" | "assessment"
+  duration?: number
+  priority?: "high" | "medium" | "low"
+  resources?: Array<{
+    name: string
+    type?: string
+    description: string
+  }>
+  weekNumber?: number
+  dayOfWeek?: string
+  notes?: string
+  isReviewTask?: boolean
+  originalTaskId?: string
+  source?: "ai-planner" | "manual" // Add source field to track where the task came from
 }
 
 // Define the interface for weekly plan tasks
@@ -26,6 +40,13 @@ interface PlanTask {
   date: string
   duration: number
   priority: "high" | "medium" | "low"
+  resources?: Array<{
+    name: string
+    type?: string
+    description: string
+  }>
+  weekNumber?: number
+  dayOfWeek?: string
 }
 
 interface PlannerSyncSchedulerProps {
@@ -95,7 +116,7 @@ const PlannerSyncScheduler = ({
   weeklyStudyPlan,
 }: PlannerSyncSchedulerProps) => {
   const [isProcessing, setIsProcessing] = useState(false)
-  const [isUndoing, setIsUndoing] = useState(false)
+  const [isUndoing, setIsUndoing] = useState(isProcessing)
   const [showUndoButton, setShowUndoButton] = useState(false)
   const [activePlan, setActivePlan] = useState<StudyPlan | null>(null)
   const [noActivePlanError, setNoActivePlanError] = useState(false)
@@ -126,7 +147,7 @@ const PlannerSyncScheduler = ({
   // Fetch the active study plan
   const fetchActivePlan = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/ai-planner/getActivePlan/${userId}`)
+      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/ai-planner/getActivePlan/${userId}`)
 
       if (response.data.success && response.data.data) {
         setActivePlan(response.data.data)
@@ -142,7 +163,7 @@ const PlannerSyncScheduler = ({
     }
   }
 
-  // Update the addTestToCalendar function to include planId
+  // Update the addTestToCalendar function to include enhanced information
   const addTestToCalendar = async (test: Test): Promise<Test | null> => {
     if (!userId) {
       toast.error("User ID not found. Please log in.")
@@ -150,14 +171,24 @@ const PlannerSyncScheduler = ({
     }
 
     try {
-      const response = await axios.post("http://localhost:5000/api/ai-planner/add_ai_plan_to_calender", {
+      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/ai-planner/add_ai_plan_to_calender", {
         userId: test.userId,
         subjectName: test.subjectName,
         testTopic: test.testTopic,
         date: formatDateToString(test.date),
         color: test.color,
         completed: test.completed,
-        planId: test.planId || activePlan?._id, // Include the plan ID
+        planId: test.planId || activePlan?._id,
+        taskType: test.taskType || "study",
+        duration: test.duration || 60,
+        priority: test.priority || "medium",
+        resources: test.resources || [],
+        weekNumber: test.weekNumber || 1,
+        dayOfWeek: test.dayOfWeek || getDayOfWeek(test.date),
+        notes: test.notes || "",
+        isReviewTask: test.isReviewTask || false,
+        originalTaskId: test.originalTaskId || null,
+        source: "ai-planner", // Mark this task as coming from the AI planner
       })
 
       if (response.status !== 200 && response.status !== 201) {
@@ -171,6 +202,13 @@ const PlannerSyncScheduler = ({
     }
   }
 
+  // Helper function to get day of week from date
+  const getDayOfWeek = (date: Date | string): string => {
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    const dateObj = typeof date === "string" ? new Date(date) : date
+    return days[dateObj.getDay()]
+  }
+
   // Function to delete a test from the calendar - updated to use axios
   const deleteTestFromCalendar = async (testId: string): Promise<boolean> => {
     if (!userId) {
@@ -179,7 +217,7 @@ const PlannerSyncScheduler = ({
     }
 
     try {
-      const response = await axios.delete(`https://medical-backend-loj4.onrender.com/api/test/calender/${testId}`)
+      const response = await axios.delete(`https://medical-backend-loj4.onrender.com/api/ai-planner/calender/${testId}`)
 
       if (response.status !== 200) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -200,9 +238,7 @@ const PlannerSyncScheduler = ({
     }
 
     try {
-      const response = await axios.delete(
-        `http://localhost:5000/api/ai-planner/calender/byPlan/${planId}`,
-      )
+      const response = await axios.delete(`https://medical-backend-loj4.onrender.com/api/ai-planner/calender/byPlan/${planId}`)
 
       if (response.status !== 200) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -215,16 +251,16 @@ const PlannerSyncScheduler = ({
     }
   }
 
-  // Update the createReviewTasks function to include planId
+  // Update the createReviewTasks function to include enhanced information
   const createReviewTasks = (test: Test): Test[] => {
     const reviewTasks: Test[] = []
     const testDate = test.date instanceof Date ? test.date : new Date(test.date)
 
     // Create review intervals (24 hours, 7 days, 30 days)
     const intervals = [
-      { days: 1, label: "24h Review" },
-      { days: 7, label: "7d Review" },
-      { days: 30, label: "30d Review" },
+      { days: 1, label: "24h Review", priority: "high" },
+      { days: 7, label: "7d Review", priority: "medium" },
+      { days: 30, label: "30d Review", priority: "low" },
     ]
 
     intervals.forEach((interval) => {
@@ -244,7 +280,17 @@ const PlannerSyncScheduler = ({
         color: "#EF4444", // Red color for review tasks
         completed: false,
         userId: test.userId,
-        planId: test.planId || activePlan?._id, // Include the plan ID
+        planId: test.planId || activePlan?._id,
+        taskType: "review",
+        duration: test.duration ? Math.round(test.duration / 2) : 30, // Half the original duration
+        priority: interval.priority as "high" | "medium" | "low",
+        resources: test.resources,
+        weekNumber: test.weekNumber,
+        dayOfWeek: getDayOfWeek(reviewDate),
+        notes: `Spaced repetition review of ${test.testTopic}`,
+        isReviewTask: true,
+        originalTaskId: test._id,
+        source: "ai-planner",
       })
     })
 
@@ -257,7 +303,7 @@ const PlannerSyncScheduler = ({
     if (!activePlan) {
       // Try to fetch the active plan
       try {
-        const response = await axios.get(`http://localhost:5000/api/ai-planner/getActivePlan/${userId}`)
+        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/ai-planner/getActivePlan/${userId}`)
 
         if (response.data.success && response.data.data) {
           setActivePlan(response.data.data)
@@ -309,7 +355,7 @@ const PlannerSyncScheduler = ({
                 const daysToAdd = (dayIndex - currentDay + 7) % 7
                 taskDate.setDate(today.getDate() + daysToAdd)
 
-                // Convert the task to our PlanTask format
+                // Convert the task to our PlanTask format with enhanced information
                 tasks.push({
                   id: `task-${Math.random().toString(36).substring(2, 9)}`,
                   title: task.activity,
@@ -318,6 +364,9 @@ const PlannerSyncScheduler = ({
                   date: taskDate.toISOString().split("T")[0],
                   duration: task.duration,
                   priority: determinePriority(task.subject),
+                  resources: task.resources,
+                  weekNumber: week.weekNumber,
+                  dayOfWeek: day.dayOfWeek,
                 })
               })
             }
@@ -333,8 +382,8 @@ const PlannerSyncScheduler = ({
   const determinePriority = (subject: string): "high" | "medium" | "low" => {
     // This is a placeholder logic - you can customize based on your needs
     // For example, you might want to check if the subject is in the user's weak subjects
-    const weakSubjects = ["Anatomy", "Pharmacology"] // Example weak subjects
-    const mediumSubjects = ["Physiology", "Pathology"] // Example medium subjects
+    const weakSubjects = ["Anatomy", "Pharmacology", "Pathology"] // Example weak subjects
+    const mediumSubjects = ["Physiology", "Biochemistry"] // Example medium subjects
 
     if (weakSubjects.some((s) => subject.toLowerCase().includes(s.toLowerCase()))) {
       return "high"
@@ -345,24 +394,47 @@ const PlannerSyncScheduler = ({
     }
   }
 
-  // Update the convertPlanTasksToTests function to include planId
+  // Update the convertPlanTasksToTests function to include enhanced information
   const convertPlanTasksToTests = (tasks: PlanTask[], userId: string): Test[] => {
     return tasks.map((task) => ({
       _id: `plan-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       subjectName: task.subject,
       testTopic: task.title,
       date: new Date(task.date),
-      color: "#EF4444", // Red color for all tasks
+      color: getPriorityColor(task.priority),
       completed: false,
       userId: userId,
-      planId: activePlan?._id, // Include the plan ID
+      planId: activePlan?._id,
+      taskType: "study",
+      duration: task.duration,
+      priority: task.priority,
+      resources: task.resources,
+      weekNumber: task.weekNumber,
+      dayOfWeek: task.dayOfWeek,
+      notes: `${task.subject} study session: ${task.title}`,
+      isReviewTask: false,
+      source: "ai-planner",
     }))
+  }
+
+  // Helper function to get color based on priority
+  const getPriorityColor = (priority: "high" | "medium" | "low"): string => {
+    switch (priority) {
+      case "high":
+        return "#EF4444" // Red for high priority
+      case "medium":
+        return "#F59E0B" // Amber for medium priority
+      case "low":
+        return "#3B82F6" // Blue for low priority
+      default:
+        return "#3B82F6" // Default blue
+    }
   }
 
   // Function to undo the last sync - updated to use props instead of localStorage
   const undoLastSync = async () => {
-    if (lastSyncedTests.length === 0) {
-      toast.error("No tests to undo")
+    if (lastSyncedTests.length === 0 || !activePlan?._id) {
+      toast.error("No tests to undo or no active plan")
       return
     }
 
@@ -370,16 +442,8 @@ const PlannerSyncScheduler = ({
     toast.loading("Undoing last sync...")
 
     try {
-      let deletedCount = 0
-      for (const test of lastSyncedTests) {
-        if (test._id) {
-          const success = await deleteTestFromCalendar(test._id)
-          if (success) {
-            deletedCount++
-          }
-        }
-      }
-
+      // Delete all tasks related to the active plan ID
+      const deletedCount = await deleteTasksByPlanId(activePlan._id)
       // Clear the last synced tests using the prop callback
       onLastSyncedTestsChange([])
       setShowUndoButton(false)
@@ -390,7 +454,7 @@ const PlannerSyncScheduler = ({
       }
 
       toast.dismiss()
-      toast.success(`Removed ${deletedCount} tests from your calendar`)
+      toast.success(`Removed ${deletedCount} tasks from your calendar`)
     } catch (error) {
       console.error("Error during undo:", error)
       toast.dismiss()

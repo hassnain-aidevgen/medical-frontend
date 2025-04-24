@@ -32,7 +32,7 @@ import PlannerSyncScheduler from "./planner-sync-scheduler"
 import PriorityIndicator from "./priority-indicator"
 import TodayDashboard from "./today-dashboard"
 
-// Define the interface for your calendar tests
+// Update the CalendarTest interface to include source and additional information
 interface CalendarTest {
   _id?: string
   subjectName: string
@@ -40,6 +40,12 @@ interface CalendarTest {
   date: string
   color: string
   completed?: boolean
+  planId?: string
+  taskType?: "study" | "review" | "practice" | "assessment"
+  duration?: number
+  priority?: "high" | "medium" | "low"
+  source?: "ai-planner" | "manual"
+  dayOfWeek?: string
 }
 
 // Define the interface that matches ExamInterface's expected Test type
@@ -229,6 +235,7 @@ const SmartStudyCalendar = () => {
     return true
   }
 
+  // Update the handleSubmit function to mark manually added tests
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!userId) {
@@ -242,6 +249,7 @@ const SmartStudyCalendar = () => {
       const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/calender", {
         ...newTest,
         userId,
+        source: "manual", // Mark this test as manually added
       })
       if (response.data && response.data._id) {
         setTests([...tests, response.data])
@@ -294,9 +302,12 @@ const SmartStudyCalendar = () => {
 
     setIsLoading(true)
     try {
-      const response = await axios.patch(`https://medical-backend-loj4.onrender.com/api/test/calender/completion/${currentTestId}`, {
-        completed: isCompleting,
-      })
+      const response = await axios.patch(
+        `https://medical-backend-loj4.onrender.com/api/test/calender/completion/${currentTestId}`,
+        {
+          completed: isCompleting,
+        },
+      )
       if (response.data && response.data._id) {
         setTests(
           tests.map((test) => (test._id === currentTestId ? { ...test, completed: response.data.completed } : test)),
@@ -411,9 +422,12 @@ const SmartStudyCalendar = () => {
     // Update the test date
     setIsLoading(true)
     try {
-      const response = await axios.patch(`https://medical-backend-loj4.onrender.com/api/test/calender/${currentTestId}`, {
-        date: dateToSchedule,
-      })
+      const response = await axios.patch(
+        `https://medical-backend-loj4.onrender.com/api/test/calender/${currentTestId}`,
+        {
+          date: dateToSchedule,
+        },
+      )
       if (response.data && response.data._id) {
         setTests(tests.map((t) => (t._id === currentTestId ? { ...t, date: dateToSchedule } : t)))
         toast.success("Test rescheduled successfully")
@@ -462,8 +476,9 @@ const SmartStudyCalendar = () => {
       days.push(
         <div
           key={day}
-          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${isSelected ? "bg-blue-500 text-white" : ""
-            }`}
+          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${
+            isSelected ? "bg-blue-500 text-white" : ""
+          }`}
           onClick={() => setSelectedDate(date)}
         >
           {day}
@@ -490,8 +505,9 @@ const SmartStudyCalendar = () => {
                     key={index}
                     className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: dotColor }}
-                    title={`${test.subjectName}: ${test.testTopic} - ${test.completed ? "Complete" : testDate < today ? "Missed" : "Incomplete"
-                      }`}
+                    title={`${test.subjectName}: ${test.testTopic} - ${
+                      test.completed ? "Complete" : testDate < today ? "Missed" : "Incomplete"
+                    }`}
                   />
                 )
               })}
@@ -573,32 +589,36 @@ const SmartStudyCalendar = () => {
         <div className="flex border-b">
           <button
             onClick={() => setActiveTab("calendar")}
-            className={`px-4 py-3 font-medium flex items-center ${activeTab === "calendar" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
-              }`}
+            className={`px-4 py-3 font-medium flex items-center ${
+              activeTab === "calendar" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
+            }`}
           >
             <Calendar size={18} className="mr-2" />
             Calendar
           </button>
           <button
             onClick={() => setActiveTab("add")}
-            className={`px-4 py-3 font-medium flex items-center ${activeTab === "add" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
-              }`}
+            className={`px-4 py-3 font-medium flex items-center ${
+              activeTab === "add" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
+            }`}
           >
             <Plus size={18} className="mr-2" />
             Add Test
           </button>
           <button
             onClick={() => setActiveTab("sync")}
-            className={`px-4 py-3 font-medium flex items-center ${activeTab === "sync" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
-              }`}
+            className={`px-4 py-3 font-medium flex items-center ${
+              activeTab === "sync" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
+            }`}
           >
             <RefreshCw size={18} className="mr-2" />
             AI Sync
           </button>
           <button
             onClick={() => setActiveTab("performance")}
-            className={`px-4 py-3 font-medium flex items-center ${activeTab === "performance" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
-              }`}
+            className={`px-4 py-3 font-medium flex items-center ${
+              activeTab === "performance" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
+            }`}
           >
             <FileText size={18} className="mr-2" />
             Performance
@@ -636,59 +656,86 @@ const SmartStudyCalendar = () => {
 
               {/* Right sidebar */}
               <div className="space-y-6">
-                <div className="bg-gray-50 rounded-lg p-4">
+                <div className="bg-gray-50 rounded-lg p-4 max-h-[450px] overflow-y-auto">
                   <h2 className="text-lg font-semibold mb-4">Selected Date: {selectedDate.toDateString()}</h2>
                   {selectedDateTests.length > 0 ? (
-                    <ul className="space-y-3">
-                      {selectedDateTests.map((test) => (
-                        <li key={test._id} className="flex flex-col space-y-2 border-b pb-3">
-                          <div className="flex items-center">
-                            <div
-                              className="w-4 h-4 rounded-full mr-2"
-                              style={{
-                                backgroundColor: test.completed
-                                  ? "#22c55e" // green for complete
-                                  : new Date(test.date) < new Date(new Date().setHours(0, 0, 0, 0))
-                                    ? "#9ca3af" // gray for missed
-                                    : "#ef4444", // red for incomplete
-                              }}
-                            ></div>
-                            <div className="flex-1">
-                              <strong>{test.subjectName}</strong>
-                              <p>{test.testTopic}</p>
-                              <PriorityIndicator subjectName={test.subjectName} />
+                    // Update the selected date tests display to show source and additional info
+                    selectedDateTests.map((test) => (
+                      <li key={test._id} className="flex flex-col space-y-2 border-b pb-3">
+                        <div className="flex items-center">
+                          <div
+                            className="w-4 h-4 rounded-full mr-2"
+                            style={{
+                              backgroundColor: test.completed
+                                ? "#22c55e" // green for complete
+                                : new Date(test.date) < new Date(new Date().setHours(0, 0, 0, 0))
+                                  ? "#9ca3af" // gray for missed
+                                  : "#ef4444", // red for incomplete
+                            }}
+                          ></div>
+                          <div className="flex-1">
+                            <strong>{test.subjectName}</strong>
+                            <p>{test.testTopic}</p>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {test.source === "ai-planner" && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  AI Planner
+                                </span>
+                              )}
+                               {test.source === "manual" && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  Manual
+                                </span>
+                              )}
+                              {test.taskType && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                  {test.taskType}
+                                </span>
+                              )}
+                              {test.priority && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                                  {test.priority} priority
+                                </span>
+                              )}
+                              {test.duration && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                  {test.duration} min
+                                </span>
+                              )}
                             </div>
+                            <PriorityIndicator subjectName={test.subjectName} />
                           </div>
-                          <div className="flex items-center gap-2 ml-6">
+                        </div>
+                        <div className="flex items-center gap-2 ml-6">
+                          <button
+                            onClick={() => test._id && handleDeleteTest(test._id)}
+                            className="text-red-500 hover:text-red-700"
+                            disabled={isLoading}
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                          {new Date(test.date) < new Date(new Date().setHours(0, 0, 0, 0)) ? (
                             <button
-                              onClick={() => test._id && handleDeleteTest(test._id)}
-                              className="text-red-500 hover:text-red-700"
+                              onClick={() => test._id && handleRescheduleTest(test._id)}
+                              className="bg-yellow-500 text-white py-1 px-3 rounded hover:bg-yellow-600 transition-colors text-sm"
                               disabled={isLoading}
                             >
-                              <Trash2 size={18} />
+                              Reschedule Test
                             </button>
-                            {new Date(test.date) < new Date(new Date().setHours(0, 0, 0, 0)) ? (
-                              <button
-                                onClick={() => test._id && handleRescheduleTest(test._id)}
-                                className="bg-yellow-500 text-white py-1 px-3 rounded hover:bg-yellow-600 transition-colors text-sm"
-                                disabled={isLoading}
-                              >
-                                Reschedule Test
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => test._id && handleToggleCompletion(test._id, !test.completed)}
-                                className={`${test.completed ? "bg-gray-500" : "bg-green-500"
-                                  } text-white py-1 px-3 rounded hover:opacity-90 transition-colors text-sm`}
-                                disabled={isLoading}
-                              >
-                                {test.completed ? "Mark Incomplete" : "Complete"}
-                              </button>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
+                          ) : (
+                            <button
+                              onClick={() => test._id && handleToggleCompletion(test._id, !test.completed)}
+                              className={`${
+                                test.completed ? "bg-gray-500" : "bg-green-500"
+                              } text-white py-1 px-3 rounded hover:opacity-90 transition-colors text-sm`}
+                              disabled={isLoading}
+                            >
+                              {test.completed ? "Mark Incomplete" : "Complete"}
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    ))
                   ) : (
                     <div className="text-center py-4">
                       <Clock className="mx-auto text-gray-400 mb-2" size={32} />
@@ -703,13 +750,14 @@ const SmartStudyCalendar = () => {
                   )}
                 </div>
 
-                <div className="bg-gray-50 rounded-lg p-4">
+                {/* <div className="bg-gray-50 rounded-lg p-4">
                   <h2 className="text-lg font-semibold mb-4">Upcoming Tests</h2>
                   {isLoading ? (
                     <p>Loading tests...</p>
                   ) : tests.length > 0 ? (
                     <div className="max-h-60 overflow-y-auto">
                       <ul className="space-y-2">
+                        // Update the upcoming tests list to show source and additional info
                         {tests
                           .filter((test) => new Date(test.date) >= new Date(new Date().setHours(0, 0, 0, 0)))
                           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -732,7 +780,23 @@ const SmartStudyCalendar = () => {
                                 ></div>
                                 <div>
                                   <strong>{test.subjectName}</strong>: {test.testTopic}
-                                  <br />
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {test.source === "ai-planner" && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                        AI
+                                      </span>
+                                    )}
+                                    {test.taskType && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                        {test.taskType}
+                                      </span>
+                                    )}
+                                    {test.duration && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                        {test.duration}m
+                                      </span>
+                                    )}
+                                  </div>
                                   <small>{new Date(test.date).toLocaleDateString()}</small>
                                 </div>
                               </div>
@@ -750,7 +814,7 @@ const SmartStudyCalendar = () => {
                   ) : (
                     <p>No upcoming tests.</p>
                   )}
-                </div>
+                </div> */}
               </div>
             </div>
           )}

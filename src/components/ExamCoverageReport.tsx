@@ -154,7 +154,7 @@ const ExamCoverageReport = () => {
         }
         
         const response = await axios.get(
-          `http://localhost:5000/api/test/user/${userId}/exam-coverage/${selectedExamType}`
+          `https://medical-backend-loj4.onrender.com/api/test/user/${userId}/exam-coverage/${selectedExamType}`
         )
         
         setCoverageData(response.data.data)

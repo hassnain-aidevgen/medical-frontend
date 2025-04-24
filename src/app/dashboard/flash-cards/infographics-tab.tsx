@@ -34,7 +34,7 @@ interface InfographicsTabProps {
 
 const REFRESH_COOLDOWN_KEY = "flashcard_infographic_last_refresh"
 // const API_URL = "https://medical-backend-loj4.onrender.com/api" purana wala
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://medical-backend-loj4.onrender.com";
 
 
 

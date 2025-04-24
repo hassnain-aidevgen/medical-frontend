@@ -141,14 +141,15 @@ export default function NextTaskCTA({
 
   // Handle the start study button click
   const handleStartStudy = () => {
-    if (onStartStudy) {
-      onStartStudy(weakestTopic.name)
-    }
+    router.push("/dashboard/mentor")
+    // if (onStartStudy) {
+    //   onStartStudy(weakestTopic.name)
+    // }
 
-    // Create a test focused on this topic
-    createTopicTest(weakestTopic.name)
+    // // Create a test focused on this topic
+    // createTopicTest(weakestTopic.name)
 
-    setIsDialogOpen(false)
+    // setIsDialogOpen(false)
   }
 
   // Render the appropriate variant
@@ -233,12 +234,12 @@ export default function NextTaskCTA({
                   <Progress value={weakestTopic.masteryScore} className={getProgressColor(weakestTopic.masteryScore)} />
                 </div>
               </div>
-              <DialogTrigger asChild>
-                <Button className="w-full">
-                  Start Studying Now
+              {/* <DialogTrigger asChild> */}
+                <Button onClick={handleStartStudy} className="w-full">
+                  Get Mentorship
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-              </DialogTrigger>
+              {/* </DialogTrigger> */}
             </div>
           </div>
           <DialogContent>
@@ -337,12 +338,12 @@ export default function NextTaskCTA({
             <p className="text-sm mt-3">{getStudyRecommendation(weakestTopic)}</p>
           </div>
 
-          <DialogTrigger asChild>
-            <Button className="w-full">
-              Start Studying Now
+          {/* <DialogTrigger asChild> */}
+            <Button onClick={handleStartStudy} className="w-full">
+              Get Mentorship
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-          </DialogTrigger>
+          {/* </DialogTrigger> */}
         </div>
 
         <DialogContent>

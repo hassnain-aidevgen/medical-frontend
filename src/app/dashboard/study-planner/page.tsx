@@ -194,7 +194,7 @@ const PlannerForm: React.FC = () => {
     setIsLoadingPlans(true)
 
     try {
-      const response = await axios.get(`http://localhost:5000/api/ai-planner/getUserStudyPlans/${userId}`)
+      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/ai-planner/getUserStudyPlans/${userId}`)
       console.log("API response:", response.data)
       if (response.data.success && response.data.data && response.data.data.length > 0){
         setUserPlans(response.data.data)
@@ -457,7 +457,7 @@ const PlannerForm: React.FC = () => {
       // If a specific plan ID is provided, load that plan
       if (planId) {
         try {
-          const response = await axios.get(`http://localhost:5000/api/ai-planner/getStudyPlan/${planId}`)
+          const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/ai-planner/getStudyPlan/${planId}`)
 
           if (response.data.success && response.data.data) {
             setStudyPlan(response.data.data)

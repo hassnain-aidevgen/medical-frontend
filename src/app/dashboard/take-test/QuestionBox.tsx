@@ -86,7 +86,7 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
         try {
           // Question analytics API call
           const response = await axios.get(
-            `http://localhost:5000/api/test/take-test/question-analytics/${question._id}`,
+            `https://medical-backend-loj4.onrender.com/api/test/take-test/question-analytics/${question._id}`,
           )
           setAnalytics(response.data)
         } catch (error) {
@@ -124,7 +124,7 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
           
           // Call your backend API that will use OpenAI
           const response = await axios.post(
-            `http://localhost:5000/api/test/ai-explain`,
+            `https://medical-backend-loj4.onrender.com/api/test/ai-explain`,
             {
               question: question.question,
               options: safeOptions,

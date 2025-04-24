@@ -43,7 +43,7 @@ const SuccessMessage: React.FC<SuccessMessageProps> = ({ onViewPlan }) => {
       </motion.div>
       <h2 className="text-2xl font-bold text-gray-800 mb-2">Plan Generated Successfully!</h2>
       <p className="text-gray-600 mb-4">Your personalized study plan has been created and is ready to view.</p>
-      <motion.button
+      {/* <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-lg flex items-center justify-center mx-auto"
@@ -51,7 +51,7 @@ const SuccessMessage: React.FC<SuccessMessageProps> = ({ onViewPlan }) => {
       >
         <BookMarked className="mr-2" size={18} />
         View Your Plan
-      </motion.button>
+      </motion.button> */}
     </motion.div>
   )
 }
