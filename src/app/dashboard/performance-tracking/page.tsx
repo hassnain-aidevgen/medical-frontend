@@ -995,37 +995,11 @@ export default function AnalyticsDashboard() {
   animate={{ opacity: 1, y: 0 }}
   transition={{ duration: 0.5, delay: 0.6 }}
 >
-  <Card>
-    <CardHeader>
-      <div className="flex items-center justify-between">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5 text-primary" />
-            Exam Coverage Reports
-          </CardTitle>
-          <CardDescription>
-            Track your progress toward specific exam requirements
-          </CardDescription>
-        </div>
-        <Select defaultValue={EXAM_TYPES[0].id} onValueChange={(value) => setSelectedExamType(value)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select exam" />
-          </SelectTrigger>
-          <SelectContent>
-            {EXAM_TYPES.map((exam) => (
-              <SelectItem key={exam.id} value={exam.id}>
-                {exam.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </CardHeader>
-    <CardContent>
-      {/* Add the ExamCoverageReport component here */}
-      <ExamCoverageReport />
-    </CardContent>
-  </Card>
+<Card>
+  <CardContent>
+    <ExamCoverageReport />
+  </CardContent>
+</Card>
 </motion.div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1306,6 +1280,7 @@ export default function AnalyticsDashboard() {
                                 onClick={() => {
                                   console.log("Navigating to flashcard review for questionId:", q.questionId);
                                   localStorage.setItem("flashcardTab", "reviews");
+                                  localStorage.setItem("flashcardReviewId", q.questionText); // new line
                                   router.push("/dashboard/flash-cards");
                                 }}
                               >

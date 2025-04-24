@@ -97,6 +97,7 @@ const ExamCoverageReport = () => {
     createdAt: string;
     percentage: number;
     totalQuestions: number;
+    totalTime: number; // <-- Add this line
     coverage: {
       questionCountCoverage: number;
     };
@@ -419,7 +420,7 @@ const ExamCoverageReport = () => {
                     <p className="text-xs text-muted-foreground mt-2">
                       You&apos;ve practiced for {Math.round((coverageData.aggregatedCoverage?.totalTimeHours || 0) * 10) / 10} hours
                       {coverageData.aggregatedCoverage?.examSpecifics ? 
-                        ` out of a recommended ${getExamDurationHours(coverageData.examType) * 3} hours` : 
+                        ` out of a recommended ${getExamDurationHours(selectedExamType as keyof typeof examData) * 3} hours` : 
                         ""}
                     </p>
                   </div>
@@ -474,7 +475,7 @@ const ExamCoverageReport = () => {
                       <p className="text-sm text-muted-foreground mt-1">
                         You have a good start, but need more timed practice under exam conditions. Try to complete
                         {coverageData.aggregatedCoverage?.examSpecifics ? 
-                          ` at least ${Math.round(getExamDurationHours(coverageData.examType))} more hours` : 
+                          ` at least ${Math.round(getExamDurationHours(selectedExamType as keyof typeof examData))} more hours` : 
                           " at least 4 more hours"} of timed practice.
                       </p>
                     </div>

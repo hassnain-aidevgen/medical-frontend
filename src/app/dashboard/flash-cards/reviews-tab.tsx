@@ -338,6 +338,7 @@ export default function ReviewsTab({
           <AnimatePresence mode="wait">
             <motion.div
               key={currentReviewCard}
+              id={`flashcard-${reviewCards[currentReviewCard]?.question}`} // 👈 add this line
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -50 }}

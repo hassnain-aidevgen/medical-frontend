@@ -200,6 +200,23 @@ export default function FlashcardsPage() {
       fetchReviewCards()
     }
   }, [activeTab, fetchReviewCards, userId])
+  // Scroll to specific flashcard if coming from performance tracking
+useEffect(() => {
+  if (activeTab === "reviews") {
+    const reviewId = localStorage.getItem("flashcardReviewId")
+    if (reviewId) {
+      // Wait for cards to render (just in case)
+      setTimeout(() => {
+        const el = document.getElementById(`flashcard-${reviewId}`)
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" })
+        }
+        localStorage.removeItem("flashcardReviewId")
+      }, 300)
+    }
+  }
+}, [activeTab])
+
 
   // Filter cards when search query changes
   useEffect(() => {
