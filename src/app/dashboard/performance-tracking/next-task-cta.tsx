@@ -1,11 +1,12 @@
 "use client"
 
+import { DialogFooter } from "@/components/ui/dialog"
+
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -14,6 +15,7 @@ import { Progress } from "@/components/ui/progress"
 import { motion } from "framer-motion"
 import { AlertTriangle, ArrowRight, BookOpen, Brain, CheckCircle2, Info, Target, Zap } from "lucide-react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 interface TopicMasteryData {
   name: string
@@ -36,6 +38,7 @@ export default function NextTaskCTA({
   onStartStudy,
 }: NextTaskCTAProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const router = useRouter()
 
   // Get the weakest topic (first in the array)
   const weakestTopic = weakestTopics && weakestTopics.length > 0 ? weakestTopics[0] : null
@@ -109,11 +112,42 @@ export default function NextTaskCTA({
     }
   }
 
+  // Create a test focused on the specific topic
+  const createTopicTest = (topicName: string) => {
+    try {
+      // Format the topic name to match database format (if needed)
+      const formattedTopicName = topicName.trim()
+
+      // Default test parameters - USING THE CORRECT PARAMETER NAMES
+      const params = new URLSearchParams({
+        subjects: formattedTopicName, // Use 'subjects' instead of 'topicName'
+        subsections: "", // Include empty subsections parameter
+        count: "10", // Default to 10 questions
+        exam_type: localStorage.getItem("selectedExam") || "USMLE Step 1", // Use saved exam or default
+        // Note: Using exam_type instead of targetExam
+      })
+
+      // Force cache bust with timestamp
+      params.append("t", Date.now().toString())
+
+      console.log(`Creating topic test for: ${formattedTopicName}`, params.toString())
+
+      // Navigate to the test page
+      router.push(`/dashboard/take-test?${params.toString()}`)
+    } catch (error) {
+      console.error("Error creating topic test:", error)
+    }
+  }
+
   // Handle the start study button click
   const handleStartStudy = () => {
     if (onStartStudy) {
       onStartStudy(weakestTopic.name)
     }
+
+    // Create a test focused on this topic
+    createTopicTest(weakestTopic.name)
+
     setIsDialogOpen(false)
   }
 
@@ -360,4 +394,3 @@ export default function NextTaskCTA({
     </motion.div>
   )
 }
-

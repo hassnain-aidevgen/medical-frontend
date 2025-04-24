@@ -416,7 +416,7 @@ export default function AnalyticsDashboard() {
   const fetchWeakSubjects = async (userId: string) => {
     try {
       // Fetch performance data from your new endpoint
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/get-performance/${userId}`)
+      const response = await axios.get(`http://localhost:5000/api/test/get-performance/${userId}`)
 
       if (response.data.success && response.data.data) {
         setUserPerformanceData(response.data.data)
@@ -1887,16 +1887,6 @@ export default function AnalyticsDashboard() {
                   </motion.div>
                 </Card>
               </motion.div>
-
-              {/* Add FlashcardSuggestions component here */}
-              {/* <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="lg:col-span-3"
-              >
-                <FlashcardSuggestions performanceData={performanceData} isLoading={loading.performance} />
-              </motion.div> */}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 lg:col-span-3">
                 <NextTaskCTA

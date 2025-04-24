@@ -24,6 +24,7 @@ import Link from "next/link"
 
 // API base URL from environment variable or default
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api"
+const API_BASE_URL2 = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
 
 interface MentorData {
     _id: string
@@ -235,7 +236,7 @@ export default function MentorRequestsPage() {
     
         try {
             await axios.post(
-                `${API_BASE_URL}/booking/approve/${requestToApprove._id}`,
+                `${API_BASE_URL2}/booking/approve/${requestToApprove._id}`,
                 {
                     date: selectedDate,
                     time: selectedTime,

@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowRight, Mail, Search } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import axios from "axios"
 // import SupportTicketPanel from "./SupportTicketPanel"
 import AutoSuggestionEngine from "./AutoSuggestionEngine"
 import ContextualFAQ from "./ContextualFAQ"
@@ -14,6 +15,8 @@ import ContextualFAQ from "./ContextualFAQ"
 export default function FAQPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedContextDemo, setSelectedContextDemo] = useState("booking")
+  const [aiResponse, setAiResponse] = useState("")
+  const [isLoadingAi, setIsLoadingAi] = useState(false)
 
   // FAQ categories and questions
   const faqCategories = [
@@ -188,6 +191,39 @@ export default function FAQPage() {
     { id: "privacy", name: "Privacy" },
   ]
 
+  // Effect to get AI response when no results are found
+  useEffect(() => {
+    const getAiResponse = async () => {
+      // Only fetch if there's a search query and no results found
+      if (searchQuery && filteredFAQs.length === 0) {
+        setIsLoadingAi(true);
+        try {
+          const response = await axios.post("http://localhost:5000/api/test/answer", {
+            question: searchQuery
+          });
+          
+          if (response.data.success) {
+            setAiResponse(response.data.answer);
+          } else {
+            setAiResponse("Sorry, I couldn't generate a response at this time.");
+          }
+        } catch (error) {
+          console.error("Error fetching AI response:", error);
+          setAiResponse("Sorry, I couldn't generate a response at this time.");
+        } finally {
+          setIsLoadingAi(false);
+        }
+      }
+    };
+
+    // Add a small delay to avoid too many API calls while typing
+    const timeoutId = setTimeout(() => {
+      getAiResponse();
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, filteredFAQs.length]);
+
   return (
     <div className="min-h-screen ">
       <main className="container py-8">
@@ -224,11 +260,23 @@ export default function FAQPage() {
 
             {searchQuery && filteredFAQs.length === 0 ? (
               <div className="text-center py-12">
-                <h3 className="text-lg font-medium mb-2">No results found</h3>
-                <p className="text-muted-foreground mb-6">
-                  We couldn&apos;t find any FAQs matching your search. Try different keywords or browse by category.
-                </p>
-                <Button variant="outline" onClick={() => setSearchQuery("")}>
+                <h3 className="text-lg font-medium mb-2">No results found in our FAQ</h3>
+                {isLoadingAi ? (
+                  <p className="text-muted-foreground mb-6">Getting an AI response for you...</p>
+                ) : aiResponse ? (
+                  <div className="max-w-3xl mx-auto text-left bg-muted/30 p-6 rounded-lg mb-6">
+                    <h4 className="font-medium mb-3">AI Response:</h4>
+                    <p className="text-muted-foreground whitespace-pre-line">{aiResponse}</p>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground mb-6">
+                    We couldn&apos;t find any FAQs matching your search. Try different keywords or browse by category.
+                  </p>
+                )}
+                <Button variant="outline" onClick={() => {
+                  setSearchQuery("");
+                  setAiResponse("");
+                }}>
                   Clear Search
                 </Button>
               </div>
@@ -351,4 +399,3 @@ export default function FAQPage() {
     </div>
   )
 }
-
