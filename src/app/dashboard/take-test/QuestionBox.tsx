@@ -33,7 +33,7 @@ type QuestionBoxProps = {
     topic?: string
     targetExam?: string
   }
-  
+
   selectedAnswer: string | undefined
   onAnswerSelect: (answer: string) => void
   questionNumber: number
@@ -86,19 +86,19 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
         try {
           // Question analytics API call
           const response = await axios.get(
-            `https://medical-backend-loj4.onrender.com/api/test/take-test/question-analytics/${question._id}`,
+            `http://localhost:5000/api/test/take-test/question-analytics/${question._id}`,
           )
           setAnalytics(response.data)
         } catch (error) {
           console.error("Error fetching question analytics:", error)
-          
+
           // Set default analytics data even when there's an error
           setAnalytics({
             totalAttempts: 3,
             avgResponseTime: 35,
             correctPercentage: 70
           });
-          
+
           setAnalyticsError("Failed to load question analytics")
         } finally {
           setIsLoadingAnalytics(false)
@@ -121,7 +121,7 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
         try {
           // Make sure options is properly formatted before sending
           const safeOptions = Array.isArray(question.options) ? question.options : [];
-          
+
           // Call your backend API that will use OpenAI
           const response = await axios.post(
             `https://medical-backend-loj4.onrender.com/api/test/ai-explain`,
@@ -136,20 +136,19 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
           setAiExplanation(response.data.explanation)
         } catch (error) {
           console.error("Error fetching AI explanation:", error)
-          
+
           // Create a basic fallback explanation in case the server fails completely
           const localFallbackExplanation = `
 The correct answer is: ${question.answer}
 
-This question tests your understanding of medical concepts related to ${
-  question.subsectionDisplay || question.subjectDisplay || "this topic"
-}.
+This question tests your understanding of medical concepts related to ${question.subsectionDisplay || question.subjectDisplay || "this topic"
+            }.
 
 To remember this concept: Focus on connecting the key symptoms or findings with the most appropriate medical approach.
 
 Note: A more detailed explanation will be available when our explanation service is fully online.
           `;
-          
+
           setAiExplanation(localFallbackExplanation);
           setAiExplanationError("Failed to load AI explanation")
         } finally {
@@ -221,8 +220,8 @@ Note: A more detailed explanation will be available when our explanation service
             )}
             {question.difficulty && (
               <span className={`px-3 py-1 rounded-md ${question.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                  question.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-red-100 text-red-700'
+                question.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-red-100 text-red-700'
                 }`}>
                 {question.difficulty.charAt(0).toUpperCase() + question.difficulty.slice(1)}
               </span>
@@ -257,10 +256,129 @@ Note: A more detailed explanation will be available when our explanation service
             ))}
           </RadioGroup>
 
+          {/* NEW: Show analytics below question when answer is submitted */}
+          {showCorrectAnswer && (
+  <div className="mt-6 pt-4 border-t border-slate-200">
+    {/* Combined Analytics Box with Correct/Wrong Status */}
+    <div className="p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center">
+          <BarChart className="h-5 w-5 text-blue-500 mr-2" />
+          <h4 className="text-base font-medium text-slate-700">Question Analytics</h4>
+        </div>
+        
+        {/* Correct/Wrong Tag */}
+        <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+          isCorrect 
+            ? "bg-emerald-100 text-emerald-700 border border-emerald-200" 
+            : "bg-red-100 text-red-700 border border-red-200"
+        }`}>
+          {isCorrect ? "Correct" : "Wrong"}
+        </div>
+      </div>
+
+      {/* Correct Answer Display */}
+      <div className="mb-3 pb-3 border-b border-slate-100">
+        <div className="text-sm text-slate-500 mb-1">Correct Answer:</div>
+        <div className="font-medium text-slate-800">{question.answer}</div>
+      </div>
+
+      {isLoadingAnalytics && (
+        <div className="flex justify-center p-2">
+          <div className="animate-pulse flex space-x-4">
+            <div className="h-4 w-full bg-slate-200 rounded"></div>
+          </div>
+        </div>
+      )}
+      
+      {analyticsError && (
+        <div className="text-red-500 p-2 bg-red-50 rounded-md text-sm">
+          {analyticsError}
+        </div>
+      )}
+      
+      {analytics && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {/* Total Attempts with Icon */}
+          <div className="flex items-center gap-2">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-blue-500">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <div>
+              <div className="text-xs text-slate-500">Total</div>
+              <div className="font-medium text-slate-700">{analytics.totalAttempts} <span className="text-xs">attemptes</span></div>
+            </div>
+          </div>
+          
+          {/* Correct Answers with Icon */}
+          <div className="flex items-center gap-2">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-emerald-500">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+            </div>
+            <div>
+              <div className="text-xs text-slate-500">Correct</div>
+              <div className="font-medium text-slate-700">
+                {Math.round(analytics.totalAttempts * (analytics.correctPercentage / 100))} <span className="text-xs">answered correctly</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Avg Response Time with Icon */}
+          <div className="flex items-center gap-2">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-amber-500">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </div>
+            <div>
+              <div className="text-xs text-slate-500">Response Time</div>
+              <div className="font-medium text-slate-700">{analytics.avgResponseTime.toFixed(1)} <span className="text-xs">second</span></div>
+            </div>
+          </div>
+          
+          {/* Success Rate with Icon */}
+          <div className="flex items-center gap-2">
+            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+              analytics.correctPercentage >= 70 ? 'bg-emerald-100' : 
+              analytics.correctPercentage >= 40 ? 'bg-amber-100' : 'bg-red-100'
+            }`}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`h-4 w-4 ${
+                analytics.correctPercentage >= 70 ? 'text-emerald-500' : 
+                analytics.correctPercentage >= 40 ? 'text-amber-500' : 'text-red-500'
+              }`}>
+                <line x1="19" y1="5" x2="5" y2="19"></line>
+                <circle cx="6.5" cy="6.5" r="2.5"></circle>
+                <circle cx="17.5" cy="17.5" r="2.5"></circle>
+              </svg>
+            </div>
+            <div>
+              <div className="text-xs text-slate-500">Success Rate</div>
+              <div className={`font-medium ${
+                analytics.correctPercentage >= 70 ? 'text-emerald-600' : 
+                analytics.correctPercentage >= 40 ? 'text-amber-600' : 'text-red-600'
+              }`}>
+                {analytics.correctPercentage.toFixed(1)}%
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
           <div className="flex flex-wrap gap-4 mt-8">
-          {!showCorrectAnswer ? (
-  null
-) : (
+            {!showCorrectAnswer ? (
+              null
+            ) : (
               <div className="grid grid-cols-2 gap-2 w-full">
                 {/* <Button
                   variant="outline"
@@ -322,7 +440,7 @@ Note: A more detailed explanation will be available when our explanation service
         <div className="relative h-full p-6 overflow-y-auto">
           {showCorrectAnswer && (
             <div className="space-y-6">
-              <div
+              {/* <div
                 className={`p-4 rounded-lg backdrop-blur-sm bg-opacity-90 ${isCorrect ? "bg-emerald-50/90 text-emerald-700" : "bg-amber-50/90 text-amber-700"
                   }`}
               >
@@ -330,7 +448,7 @@ Note: A more detailed explanation will be available when our explanation service
                   {isCorrect ? "Excellent! That's correct." : "Let's review the correct answer:"}
                 </p>
                 <p className="mt-2 font-semibold">{question.answer}</p>
-              </div>
+              </div> */}
 
               {question.explanation && (
                 <div className="space-y-4">
@@ -369,7 +487,7 @@ Note: A more detailed explanation will be available when our explanation service
                 </div>
               </div>
 
-              <Card className="mt-6 bg-white/60 backdrop-blur-md border-white/40 shadow-xl">
+              {/* <Card className="mt-6 bg-white/60 backdrop-blur-md border-white/40 shadow-xl">
                 <CardHeader>
                   <CardTitle className="flex items-center text-base">
                     <BarChart className="mr-2 h-5 w-5" />
@@ -409,7 +527,7 @@ Note: A more detailed explanation will be available when our explanation service
                     </div>
                   )}
                 </CardContent>
-              </Card>
+              </Card> */}
             </div>
           )}
         </div>

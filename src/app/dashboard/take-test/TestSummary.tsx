@@ -19,7 +19,8 @@ import {
   Loader2,
   Share2,
   Sparkles,
-  BookOpenCheck
+  BookOpenCheck,
+  BarChart
 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -58,6 +59,13 @@ type TestSummaryProps = {
   isRecommendedTest?: boolean
 }
 
+type QuestionAnalytics = {
+  totalAttempts: number
+  avgResponseTime: number
+  correctPercentage: number
+}
+
+
 const TestSummary: React.FC<TestSummaryProps> = ({
   questions,
   selectedAnswers,
@@ -80,6 +88,8 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   const [aiFeedback, setAiFeedback] = useState<string | null>(null)
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false)
   const [feedbackError, setFeedbackError] = useState<string | null>(null)
+  const [questionAnalytics, setQuestionAnalytics] = useState<{[key: string]: QuestionAnalytics}>({});
+const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean}>({});
 
   // Check if this was a recommended test
   const isRecommendedTest = searchParams.get("isRecommendedTest") === "true"
@@ -137,6 +147,50 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       return false;
     }
   };
+
+  useEffect(() => {
+    const fetchQuestionAnalytics = async () => {
+      const analyticsPromises = questions.map(async (question) => {
+        // Skip analytics fetch for AI-generated questions
+        if (isAIGenerated || !question._id || question._id.startsWith('ai')) {
+          return { id: question._id, data: null };
+        }
+  
+        const loadingState = { ...loadingAnalytics };
+        loadingState[question._id] = true;
+        setLoadingAnalytics(loadingState);
+  
+        try {
+          const response = await axios.get(
+            `http://localhost:5000/api/test/take-test/question-analytics/${question._id}`
+          );
+          return { id: question._id, data: response.data };
+        } catch (error) {
+          console.error(`Error fetching analytics for question ${question._id}:`, error);
+          return { id: question._id, data: null };
+        } finally {
+          const updatedLoadingState = { ...loadingAnalytics };
+          updatedLoadingState[question._id] = false;
+          setLoadingAnalytics(updatedLoadingState);
+        }
+      });
+  
+      const results = await Promise.all(analyticsPromises);
+      
+      const analyticsData = results.reduce((acc, result) => {
+        if (result.id && result.data) {
+          acc[result.id] = result.data;
+        }
+        return acc;
+      }, {} as {[key: string]: QuestionAnalytics});
+      
+      setQuestionAnalytics(analyticsData);
+    };
+  
+    if (questions.length > 0 && !isAIGenerated) {
+      fetchQuestionAnalytics();
+    }
+  }, [questions]);
 
   // Fetch AI feedback when component mounts
   useEffect(() => {
@@ -275,7 +329,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
     try {
       console.log("Submitting test data to API...");
       const response = await axios.post(
-        "https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test/v2", 
+        "http://localhost:5000/api/test/take-test/submit-test/v2", 
         testData, 
         {
           headers: { "Content-Type": "application/json" },
@@ -516,7 +570,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
       </Card>
 
       {/* Target Exam Blueprint */}
-      {targetExam && (
+      {/* {targetExam && (
         <TargetedExamBlueprint
           testResult={{
             score: score,
@@ -528,7 +582,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({
           }}
           className="mb-8"
         />
-      )}
+      )} */}
 
       {error && (
         <Alert variant="destructive" className="mb-6">
@@ -623,6 +677,98 @@ const TestSummary: React.FC<TestSummaryProps> = ({
                     <p>{question.explanation}</p>
                   </div>
                 )}
+
+{!isAIGenerated && question._id && (
+  <div className="mt-4 pt-4 border-t border-slate-200">
+    <div className="flex items-center mb-2">
+      <BarChart className="h-5 w-5 text-blue-500 mr-2" />
+      <h4 className="text-base font-medium text-slate-700">Question Analytics</h4>
+    </div>
+    
+    {loadingAnalytics[question._id] ? (
+      <div className="flex justify-center p-2">
+        <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+        <span className="ml-2 text-sm text-slate-500">Loading analytics...</span>
+      </div>
+    ) : questionAnalytics[question._id] ? (
+      <div className="flex flex-wrap justify-between items-center gap-x-2 gap-y-3 mt-2">
+        <div className="flex items-center">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-blue-500">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+          <div className="ml-2">
+            <div className="text-xs text-slate-500">Total</div>
+            <div className="font-medium text-slate-700">
+              {questionAnalytics[question._id].totalAttempts} students attempted
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-emerald-500">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+          <div className="ml-2">
+            <div className="text-xs text-slate-500">Correct</div>
+            <div className="font-medium text-slate-700">
+              {Math.round(questionAnalytics[question._id].totalAttempts * (questionAnalytics[question._id].correctPercentage / 100))} answered correctly
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-amber-500">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+          <div className="ml-2">
+            <div className="text-xs text-slate-500">Response Time</div>
+            <div className="font-medium text-slate-700">
+              {questionAnalytics[question._id].avgResponseTime.toFixed(1)}s on average
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center">
+          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+            questionAnalytics[question._id].correctPercentage >= 70 ? 'bg-emerald-100' : 
+            questionAnalytics[question._id].correctPercentage >= 40 ? 'bg-amber-100' : 'bg-red-100'
+          }`}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`h-4 w-4 ${
+              questionAnalytics[question._id].correctPercentage >= 70 ? 'text-emerald-500' : 
+              questionAnalytics[question._id].correctPercentage >= 40 ? 'text-amber-500' : 'text-red-500'
+            }`}>
+              <line x1="19" y1="5" x2="5" y2="19"></line>
+              <circle cx="6.5" cy="6.5" r="2.5"></circle>
+              <circle cx="17.5" cy="17.5" r="2.5"></circle>
+            </svg>
+          </div>
+          <div className="ml-2">
+            <div className="text-xs text-slate-500">Success Rate</div>
+            <div className={`font-medium ${
+              questionAnalytics[question._id].correctPercentage >= 70 ? 'text-emerald-600' : 
+              questionAnalytics[question._id].correctPercentage >= 40 ? 'text-amber-600' : 'text-red-600'
+            }`}>
+              {questionAnalytics[question._id].correctPercentage.toFixed(1)}% get it right
+            </div>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <p className="text-sm text-slate-500">No analytics available for this question.</p>
+    )}
+  </div>
+)}
               </CardContent>
             </Card>
           )
