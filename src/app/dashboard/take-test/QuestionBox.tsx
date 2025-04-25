@@ -86,7 +86,7 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
         try {
           // Question analytics API call
           const response = await axios.get(
-            `http://localhost:5000/api/test/take-test/question-analytics/${question._id}`,
+            `https://medical-backend-loj4.onrender.com/api/test/take-test/question-analytics/${question._id}`,
           )
           setAnalytics(response.data)
         } catch (error) {

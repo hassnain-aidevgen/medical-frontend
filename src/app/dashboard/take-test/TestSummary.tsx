@@ -162,7 +162,7 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
   
         try {
           const response = await axios.get(
-            `http://localhost:5000/api/test/take-test/question-analytics/${question._id}`
+            `https://medical-backend-loj4.onrender.com/api/test/take-test/question-analytics/${question._id}`
           );
           return { id: question._id, data: response.data };
         } catch (error) {
@@ -329,7 +329,7 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
     try {
       console.log("Submitting test data to API...");
       const response = await axios.post(
-        "http://localhost:5000/api/test/take-test/submit-test/v2", 
+        "https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test/v2", 
         testData, 
         {
           headers: { "Content-Type": "application/json" },
