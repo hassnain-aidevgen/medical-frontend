@@ -12,7 +12,7 @@ const sidebarItems = [
   { name: "Leaderboard", href: "/dashboard/leaderboard", icon: PiRankingDuotone },
   { name: "Performance Tracking", href: "/dashboard/performance-tracking", icon: BarChart2 },
   { name: "Smart Study Calendar", href: "/dashboard/smart-study", icon: BookOpen },
-  { name: "Custom Weekly Goals", href: "/dashboard/custom-weekly-goals", icon: Settings },
+  // { name: "Custom Weekly Goals", href: "/dashboard/custom-weekly-goals", icon: Settings },
   // { name: "Digital Error Notebook", href: "/dashboard/digital-error-notebook", icon: Users },
   { name: "Pomodoro Timer", href: "/dashboard/pomodoro-timer", icon: Clock },
   { name: "Payments", icon: Banknote, href: "/dashboard/payments", color: "bg-blue-500" },

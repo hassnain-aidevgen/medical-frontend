@@ -675,7 +675,7 @@ const PlannerForm: React.FC = () => {
 
     try {
       const response = await axios.post(
-        `https://medical-backend-loj4.onrender.com/api/test/generatePlan?userId=${userId}`,
+        `http://localhost:5000/api/test/generatePlan?userId=${userId}`,
         submissionData,
         {
           headers: {
