@@ -311,7 +311,7 @@ export default function NewMentorPage() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="rating">Rating (0-5)</Label>
                   <Input
                     id="rating"
@@ -323,7 +323,7 @@ export default function NewMentorPage() {
                     value={formData.rating}
                     onChange={handleChange}
                   />
-                </div>
+                </div> */}
                 <div className="space-y-2">
                   <Label htmlFor="totalSessions">Total Sessions</Label>
                   <Input

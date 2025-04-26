@@ -5,7 +5,7 @@ import axios from "axios"
 import { ArrowLeft, Plus, X } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { toast, Toaster } from "react-hot-toast"
 import { z } from "zod"
@@ -20,6 +20,12 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
+
+
+interface ExamType {
+  _id: string
+  name: string
+}
 
 // Update the form schema to support multiple videos
 const formSchema = z.object({
@@ -49,6 +55,7 @@ const formSchema = z.object({
   source: z.string({
     required_error: "Please select a source.",
   }),
+  examType: z.string().optional(),
   thumbnail: z.any().optional(),
   videoUrl: z
     .string()
@@ -77,6 +84,15 @@ export default function CreateCoursePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [newObjective, setNewObjective] = useState("")
   const [newPrerequisite, setNewPrerequisite] = useState("")
+  const [newVideoTitle, setNewVideoTitle] = useState("")
+  const [newVideoUrl, setNewVideoUrl] = useState("")
+  const [newVideoDescription, setNewVideoDescription] = useState("")
+  // Add state for exam types
+  const [examTypes, setExamTypes] = useState<ExamType[]>([])
+  const [isLoadingExamTypes, setIsLoadingExamTypes] = useState(false)
+
+  // Add hasMounted state to prevent hydration errors
+  const [hasMounted, setHasMounted] = useState(false)
 
   // Add state for managing videos
   const form = useForm<z.infer<typeof formSchema>>({
@@ -89,21 +105,101 @@ export default function CreateCoursePage() {
       price: 0,
       duration: "",
       featured: false,
+      examType: "", 
       objectives: [],
       prerequisites: [],
       videos: [],
     },
   })
 
-  // Add these new state variables and functions after the existing ones
-  const [newVideoTitle, setNewVideoTitle] = useState("")
-  const [newVideoUrl, setNewVideoUrl] = useState("")
-  const [newVideoDescription, setNewVideoDescription] = useState("")
-
   const { watch, setValue } = form
   const objectives = watch("objectives") || []
   const prerequisites = watch("prerequisites") || []
   const videos = watch("videos") || []
+
+    // Set hasMounted to true after component mounts
+    useEffect(() => {
+      setHasMounted(true)
+    }, [])
+  
+    // Fetch exam types after component mounts
+    useEffect(() => {
+      // Skip if not mounted yet to prevent hydration errors
+      if (!hasMounted) return
+    
+      const fetchExamTypes = async () => {
+        setIsLoadingExamTypes(true)
+        try {
+          let token = null
+          
+          // Move localStorage access inside a try/catch and only run client-side
+          if (typeof window !== 'undefined') {
+            try {
+              token = localStorage.getItem("token")
+            } catch (error) {
+              console.error("Error accessing localStorage:", error)
+            }
+          }
+    
+          if (!token) {
+            // Handle silently without redirect to prevent hydration errors
+            console.error("Authentication token not found")
+            setIsLoadingExamTypes(false)
+            return
+          }
+    
+          // Updated API call with better error handling
+          try {
+            console.log("Fetching exam types from API...")
+            
+            // Set proper API URL - could be moved to environment variable
+            const apiUrl = "http://localhost:5000/api/courses/examtypes"
+            console.log(`API URL: ${apiUrl}`)
+            
+            const response = await axios.get(apiUrl, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            })
+    
+            console.log("API Response:", response.data)
+    
+            if (response.data && response.data.success) {
+              setExamTypes(response.data.data || [])
+            } else {
+              console.error("Failed to fetch exam types:", response.data?.error || "Unknown error")
+              // Show toast only after component is fully mounted
+              if (hasMounted) {
+                toast.error("Could not load exam types")
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching exam types:", error)
+            
+            // Detailed error logging
+            if (axios.isAxiosError(error)) {
+              console.error("API Error Status:", error.response?.status)
+              console.error("API Error Data:", error.response?.data)
+              
+              // Show toast error only after component is fully mounted
+              if (hasMounted) {
+                if (error.response?.status === 404) {
+                  toast.error("Exam types API endpoint not found. Please contact support.")
+                } else {
+                  toast.error(`Error loading exam types: ${error.message}`)
+                }
+              }
+            }
+          }
+        } finally {
+          setIsLoadingExamTypes(false)
+        }
+      }
+    
+      fetchExamTypes()
+    }, [hasMounted])
+  
+
 
   const addObjective = () => {
     if (newObjective.trim()) {
@@ -174,7 +270,8 @@ export default function CreateCoursePage() {
 
       // Create a regular JavaScript object instead of FormData
       // This is because your backend is using express-fileupload which handles files differently
-      const courseData: Record<string, string | number | boolean | string[] | object[]> = {}
+      // const courseData: Record<string, string | number | boolean | string[] | object[]> = {}
+      const courseData: Record<string, any> = {}
 
       // Add all form fields to the object
       Object.entries(values).forEach(([key, value]) => {
@@ -195,8 +292,12 @@ export default function CreateCoursePage() {
 
       console.log("Course data prepared:", courseData)
 
-      // Get the auth token from localStorage
-      const token = localStorage.getItem("token")
+      let token = null
+      try {
+        token = localStorage.getItem("token")
+      } catch (error) {
+        console.error("Error accessing localStorage:", error)
+      }
       if (!token) {
         toast.error("Authentication token not found. Please log in again.")
         router.push("/login")
@@ -292,6 +393,28 @@ export default function CreateCoursePage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (typeof window === 'undefined') {
+    return null; // Return null during SSR
+  }
+
+  // Show loading state if mounted but still loading
+  if (!hasMounted) {
+    return (
+      <div className="flex-1 space-y-4 p-8 pt-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Create Course</h2>
+            <p className="text-muted-foreground">Add a new course to the platform</p>
+          </div>
+        </div>
+        <Separator />
+        <div className="flex items-center justify-center p-8">
+          <p>Loading form...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -396,6 +519,43 @@ export default function CreateCoursePage() {
                   )}
                 />
               </div>
+
+               {/* Add Exam Type Field */}
+               <FormField
+                control={form.control}
+                name="examType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Target Exam</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select target exam" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {isLoadingExamTypes ? (
+                          <SelectItem value="loading" disabled>
+                            Loading exam types...
+                          </SelectItem>
+                        ) : examTypes.length > 0 ? (
+                          examTypes.map((examType) => (
+                            <SelectItem key={examType._id} value={examType._id}>
+                              {examType.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>
+                            No exam types available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>The target exam this course prepares students for.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="grid gap-4 grid-cols-2">
                 <FormField
@@ -729,7 +889,7 @@ export default function CreateCoursePage() {
               {isSubmitting ? "Creating..." : "Create Course"}
             </Button>
           </div>
-          {process.env.NODE_ENV === "development" && (
+          {/* {process.env.NODE_ENV === "development" && (
             <div className="mt-8 p-4 border border-dashed border-gray-300 rounded-md">
               <h3 className="text-sm font-medium mb-2">Debug Information</h3>
               <div className="text-xs text-muted-foreground space-y-1">
@@ -746,7 +906,7 @@ export default function CreateCoursePage() {
                 )}
               </div>
             </div>
-          )}
+          )} */}
         </form>
       </Form>
       <Toaster position="top-right" />

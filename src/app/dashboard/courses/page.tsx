@@ -39,6 +39,11 @@ declare module "@/types" {
       order?: number
     }[]
     contentLinks: string[]
+    examType?: {
+      _id: string
+      name: string
+      description?: string
+    }
   }
 }
 
@@ -52,11 +57,25 @@ export default function CoursesPage() {
   const [priceRange, setPriceRange] = useState([0, 1000])
   const [sourceFilter, setSourceFilter] = useState<string[]>([])
   const [purchasedCourses, setPurchasedCourses] = useState<Course[]>([])
+  const [examTypeFilter, setExamTypeFilter] = useState("all") // Add exam type filter
 
   // New filter states
   const [topicFilter, setTopicFilter] = useState("all")
   const [priceCeiling, setPriceCeiling] = useState(1000)
   const [medicalTopics, setMedicalTopics] = useState<string[]>([])
+  const [examTypes, setExamTypes] = useState<{ _id: string; name: string }[]>([]) // Add exam types state
+
+  const getExamTypeName = (examTypeId: string) => {
+    // Map of exam type IDs to names
+    const examTypeNames: Record<string, string> = {
+      "68016229696d8f4a238862cf": "USMLE Step 1",
+      "680163b3696d8f4a238862d6": "USMLE Step 2",
+      "680163cc696d8f4a238862d9": "USMLE Step 3",
+      // Add more mappings as needed
+    }
+
+    return examTypeNames[examTypeId] || "Medical Exam"
+  }
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -79,8 +98,70 @@ export default function CoursesPage() {
           reviewCount: Math.floor(Math.random() * 100) + 1, // Random number of reviews
         }))
 
+
+        console.log(
+          "Course with exam type example:",
+          dataWithRatings.find((course: Course) => course.examType !== undefined),
+        )
+
+        console.log("Courses data:", dataWithRatings)
+
+        // Extract available exam types from the courses data and normalize them
+        const uniqueExamTypes = dataWithRatings
+          .filter((course: any) => course.examType)
+          .map((course: any) => {
+            // Convert string exam types to objects for consistency
+            if (typeof course.examType === "string") {
+              return {
+                _id: course.examType,
+                name: getExamTypeName(course.examType),
+              }
+            }
+            return course.examType
+          })
+          .filter(
+            (examType: any, index: number, self: any[]) => index === self.findIndex((t: any) => t._id === examType._id),
+          )
+
+        // Add USMLE steps if they don't exist in the API response
+        const usmleSteps = [
+          { _id: "68016229696d8f4a238862cf", name: "USMLE Step 1" },
+          { _id: "680163b3696d8f4a238862d6", name: "USMLE Step 2" },
+          { _id: "680163cc696d8f4a238862d9", name: "USMLE Step 3" },
+        ]
+
+        // Combine API exam types with USMLE steps, avoiding duplicates
+        const combinedExamTypes = [...uniqueExamTypes]
+
+        usmleSteps.forEach((step) => {
+          // Check if this step already exists in our combined list
+          const exists = combinedExamTypes.some((type) => type._id === step._id || type.name === step.name)
+
+          // If it doesn't exist, add it
+          if (!exists) {
+            combinedExamTypes.push(step)
+          }
+        })
+
+        setExamTypes(combinedExamTypes)
+        console.log("Available exam types:", combinedExamTypes)
+
+        // Add these debug logs right after setting the courses state to see what's happening with exam types
+
         setCourses(dataWithRatings)
         // setFilteredCourses(dataWithRatings)
+
+
+        // Debug logs to check exam types in courses
+        console.log(
+          "Courses with exam types:",
+          dataWithRatings.filter((course: Course) => course.examType),
+        )
+        console.log(
+          "First course with exam type:",
+          dataWithRatings.find((course: Course) => course.examType),
+        )
+        console.log("Exam type structure:", dataWithRatings.find((course: Course) => course.examType)?.examType)
 
         // Extract medical topics from course data
         const topics = extractMedicalTopics(dataWithRatings)
@@ -135,11 +216,26 @@ export default function CoursesPage() {
       filtered = filtered.filter((course) => sourceFilter.includes(course.source))
     }
 
+    // Apply exam type filter
+    if (examTypeFilter !== "all") {
+      filtered = filtered.filter((course) => {
+        if (!course.examType) return false
+
+        // Handle both string and object exam types
+        if (typeof course.examType === "string") {
+          return course.examType === examTypeFilter
+        } else {
+          return course.examType._id === examTypeFilter
+        }
+      })
+    }
+
+
     // Apply topic and price ceiling filters
     filtered = applyTopicAndPriceFilters(filtered, topicFilter, priceCeiling) as Course[]
 
     setFilteredCourses(filtered)
-  }, [searchQuery, categoryFilter, levelFilter, priceRange, sourceFilter, courses, topicFilter, priceCeiling, purchasedCourses])
+  }, [searchQuery, categoryFilter, levelFilter, priceRange, sourceFilter, courses, topicFilter, priceCeiling, purchasedCourses, examTypeFilter,])
 
   const categories = ["Development", "Design", "Data Science", "Business", "Marketing"]
   const levels: Array<Course["level"]> = ["Beginner", "Intermediate", "Advanced"]
@@ -158,12 +254,12 @@ export default function CoursesPage() {
     try {
       // Assuming we have the user ID stored somewhere (e.g., in localStorage or context)
       const userId = localStorage.getItem('Medical_User_Id') // Replace with your actual user ID source
-      
+
       if (!userId) {
         console.log("User not logged in, skipping purchased courses fetch")
         return
       }
-      
+
       const response = await fetch(`https://medical-backend-loj4.onrender.com/api/course-purchase/user-courses?userId=${userId}`, {
         method: "GET",
         headers: {
@@ -171,13 +267,13 @@ export default function CoursesPage() {
           // "Authorization": `Bearer ${localStorage.getItem('token')}` // Assuming you use JWT
         }
       })
-      
+
       if (!response.ok) {
         throw new Error("Failed to fetch purchased courses")
       }
-      
+
       const { success, courses } = await response.json()
-      
+
       if (success) {
         // Add ratings to purchased courses as well
         const purchasedWithRatings = courses.map((course: any) => ({
@@ -185,7 +281,7 @@ export default function CoursesPage() {
           rating: Math.random() * 4 + 1,
           reviewCount: Math.floor(Math.random() * 100) + 1,
         }))
-        
+
         setPurchasedCourses(purchasedWithRatings)
       }
     } catch (error) {
@@ -208,7 +304,7 @@ export default function CoursesPage() {
           <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 mb-8">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Courses</h1>
-              <p className="text-muted-foreground">e our collection of courses to accelerate your learning journey.</p>
+              <p className="text-muted-foreground">Explore our collection of courses to accelerate your learning journey.</p>
             </div>
             <div className="flex items-center gap-2">
               <Sheet>
@@ -224,6 +320,25 @@ export default function CoursesPage() {
                     <SheetDescription>Narrow down courses based on your preferences.</SheetDescription>
                   </SheetHeader>
                   <div className="grid gap-6 py-6">
+                    {/* Exam Type Filter */}
+                    {examTypes.length > 0 && (
+                      <div className="space-y-2">
+                        <h3 className="text-sm font-medium">Exam Preparation</h3>
+                        <Select value={examTypeFilter} onValueChange={setExamTypeFilter}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select exam type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Exam Types</SelectItem>
+                            {examTypes.map((examType) => (
+                              <SelectItem key={examType._id} value={examType._id}>
+                                {examType.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     {/* New Medical Topic Filter */}
                     <div className="space-y-2">
                       <h3 className="text-sm font-medium">Medical Topic</h3>
@@ -339,6 +454,7 @@ export default function CoursesPage() {
                         setSourceFilter([])
                         setTopicFilter("all")
                         setPriceCeiling(1000)
+                        setExamTypeFilter("all")
                       }}
                     >
                       Reset Filters
@@ -360,58 +476,65 @@ export default function CoursesPage() {
           </div>
 
           {purchasedCourses.length > 0 && (
-  <div className="mb-12">
-    <h2 className="text-2xl font-bold tracking-tight mb-6">Your Courses</h2>
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {purchasedCourses.map((course) => (
-        <Card key={course._id} className="overflow-hidden flex flex-col">
-          <CardHeader className="p-0">
-            {typeof course.thumbnail === "string" && course.thumbnail.startsWith("http") ? (
-              <Image
-                src={course.thumbnail || "/placeholder.svg"}
-                alt={course.title}
-                width={384}
-                height={192}
-                className="h-48 w-full object-cover"
-                onError={(e) => {
-                  // Fall back to placeholder if image fails to load
-                  e.currentTarget.src = "/placeholder.svg"
-                }}
-              />
-            ) : (
-              <div className="h-48 w-full bg-muted flex items-center justify-center">
-                <span className="text-muted-foreground">No image available</span>
+            <div className="mb-12">
+              <h2 className="text-2xl font-bold tracking-tight mb-6">Your Courses</h2>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {purchasedCourses.map((course) => (
+                  <Card key={course._id} className="overflow-hidden flex flex-col">
+                    <CardHeader className="p-0">
+                      {typeof course.thumbnail === "string" && course.thumbnail.startsWith("http") ? (
+                        <Image
+                          src={course.thumbnail || "/placeholder.svg"}
+                          alt={course.title}
+                          width={384}
+                          height={192}
+                          className="h-48 w-full object-cover"
+                          onError={(e) => {
+                            // Fall back to placeholder if image fails to load
+                            e.currentTarget.src = "/placeholder.svg"
+                          }}
+                        />
+                      ) : (
+                        <div className="h-48 w-full bg-muted flex items-center justify-center">
+                          <span className="text-muted-foreground">No image available</span>
+                        </div>
+                      )}
+                    </CardHeader>
+                    <CardContent className="p-6 flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge>{course.category}</Badge>
+                        <Badge variant="outline">{course.level}</Badge>
+                        {course.examType && (
+                          <Badge variant="outline" className="border-black text-black">
+                            {typeof course.examType === "string"
+                              ? getExamTypeName(course.examType)
+                              : course.examType.name || getExamTypeName(course.examType._id)}
+                          </Badge>
+                        )}
+                      </div>
+                      <CardTitle className="mb-2 line-clamp-1">{course.title}</CardTitle>
+                      <CourseRating rating={course.rating} reviewCount={course.reviewCount} size="sm" className="mb-2" />
+                      <CardDescription className="line-clamp-2 mb-2">{course.description}</CardDescription>
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <span>Instructor: {course.instructor}</span>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-between p-6 pt-0 mt-auto">
+                      <div className="flex items-center">
+                        <Badge variant="success" className="bg-green-100 text-green-800">Purchased</Badge>
+                      </div>
+                      <Link href={`/dashboard/courses/${course._id}`}>
+                        <Button size="sm">View Course</Button>
+                      </Link>
+                    </CardFooter>
+                  </Card>
+                ))}
               </div>
-            )}
-          </CardHeader>
-          <CardContent className="p-6 flex-1">
-            <div className="flex items-center justify-between mb-2">
-              <Badge>{course.category}</Badge>
-              <Badge variant="outline">{course.level}</Badge>
             </div>
-            <CardTitle className="mb-2 line-clamp-1">{course.title}</CardTitle>
-            <CourseRating rating={course.rating} reviewCount={course.reviewCount} size="sm" className="mb-2" />
-            <CardDescription className="line-clamp-2 mb-2">{course.description}</CardDescription>
-            <div className="flex items-center text-sm text-muted-foreground">
-              <span>Instructor: {course.instructor}</span>
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-between p-6 pt-0 mt-auto">
-            <div className="flex items-center">
-              <Badge variant="success" className="bg-green-100 text-green-800">Purchased</Badge>
-            </div>
-            <Link href={`/dashboard/courses/${course._id}`}>
-              <Button size="sm">View Course</Button>
-            </Link>
-          </CardFooter>
-        </Card>
-      ))}
-    </div>
-  </div>
-)}
-         <h2 className="text-2xl font-bold tracking-tight mb-6">All Courses</h2>
+          )}
+          <h2 className="text-2xl font-bold tracking-tight mb-6">All Courses</h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          
+
             {loading ? (
               Array(8)
                 .fill(0)
@@ -448,6 +571,7 @@ export default function CoursesPage() {
                     setSourceFilter([])
                     setTopicFilter("all")
                     setPriceCeiling(1000)
+                    setExamTypeFilter("all")
                   }}
                 >
                   Reset All Filters
@@ -476,9 +600,16 @@ export default function CoursesPage() {
                     )}
                   </CardHeader>
                   <CardContent className="p-6 flex-1">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-wrap gap-2 mb-2">
                       <Badge>{course.category}</Badge>
                       <Badge variant="outline">{course.level}</Badge>
+                      {course.examType && (
+                        <Badge variant="outline" className="border-black text-black">
+                          {typeof course.examType === "string"
+                            ? getExamTypeName(course.examType)
+                            : course.examType.name || getExamTypeName(course.examType._id)}
+                        </Badge>
+                      )}
                     </div>
                     <CardTitle className="mb-2 line-clamp-1">{course.title}</CardTitle>
                     {/* Add course rating component below the title */}

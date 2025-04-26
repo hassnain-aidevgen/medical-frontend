@@ -18,7 +18,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-
+import MentorshipsWidget from "@/components/upcoming-mentorships"
+import { OngoingCourses } from "@/components/ongoing-courses"
 import DashboardStudyPlan from "@/components/DashboardStudyPlan"
 import ChallengeButton from "@/components/challenge-button"
 import DailyChallengeButton from "@/components/daily-challenge-button"
@@ -548,6 +549,13 @@ export default function DashboardPage() {
           <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
             <DashboardToday />
           </div>
+          {/* Add OngoingCourses here */}
+<div className="mb-6">
+  <OngoingCourses />
+</div>
+<div className="col-span-1">
+        <MentorshipsWidget />
+      </div>
 
           {/* Weekly Performance Component */}
           <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">

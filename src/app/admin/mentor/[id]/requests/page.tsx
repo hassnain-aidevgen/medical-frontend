@@ -1,4 +1,7 @@
 "use client"
+// import { DialogFooter } from "@/components/ui/dialog"
+
+import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -247,6 +250,47 @@ export default function MentorRequestsPage() {
                     },
                 }
             );
+
+             // Then, add the mentorship session to the user's calendar
+      try {
+        // Create a calendar entry for the mentorship session
+        const calendarEntry = {
+          userId: requestToApprove.userId,
+          subjectName: `Mentorship: ${requestToApprove.mentor?.name || "Mentor"}`,
+          testTopic: requestToApprove.mentorship?.title || "Mentorship Session",
+          date: selectedDate,
+          color: "#8B5CF6", // Purple color to distinguish mentorship sessions
+          completed: false,
+          source: "manual", // Changed from "mentorship" to "manual" to match valid enum values
+          taskType: "mentorship", // Special task type for mentorship
+          duration: Number.parseInt(requestToApprove.mentorship?.duration) || 60, // Duration in minutes
+          priority: "high", // Mentorship sessions are high priority
+        }
+
+        console.log("CALENDAR ENTRY DATA:", calendarEntry)
+
+        // Send to the calendar API
+        try {
+          const calendarResponse = await axios.post(
+            "https://medical-backend-loj4.onrender.com/api/test/calender",
+            calendarEntry,
+          )
+
+          console.log("CALENDAR API RESPONSE:", calendarResponse.data)
+          console.log("Mentorship added to user's calendar successfully")
+        } catch (calendarError) {
+          if (axios.isAxiosError(calendarError)) {
+            console.error("CALENDAR API ERROR:", calendarError.response?.data || calendarError.message)
+          } else {
+            console.error("CALENDAR API ERROR:", calendarError)
+          }
+          console.error("FULL ERROR OBJECT:", calendarError)
+          // Continue with booking success even if calendar fails
+        }
+      } catch (calendarError) {
+        console.error("Error adding mentorship to calendar:", calendarError)
+        // Continue with booking success even if calendar fails
+      }
     
             toast.success("Booking request approved successfully with scheduled date/time");
     
@@ -313,11 +357,12 @@ export default function MentorRequestsPage() {
     };
     
 
-    const filteredRequests = requests.filter(request => 
-        request.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.mentorship?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        request.date?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const filteredRequests = requests.filter(
+        (request) =>
+          request.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          request.mentorship?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          request.date?.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
 
     const pendingRequests = filteredRequests.filter(req => req.status === "pending")
     const processedRequests = filteredRequests.filter(req => req.status !== "pending")

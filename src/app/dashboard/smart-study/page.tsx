@@ -41,7 +41,7 @@ interface CalendarTest {
   color: string
   completed?: boolean
   planId?: string
-  taskType?: "study" | "review" | "practice" | "assessment"
+  taskType?: "study" | "review" | "practice" | "assessment" | "mentorship"
   duration?: number
   priority?: "high" | "medium" | "low"
   source?: "ai-planner" | "manual"
@@ -492,13 +492,31 @@ const SmartStudyCalendar = () => {
                 today.setHours(0, 0, 0, 0)
 
                 // If test has a completion status, use status-based colors
-                if (test.completed === true) {
-                  dotColor = "#22c55e" // green for complete
-                } else if (test.completed === false && testDate < today) {
-                  dotColor = "#9ca3af" // gray for missed (past date and not completed)
-                } else if (test.completed === false) {
-                  dotColor = "#ef4444" // red for incomplete
-                }
+                // if (test.completed === true) {
+                //   dotColor = "#22c55e" // green for complete
+                // } else if (test.completed === false && testDate < today) {
+                //   dotColor = "#9ca3af" // gray for missed (past date and not completed)
+                // } else if (test.completed === false) {
+                //   dotColor = "#ef4444" // red for incomplete
+                // }
+                const isMentorshipSession = 
+  test.taskType === "mentorship" || 
+  (test.subjectName || "").toLowerCase().includes("mentorship")
+
+if (isMentorshipSession) {
+  // Keep the original color for mentorship sessions
+  dotColor = "#8B5CF6" // Force purple color
+} else {
+  // For regular study tasks, apply status-based colors
+  if (test.completed === true) {
+    dotColor = "#22c55e" // green for complete
+  } else if (test.completed === false && testDate < today) {
+    dotColor = "#9ca3af" // gray for missed (past date and not completed)
+  } else if (test.completed === false) {
+    dotColor = "#ef4444" // red for incomplete
+  }
+}
+
 
                 return (
                   <div
@@ -575,6 +593,10 @@ const SmartStudyCalendar = () => {
           <div className="w-3 h-3 rounded-full bg-[#9ca3af] mr-2"></div>
           <span>Missed</span>
         </div>
+        <div className="flex items-center">
+    <div className="w-3 h-3 rounded-full bg-[#8B5CF6] mr-2"></div>
+    <span>Mentorship</span>
+  </div>
       </div>
 
       {/* Today Dashboard - Daily Snapshot */}
