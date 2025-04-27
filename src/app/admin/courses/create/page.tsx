@@ -21,7 +21,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 
-
 interface ExamType {
   _id: string
   name: string
@@ -56,7 +55,13 @@ const formSchema = z.object({
     required_error: "Please select a source.",
   }),
   examType: z.string().optional(),
-  thumbnail: z.any().optional(),
+  // Changed from file to URL string
+  thumbnailUrl: z
+    .string()
+    .url({
+      message: "Please enter a valid image URL.",
+    })
+    .optional(),
   videoUrl: z
     .string()
     .url({
@@ -105,7 +110,8 @@ export default function CreateCoursePage() {
       price: 0,
       duration: "",
       featured: false,
-      examType: "", 
+      examType: "",
+      thumbnailUrl: "",
       objectives: [],
       prerequisites: [],
       videos: [],
@@ -117,89 +123,38 @@ export default function CreateCoursePage() {
   const prerequisites = watch("prerequisites") || []
   const videos = watch("videos") || []
 
-    // Set hasMounted to true after component mounts
-    useEffect(() => {
-      setHasMounted(true)
-    }, [])
-  
-    // Fetch exam types after component mounts
-    useEffect(() => {
-      // Skip if not mounted yet to prevent hydration errors
-      if (!hasMounted) return
-    
-      const fetchExamTypes = async () => {
-        setIsLoadingExamTypes(true)
-        try {
-          let token = null
-          
-          // Move localStorage access inside a try/catch and only run client-side
-          if (typeof window !== 'undefined') {
-            try {
-              token = localStorage.getItem("token")
-            } catch (error) {
-              console.error("Error accessing localStorage:", error)
-            }
-          }
-    
-          if (!token) {
-            // Handle silently without redirect to prevent hydration errors
-            console.error("Authentication token not found")
-            setIsLoadingExamTypes(false)
-            return
-          }
-    
-          // Updated API call with better error handling
-          try {
-            console.log("Fetching exam types from API...")
-            
-            // Set proper API URL - could be moved to environment variable
-            const apiUrl = "http://localhost:5000/api/courses/examtypes"
-            console.log(`API URL: ${apiUrl}`)
-            
-            const response = await axios.get(apiUrl, {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            })
-    
-            console.log("API Response:", response.data)
-    
-            if (response.data && response.data.success) {
-              setExamTypes(response.data.data || [])
-            } else {
-              console.error("Failed to fetch exam types:", response.data?.error || "Unknown error")
-              // Show toast only after component is fully mounted
-              if (hasMounted) {
-                toast.error("Could not load exam types")
-              }
-            }
-          } catch (error) {
-            console.error("Error fetching exam types:", error)
-            
-            // Detailed error logging
-            if (axios.isAxiosError(error)) {
-              console.error("API Error Status:", error.response?.status)
-              console.error("API Error Data:", error.response?.data)
-              
-              // Show toast error only after component is fully mounted
-              if (hasMounted) {
-                if (error.response?.status === 404) {
-                  toast.error("Exam types API endpoint not found. Please contact support.")
-                } else {
-                  toast.error(`Error loading exam types: ${error.message}`)
-                }
-              }
-            }
-          }
-        } finally {
-          setIsLoadingExamTypes(false)
-        }
-      }
-    
-      fetchExamTypes()
-    }, [hasMounted])
-  
+  // Set hasMounted to true after component mounts
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
 
+  useEffect(() => {
+    const fetchExamTypes = async () => {
+      setIsLoadingExamTypes(true)
+      try {
+        const response = await axios.get("https://medical-backend-loj4.onrender.com/api/exam-type/exam-types")
+        if (response.data.success) {
+          // Check the structure of the response data
+          console.log("Exam types response:", response.data)
+
+          // If the response is an array of strings, convert to objects
+          if (Array.isArray(response.data.examTypes) && typeof response.data.examTypes[0] === "string") {
+            setExamTypes(response.data.examTypes.map((name : any) => ({ _id: name, name })))
+          } else {
+            // If it's already in the correct format, use as is
+            setExamTypes(response.data.examTypes)
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch exam types:", err)
+        toast.error("Failed to load exam types. Please try again later.")
+      } finally {
+        setIsLoadingExamTypes(false)
+      }
+    }
+
+    fetchExamTypes()
+  }, [])
 
   const addObjective = () => {
     if (newObjective.trim()) {
@@ -250,7 +205,7 @@ export default function CreateCoursePage() {
   const removeVideo = (index: number) => {
     setValue(
       "videos",
-      videos.filter((_, i) => i !== index)
+      videos.filter((_, i) => i !== index),
     )
   }
 
@@ -268,20 +223,13 @@ export default function CreateCoursePage() {
       // Log the values being processed
       console.log("Form values before processing:", values)
 
-      // Create a regular JavaScript object instead of FormData
-      // This is because your backend is using express-fileupload which handles files differently
-      // const courseData: Record<string, string | number | boolean | string[] | object[]> = {}
+      // Create a regular JavaScript object for the course data
       const courseData: Record<string, any> = {}
 
       // Add all form fields to the object
       Object.entries(values).forEach(([key, value]) => {
-        // Skip the thumbnail as it will be handled separately
-        if (key === "thumbnail") {
-          return
-        }
-
         // Handle arrays and objects
-        if (Array.isArray(value) || typeof value === 'object') {
+        if (Array.isArray(value) || typeof value === "object") {
           courseData[key] = value
         }
         // Handle other values
@@ -292,70 +240,33 @@ export default function CreateCoursePage() {
 
       console.log("Course data prepared:", courseData)
 
-      let token = null
-      try {
-        token = localStorage.getItem("token")
-      } catch (error) {
-        console.error("Error accessing localStorage:", error)
-      }
-      if (!token) {
-        toast.error("Authentication token not found. Please log in again.")
-        router.push("/login")
-        return
-      }
+          // Instead of token, get adminId (you can get it from localStorage, or wherever you store it)
+    let adminId = null;
+    try {
+      adminId = localStorage.getItem("Admin_Id");
+    } catch (error) {
+      console.error("Error accessing localStorage:", error);
+    }
 
-      // Handle file upload if there is a thumbnail
-      let formData: FormData | null = null
-      if (values.thumbnail && values.thumbnail.length > 0) {
-        formData = new FormData()
+    if (!adminId) {
+      toast.error("Admin ID not found. Please log in again.");
+      // router.push("/login");
+      return;
+    }
 
-        // Add the file to FormData
-        formData.append("thumbnail", values.thumbnail[0])
+    // Add adminId to course data
+    courseData.createdBy = adminId;
 
-        // Also add all other fields to FormData
-        Object.entries(courseData).forEach(([key, value]) => {
-          if (Array.isArray(value) || typeof value === 'object') {
-            // Handle arrays and objects by stringifying them
-            if (formData) {
-              formData.append(key, JSON.stringify(value))
-            }
-          } else {
-            if (formData) {
-              formData.append(key, String(value))
-            }
-          }
-        })
+    console.log("Sending request to API with adminId...");
 
-        console.log("Using FormData with file upload", values.thumbnail[0].name)
-      }
 
-      console.log("Sending request to API...")
-
-      // Choose the appropriate request method based on whether we have a file
-      let response
-      if (formData) {
-        // If we have a file, use FormData
-        response = await axios.post("https://medical-backend-loj4.onrender.com/api/courses", formData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            // Don't set Content-Type when using FormData - axios will set it with the boundary
-          },
-          timeout: 30000,
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1))
-            console.log(`Upload progress: ${percentCompleted}%`)
-          },
-        })
-      } else {
-        // If no file, use regular JSON
-        response = await axios.post("https://medical-backend-loj4.onrender.com/api/courses", courseData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          timeout: 30000,
-        })
-      }
+      // Send the course data as JSON
+      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/courses", courseData, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        timeout: 30000,
+      })
 
       console.log("API Response:", response.data)
 
@@ -379,7 +290,7 @@ export default function CreateCoursePage() {
           toast.error("Your session has expired. Please log in again.")
           router.push("/login")
         } else if (statusCode === 413) {
-          toast.error("The file you're uploading is too large.")
+          toast.error("The request payload is too large.")
         } else if (statusCode === 400) {
           toast.error(`Validation error: ${errorMessage}`)
         } else if (statusCode === 500) {
@@ -395,8 +306,8 @@ export default function CreateCoursePage() {
     }
   }
 
-  if (typeof window === 'undefined') {
-    return null; // Return null during SSR
+  if (typeof window === "undefined") {
+    return null // Return null during SSR
   }
 
   // Show loading state if mounted but still loading
@@ -520,8 +431,8 @@ export default function CreateCoursePage() {
                 />
               </div>
 
-               {/* Add Exam Type Field */}
-               <FormField
+              {/* Add Exam Type Field */}
+              <FormField
                 control={form.control}
                 name="examType"
                 render={({ field }) => (
@@ -659,27 +570,17 @@ export default function CreateCoursePage() {
                 )}
               />
 
+              {/* Changed from file upload to URL input */}
               <FormField
                 control={form.control}
-                name="thumbnail"
-                render={({ field: { onChange, ...field } }) => (
+                name="thumbnailUrl"
+                render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Thumbnail</FormLabel>
+                    <FormLabel>Thumbnail URL</FormLabel>
                     <FormControl>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const files = e.target.files
-                          if (files?.length) {
-                            onChange(files)
-                            console.log("File selected:", files[0].name)
-                          }
-                        }}
-                        {...field}
-                      />
+                      <Input type="url" placeholder="https://example.com/image.jpg" {...field} />
                     </FormControl>
-                    <FormDescription>Upload a thumbnail image for the course.</FormDescription>
+                    <FormDescription>Enter a URL for the course thumbnail image.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -760,15 +661,15 @@ export default function CreateCoursePage() {
                           <FormMessage />
                         </div>
                       </FormItem>
-                    )} />
-                    
+                    )}
+                  />
                 </CardContent>
               </Card>
 
-                <Card>
-                  <CardContent className="pt-6">
-                    <FormField
-                      control={form.control}
+              <Card>
+                <CardContent className="pt-6">
+                  <FormField
+                    control={form.control}
                     name="objectives"
                     render={() => (
                       <FormItem>
@@ -889,24 +790,6 @@ export default function CreateCoursePage() {
               {isSubmitting ? "Creating..." : "Create Course"}
             </Button>
           </div>
-          {/* {process.env.NODE_ENV === "development" && (
-            <div className="mt-8 p-4 border border-dashed border-gray-300 rounded-md">
-              <h3 className="text-sm font-medium mb-2">Debug Information</h3>
-              <div className="text-xs text-muted-foreground space-y-1">
-                <p>Form Valid: {form.formState.isValid ? "Yes" : "No"}</p>
-                <p>Dirty Fields: {Object.keys(form.formState.dirtyFields).join(", ")}</p>
-                <p>Submission Count: {form.formState.submitCount}</p>
-                {Object.keys(form.formState.errors).length > 0 && (
-                  <div>
-                    <p className="font-medium">Errors:</p>
-                    <pre className="mt-1 bg-muted p-2 rounded overflow-auto max-h-32">
-                      {JSON.stringify(form.formState.errors, null, 2)}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            </div>
-          )} */}
         </form>
       </Form>
       <Toaster position="top-right" />

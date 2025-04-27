@@ -21,6 +21,7 @@ export interface Course {
     }[]
     rating?: number // New field for course rating
     reviewCount?: number // New field for number of reviews
+    examType?: string
   }
   
   

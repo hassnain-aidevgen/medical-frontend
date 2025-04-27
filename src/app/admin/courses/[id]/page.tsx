@@ -146,7 +146,7 @@ export default function ViewCoursePage() {
                     <Card>
                         <CardContent className="p-0">
                             <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-                                <Image
+                                <img
                                     src={
                                         course.thumbnail || `/placeholder.svg?height=480&width=854&text=${encodeURIComponent(course.title)}`
                                     }
@@ -225,7 +225,7 @@ export default function ViewCoursePage() {
                                 <CardContent>
                                     <div className="flex items-start gap-4">
                                         <div className="h-16 w-16 rounded-full overflow-hidden bg-muted flex-shrink-0">
-                                            <Image
+                                            <img
                                                 src={`/placeholder.svg?height=64&width=64&text=${course.instructor.charAt(0)}`}
                                                 alt={course.instructor}
                                                 width={64}

@@ -144,7 +144,7 @@ export function OngoingCourses({ limit = 3, showViewAll = true, className = "" }
           <Card key={course._id} className="overflow-hidden flex flex-col">
             <CardHeader className="p-0">
               {typeof course.thumbnail === "string" && course.thumbnail.startsWith("http") ? (
-                <Image
+                <img
                   src={course.thumbnail || "/placeholder.svg"}
                   alt={course.title}
                   width={384}

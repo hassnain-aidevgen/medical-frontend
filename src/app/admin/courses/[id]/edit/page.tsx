@@ -23,6 +23,11 @@ import type { Course } from "@/types"
 import Image from "next/image"
 import { Label } from "@/components/ui/label"
 
+interface ExamType {
+  _id: string
+  name: string
+}
+
 const formSchema = z.object({
   title: z.string().min(5, {
     message: "Title must be at least 5 characters.",
@@ -50,7 +55,14 @@ const formSchema = z.object({
   source: z.string({
     required_error: "Please select a source.",
   }),
+  examType: z.string().optional(),
   thumbnail: z.any().optional(),
+  thumbnailUrl: z
+    .string()
+    .url({
+      message: "Please enter a valid image URL.",
+    })
+    .optional(),
   videoUrl: z
     .string()
     .url({
@@ -84,6 +96,9 @@ export default function EditCoursePage() {
   const [newVideoUrl, setNewVideoUrl] = useState("")
   const [newVideoDescription, setNewVideoDescription] = useState("")
   const [course, setCourse] = useState<Course | null>(null)
+  // Add state for exam types
+  const [examTypes, setExamTypes] = useState<ExamType[]>([])
+  const [isLoadingExamTypes, setIsLoadingExamTypes] = useState(false)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -95,6 +110,8 @@ export default function EditCoursePage() {
       price: 0,
       duration: "",
       featured: false,
+      examType: "",
+      thumbnailUrl: "",
       objectives: [],
       prerequisites: [],
       videos: [],
@@ -105,6 +122,35 @@ export default function EditCoursePage() {
   const objectives = watch("objectives") || []
   const prerequisites = watch("prerequisites") || []
   const videos = watch("videos") || []
+
+  // Fetch exam types
+  useEffect(() => {
+    const fetchExamTypes = async () => {
+      setIsLoadingExamTypes(true)
+      try {
+        const response = await axios.get("https://medical-backend-loj4.onrender.com/api/exam-type/exam-types")
+        if (response.data.success) {
+          // Check the structure of the response data
+          console.log("Exam types response:", response.data)
+
+          // If the response is an array of strings, convert to objects
+          if (Array.isArray(response.data.examTypes) && typeof response.data.examTypes[0] === "string") {
+            setExamTypes(response.data.examTypes.map((name: any) => ({ _id: name, name })))
+          } else {
+            // If it's already in the correct format, use as is
+            setExamTypes(response.data.examTypes)
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch exam types:", err)
+        toast.error("Failed to load exam types. Please try again later.")
+      } finally {
+        setIsLoadingExamTypes(false)
+      }
+    }
+
+    fetchExamTypes()
+  }, [])
 
   // Fetch course data
   useEffect(() => {
@@ -142,6 +188,8 @@ export default function EditCoursePage() {
             level: data.level,
             featured: data.featured,
             source: data.source,
+            examType: data.examType || "",
+            thumbnailUrl: data.thumbnail || "",
             videoUrl: data.videoUrl,
             videos: data.videos || [],
             objectives: data.objectives || [],
@@ -232,7 +280,7 @@ export default function EditCoursePage() {
       }
 
       // Create a regular object for JSON submission
-      const updateData: Record<string, string | number | boolean | string[]> = {}
+      const updateData: Record<string, any> = {}
 
       // Add all form fields to the object except thumbnail
       Object.entries(values).forEach(([key, value]) => {
@@ -240,6 +288,13 @@ export default function EditCoursePage() {
           updateData[key] = value
         }
       })
+
+      // If thumbnailUrl is provided, use it for the thumbnail field
+      if (values.thumbnailUrl) {
+        updateData.thumbnail = values.thumbnailUrl
+        // Remove thumbnailUrl to avoid duplication
+        delete updateData.thumbnailUrl
+      }
 
       console.log("Update data prepared:", updateData)
 
@@ -254,8 +309,8 @@ export default function EditCoursePage() {
 
         // Add all other fields to FormData
         Object.entries(updateData).forEach(([key, value]) => {
-          if (Array.isArray(value)) {
-            // Handle arrays by stringifying them
+          if (Array.isArray(value) || typeof value === "object") {
+            // Handle arrays and objects by stringifying them
             formData.append(key, JSON.stringify(value))
           } else {
             formData.append(key, String(value))
@@ -454,6 +509,43 @@ export default function EditCoursePage() {
                 />
               </div>
 
+              {/* Add Exam Type Field */}
+              <FormField
+                control={form.control}
+                name="examType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Target Exam</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select target exam" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {isLoadingExamTypes ? (
+                          <SelectItem value="loading" disabled>
+                            Loading exam types...
+                          </SelectItem>
+                        ) : examTypes.length > 0 ? (
+                          examTypes.map((examType) => (
+                            <SelectItem key={examType._id} value={examType._id}>
+                              {examType.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="none" disabled>
+                            No exam types available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>The target exam this course prepares students for.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <div className="grid gap-4 grid-cols-2">
                 <FormField
                   control={form.control}
@@ -556,21 +648,36 @@ export default function EditCoursePage() {
                 )}
               />
 
+              {/* Add Thumbnail URL field */}
+              <FormField
+                control={form.control}
+                name="thumbnailUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Thumbnail URL</FormLabel>
+                    <FormControl>
+                      <Input type="url" placeholder="https://example.com/image.jpg" {...field} />
+                    </FormControl>
+                    <FormDescription>Enter a URL for the course thumbnail image.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="thumbnail"
                 render={({ field: { onChange, ...field } }) => (
                   <FormItem>
-                    <FormLabel>Thumbnail</FormLabel>
+                    <FormLabel>Thumbnail Upload</FormLabel>
                     <FormControl>
                       <div className="space-y-2">
                         {course?.thumbnail && (
                           <div className="relative w-full h-40 rounded-md overflow-hidden">
-                            <Image
+                            <img
                               src={course.thumbnail || "/placeholder.svg"}
                               alt={course.title}
-                              layout="fill"
-                              objectFit="cover"
+                              style={{ objectFit: "cover", width: "100%", height: "100%" }}
                             />
                             <p className="text-xs text-muted-foreground mt-1">Current thumbnail</p>
                           </div>

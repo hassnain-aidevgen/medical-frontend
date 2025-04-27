@@ -661,7 +661,7 @@ const CoursePage = () => {
               </div>
 
               <div className="aspect-video overflow-hidden rounded-lg bg-muted">
-                <Image
+                <img
                   src={
                     course.thumbnail ||
                     `/placeholder.svg?height=480&width=854&text=${encodeURIComponent(course.title) || "/placeholder.svg"}`
@@ -848,7 +848,7 @@ const CoursePage = () => {
                                   >
                                     {/* Thumbnail or placeholder */}
                                     <div className="w-full h-full">
-                                      <Image
+                                      <img
                                         src={
                                           course.thumbnail ||
                                           `/placeholder.svg?height=480&width=854&text=${encodeURIComponent("Premium Content") || "/placeholder.svg"}`
