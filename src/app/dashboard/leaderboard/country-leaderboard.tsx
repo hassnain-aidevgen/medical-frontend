@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Award, Crown, Globe, Medal, Star, Timer, Trophy, User } from "lucide-react"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface LeaderboardEntry {
   _id: string
@@ -13,8 +14,8 @@ interface LeaderboardEntry {
   score: number
   totalTime: number
   rank?: number
-  country?: string // Added for our hybrid approach
-  countryRank?: number // Added for our hybrid approach
+  country?: string
+  countryRank?: number
 }
 
 interface CountryUserStats {
@@ -30,123 +31,146 @@ interface CountryLeaderboardProps {
   globalLeaderboard: LeaderboardEntry[] // Use the real leaderboard data
 }
 
-// List of countries for our hybrid approach
-const COUNTRIES = ["USA", "UK", "Canada", "India", "Germany", "France", "Australia", "Japan", "Brazil", "Pakistan"]
+// Common countries for the dropdown
+const COMMON_COUNTRIES = [
+  "Pakistan",
+  "India",
+  "United States",
+  "United Kingdom",
+  "Canada",
+  "Australia",
+  "China",
+  "Germany",
+  "France",
+  "Japan",
+  "Brazil",
+  "Mexico",
+  "South Africa",
+  "Italy",
+  "Spain",
+  "Russia",
+]
 
-// Deterministically assign a country based on user ID
-const assignCountry = (userId: string): string => {
-  // Simple hash function to consistently assign the same country to the same user
-  let hash = 0
-  for (let i = 0; i < userId.length; i++) {
-    hash = (hash << 5) - hash + userId.charCodeAt(i)
-    hash |= 0 // Convert to 32bit integer
-  }
-  // Use absolute value and modulo to get a country index
-  const countryIndex = Math.abs(hash) % COUNTRIES.length
-  return COUNTRIES[countryIndex]
-}
-
-export default function CountryLeaderboard({ loggedInUserId, globalLeaderboard }: CountryLeaderboardProps) {
+export default function CountryLeaderboard({ loggedInUserId, globalLeaderboard, timeFrame }: CountryLeaderboardProps) {
   const [countryLeaderboard, setCountryLeaderboard] = useState<LeaderboardEntry[]>([])
   const [userStats, setUserStats] = useState<CountryUserStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [userCountry, setUserCountry] = useState<string | null>(null)
   const [availableCountries, setAvailableCountries] = useState<{ country: string; count: number }[]>([])
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null)
+  const [enrichedLeaderboard, setEnrichedLeaderboard] = useState<LeaderboardEntry[]>([])
 
-  // Process the global leaderboard to add country information
-  const processLeaderboardData = useCallback(() => {
-    if (!globalLeaderboard.length) {
-      setLoading(false)
+  // Fetch country leaderboard data
+  useEffect(() => {
+    const fetchCountryLeaderboard = async () => {
+      try {
+        setLoading(true)
+
+        // Fetch leaderboard data with country information
+        const response = await fetch(
+          `http://localhost:5000/api/test/leaderboard/country?timeFrame=${timeFrame}`,
+        )
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch country leaderboard: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        if (data.success && data.data.leaderboard) {
+          setEnrichedLeaderboard(data.data.leaderboard)
+
+          // Find the user's country if logged in
+          if (loggedInUserId) {
+            const userEntry = data.data.leaderboard.find((entry: LeaderboardEntry) => entry.userId === loggedInUserId)
+            if (userEntry && userEntry.country) {
+              setUserCountry(userEntry.country)
+              setSelectedCountry(userEntry.country)
+            } else {
+              // Default to Pakistan if user's country is not found
+              setSelectedCountry("Pakistan")
+            }
+          } else {
+            // Default to Pakistan if no user is logged in
+            setSelectedCountry("Pakistan")
+          }
+
+          // Get all available countries from the leaderboard
+          const countryMap = new Map<string, number>()
+          data.data.leaderboard.forEach((entry: LeaderboardEntry) => {
+            const country = entry.country || "Unknown"
+            countryMap.set(country, (countryMap.get(country) || 0) + 1)
+          })
+
+          // Convert to array and sort by count
+          const countriesArray = Array.from(countryMap.entries())
+            .map(([country, count]) => ({
+              country,
+              count,
+            }))
+            .sort((a, b) => b.count - a.count)
+
+          setAvailableCountries(countriesArray)
+        }
+      } catch (error) {
+        console.error("Error fetching country leaderboard:", error)
+
+        // Fallback to using the global leaderboard if the country endpoint fails
+        setEnrichedLeaderboard(globalLeaderboard)
+        setSelectedCountry("Pakistan")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchCountryLeaderboard()
+  }, [globalLeaderboard, loggedInUserId, timeFrame])
+
+  // Filter leaderboard by selected country
+  useEffect(() => {
+    if (!enrichedLeaderboard.length || !selectedCountry) {
       return
     }
 
     try {
-      setLoading(true)
+      // Filter and rank by the selected country
+      const countryUsers = enrichedLeaderboard
+        .filter((entry) => (entry.country || "Unknown") === selectedCountry)
+        .sort((a, b) => b.score - a.score)
 
-      // Note: timeFrame is not used in this hybrid implementation, but would be used
-      // in a real backend implementation to filter data by time period
-
-      // Enhance the global leaderboard with country information
-      const enhancedLeaderboard = globalLeaderboard.map((entry) => ({
-        ...entry,
-        country: assignCountry(entry.userId),
-      }))
-
-      // Get all countries represented in the leaderboard
-      const countryMap = new Map<string, number>()
-      enhancedLeaderboard.forEach((entry) => {
-        const country = entry.country!
-        countryMap.set(country, (countryMap.get(country) || 0) + 1)
+      // Assign country-specific ranks
+      countryUsers.forEach((entry, index) => {
+        entry.countryRank = index + 1
       })
 
-      // Convert to array and sort by count
-      const countriesArray = Array.from(countryMap.entries())
-        .map(([country, count]) => ({
-          country,
-          count,
-        }))
-        .sort((a, b) => b.count - a.count)
+      setCountryLeaderboard(countryUsers)
 
-      setAvailableCountries(countriesArray)
-
-      // Determine user's country if logged in
+      // Calculate user stats if logged in
       if (loggedInUserId) {
-        const assignedUserCountry = assignCountry(loggedInUserId)
-        setUserCountry(assignedUserCountry)
+        const userIndex = countryUsers.findIndex((entry) => entry.userId === loggedInUserId)
 
-        // If no country is selected, use the user's country
-        if (!selectedCountry) {
-          setSelectedCountry(assignedUserCountry)
-        }
-      }
+        if (userIndex >= 0) {
+          const userEntry = countryUsers[userIndex]
 
-      // Filter and rank by the selected country
-      if (selectedCountry) {
-        const countryUsers = enhancedLeaderboard
-          .filter((entry) => entry.country === selectedCountry)
-          .sort((a, b) => b.score - a.score)
+          // Get nearby players (2 above and 2 below)
+          const startIndex = Math.max(0, userIndex - 2)
+          const endIndex = Math.min(countryUsers.length - 1, userIndex + 2)
+          const nearbyPlayers = countryUsers.slice(startIndex, endIndex + 1)
 
-        // Assign country-specific ranks
-        countryUsers.forEach((entry, index) => {
-          entry.countryRank = index + 1
-        })
-
-        setCountryLeaderboard(countryUsers)
-
-        // Calculate user stats if logged in
-        if (loggedInUserId) {
-          const userIndex = countryUsers.findIndex((entry) => entry.userId === loggedInUserId)
-
-          if (userIndex >= 0) {
-            const userEntry = countryUsers[userIndex]
-
-            // Get nearby players (2 above and 2 below)
-            const startIndex = Math.max(0, userIndex - 2)
-            const endIndex = Math.min(countryUsers.length - 1, userIndex + 2)
-            const nearbyPlayers = countryUsers.slice(startIndex, endIndex + 1)
-
-            setUserStats({
-              country: selectedCountry,
-              rank: userIndex + 1,
-              player: userEntry,
-              nearbyPlayers,
-            })
-          } else {
-            setUserStats(null)
-          }
+          setUserStats({
+            country: selectedCountry,
+            rank: userIndex + 1,
+            player: userEntry,
+            nearbyPlayers,
+          })
+        } else {
+          setUserStats(null)
         }
       }
     } catch (error) {
       console.error("Error processing country leaderboard:", error)
-    } finally {
-      setLoading(false)
     }
-  }, [globalLeaderboard, loggedInUserId, selectedCountry])
-
-  useEffect(() => {
-    processLeaderboardData()
-  }, [processLeaderboardData])
+  }, [enrichedLeaderboard, loggedInUserId, selectedCountry])
 
   const handleCountrySelect = (country: string) => {
     setSelectedCountry(country)
@@ -204,7 +228,7 @@ export default function CountryLeaderboard({ loggedInUserId, globalLeaderboard }
     )
   }
 
-  if (globalLeaderboard.length === 0) {
+  if (enrichedLeaderboard.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] p-6 text-center">
         <Globe className="h-12 w-12 text-muted-foreground mb-4" />
@@ -225,7 +249,7 @@ export default function CountryLeaderboard({ loggedInUserId, globalLeaderboard }
             <h3 className="text-xl font-bold">Your Country Stats</h3>
             <p className="text-sm text-muted-foreground">
               Your ranking among players in{" "}
-              {userCountry === selectedCountry ? userCountry : `${selectedCountry} (not your country)`}
+              {userCountry === selectedCountry ? selectedCountry : `${selectedCountry} (not your country)`}
             </p>
             {userCountry !== selectedCountry && userCountry && (
               <p className="text-xs text-muted-foreground mt-1">Your country is {userCountry}</p>
@@ -307,30 +331,53 @@ export default function CountryLeaderboard({ loggedInUserId, globalLeaderboard }
           )}
 
           {/* Country Selection */}
-          {availableCountries.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium mb-3">Select Country</h4>
-              <div className="flex flex-wrap gap-2 max-h-[150px] overflow-y-auto">
-                {availableCountries.map(({ country, count }) => (
-                  <button
-                    key={country}
-                    onClick={() => handleCountrySelect(country)}
-                    className={`px-3 py-1.5 text-xs rounded-full transition-colors ${
-                      selectedCountry === country
-                        ? "bg-primary text-primary-foreground"
-                        : country === userCountry
-                          ? "bg-primary/20 hover:bg-primary/30"
-                          : "bg-muted hover:bg-muted/80"
-                    }`}
-                  >
+          <div>
+            <h4 className="text-sm font-medium mb-3">Select Country</h4>
+            <Select value={selectedCountry || ""} onValueChange={handleCountrySelect}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a country" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px]">
+                {/* User's country first */}
+                {userCountry && (
+                  <SelectItem value={userCountry} className="font-medium">
+                    {userCountry} (your country)
+                  </SelectItem>
+                )}
+
+                {/* Common countries */}
+                <SelectItem value="common-divider" disabled className="py-1.5 text-xs text-muted-foreground">
+                  Common Countries
+                </SelectItem>
+                {COMMON_COUNTRIES.filter((country) => country !== userCountry).map((country) => (
+                  <SelectItem key={country} value={country}>
                     {country}
-                    {country === userCountry && " (yours)"}
-                    <span className="ml-1 text-xs opacity-70">({count})</span>
-                  </button>
+                  </SelectItem>
                 ))}
-              </div>
-            </div>
-          )}
+
+                {/* Available countries from leaderboard */}
+                {availableCountries.length > 0 &&
+                  availableCountries.some(
+                    ({ country }) =>
+                      !COMMON_COUNTRIES.includes(country) && country !== userCountry && country !== "Unknown",
+                  ) && (
+                    <SelectItem value="available-divider" disabled className="py-1.5 text-xs text-muted-foreground">
+                      Other Countries
+                    </SelectItem>
+                  )}
+                {availableCountries
+                  .filter(
+                    ({ country }) =>
+                      !COMMON_COUNTRIES.includes(country) && country !== userCountry && country !== "Unknown",
+                  )
+                  .map(({ country, count }) => (
+                    <SelectItem key={country} value={country}>
+                      {country} ({count})
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </Card>
 
@@ -406,4 +453,3 @@ export default function CountryLeaderboard({ loggedInUserId, globalLeaderboard }
     </div>
   )
 }
-

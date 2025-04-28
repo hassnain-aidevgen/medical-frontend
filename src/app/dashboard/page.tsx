@@ -131,6 +131,16 @@ export default function DashboardPage() {
   const [examTypeStats, setExamTypeStats] = useState<ExamTypeStat[]>([])
   const [examTypeStatsLoading, setExamTypeStatsLoading] = useState(true)
   const [activeExamStatsTab, setActiveExamStatsTab] = useState<"accuracy" | "questions" | "time">("accuracy")
+  interface RecommendedCourse {
+    _id: string;
+    title: string;
+    description: string;
+    thumbnail?: string;
+    examType: string;
+    level: string;
+  }
+  
+  const [recommendedCourses, setRecommendedCourses] = useState<RecommendedCourse[]>([]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -165,6 +175,34 @@ export default function DashboardPage() {
       fetchExamTypeStats()
     }
   }, [userId])
+  // Add this useEffect after your examTypeStats useEffect
+useEffect(() => {
+  const fetchRecommendedCourses = async () => {
+    if (!userId || examTypeStatsLoading || examTypeStats.length === 0) return;
+    
+    // Find exam types with accuracy below 75%
+    const lowAccuracyExams = examTypeStats
+      .filter(stat => stat.accuracy < 75)
+      .map(stat => stat.exam_type);
+    
+    // Only fetch if there are low accuracy exams
+    if (lowAccuracyExams.length > 0) {
+      try {
+        const response = await axios.get(
+          `http://localhost:5000/api/courses/recommended-courses/${userId}?examTypes=${lowAccuracyExams.join(',')}`
+        );
+        
+        if (response.data && response.data.success) {
+          setRecommendedCourses(response.data.recommendedCourses);
+        }
+      } catch (error) {
+        console.error("Error fetching recommended courses:", error);
+      }
+    }
+  };
+  
+  fetchRecommendedCourses();
+}, [userId, examTypeStats, examTypeStatsLoading]);
 
   useEffect(() => {
     const fetchStreakData = async () => {
@@ -838,6 +876,48 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
+          {recommendedCourses.length > 0 && (
+  <Card className="mb-6">
+    <CardHeader className="flex flex-row items-center justify-between pb-2">
+      <div>
+        <CardTitle>Recommended Courses</CardTitle>
+        <CardDescription>Based on your exam performance</CardDescription>
+      </div>
+      <BookOpen className="h-5 w-5 text-blue-500" />
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-4">
+        {recommendedCourses.map(course => (
+          <div 
+            key={course._id}
+            className="flex gap-4 p-3 border rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
+            onClick={() => router.push(`/dashboard/courses/${course._id}`)}
+          >
+            {/* <div className="relative h-20 w-32 rounded-md overflow-hidden flex-shrink-0">
+              <img 
+                src={course.thumbnail || "/placeholder.svg?height=80&width=128&query=medical course"} 
+                alt={course.title}
+                className="object-cover w-full h-full"
+              />
+            </div> */}
+            <div className="flex-1">
+              <h4 className="font-medium">{course.title}</h4>
+              <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{course.description}</p>
+              <div className="flex gap-2 mt-2">
+                <span className="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                  {course.examType.replace("_", " ")}
+                </span>
+                <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 px-2 py-0.5 rounded-full">
+                  {course.level}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </CardContent>
+  </Card>
+)}
         </div>
       </div>
       <MotivationalMessage />

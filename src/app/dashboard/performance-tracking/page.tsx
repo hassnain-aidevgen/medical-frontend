@@ -506,13 +506,17 @@ export default function AnalyticsDashboard() {
 
       try {
         // Fetch performance data
-        const performanceResponse = await axios.get<TestResult[]>(
-          "https://medical-backend-loj4.onrender.com/api/test/performance",
+        const performanceResponse = await axios.get(
+          "http://localhost:5000/api/test/performance2",
           {
             params: { userId },
-          },
-        )
-        setPerformanceData(performanceResponse.data)
+          }
+        );
+        if (performanceResponse.data.success) {
+          setPerformanceData(performanceResponse.data.results); // ✅ Correct
+        } else {
+          console.error("Failed to load performance data");
+        }
         setLoading((prev) => ({ ...prev, performance: false }))
 
         // Fetch stats data

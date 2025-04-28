@@ -284,39 +284,28 @@ export function FlashcardChallenge({ isOpen, onClose }: FlashcardChallengeProps)
                         <p className="text-lg text-center text-slate-800">{currentFlashcard.flashcardId.question}</p>
                     </CardContent>
                     <CardFooter className="flex flex-col items-center pt-0 pb-4 bg-slate-50">
-                        {!showAnswer ? (
-                            <Button
-                                onClick={() => setShowAnswer(true)}
-                                variant="outline"
-                                className="mb-4 w-full border-blue-200 text-blue-700 hover:bg-blue-50"
-                            >
-                                Show Answer
-                            </Button>
-                        ) : (
-                            <>
-                                <div className="bg-blue-50 p-4 rounded-md w-full mb-4 text-center border border-blue-100">
-                                    <p className="font-medium text-blue-900">{currentFlashcard.flashcardId.answer}</p>
-                                </div>
-                                <div className="flex gap-3 w-full">
-                                    <Button
-                                        onClick={() => void submitAnswer(false)}
-                                        variant="outline"
-                                        className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
-                                    >
-                                        <XCircle className="mr-2 h-4 w-4" />
-                                        Incorrect
-                                    </Button>
-                                    <Button
-                                        onClick={() => void submitAnswer(true)}
-                                        variant="outline"
-                                        className="flex-1 border-green-200 text-green-600 hover:bg-green-50 hover:border-green-300"
-                                    >
-                                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                                        Correct
-                                    </Button>
-                                </div>
-                            </>
-                        )}
+                    {!showAnswer ? (
+    <Button
+        onClick={() => setShowAnswer(true)}
+        variant="outline"
+        className="mb-4 w-full border-blue-200 text-blue-700 hover:bg-blue-50"
+    >
+        Show Answer
+    </Button>
+) : (
+    <>
+        <div className="bg-blue-50 p-4 rounded-md w-full mb-4 text-center border border-blue-100">
+            <p className="font-medium text-blue-900">{currentFlashcard.flashcardId.answer}</p>
+        </div>
+        <Button
+            onClick={() => void submitAnswer(true)}
+            variant="outline"
+            className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"
+        >
+            Next
+        </Button>
+    </>
+)}
                     </CardFooter>
                 </Card>
             </div>

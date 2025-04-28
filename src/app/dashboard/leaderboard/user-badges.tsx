@@ -144,4 +144,3 @@ export default function UserBadges({ badges, className = "" }: UserBadgesProps) 
     </div>
   )
 }
-

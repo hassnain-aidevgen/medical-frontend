@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { ArrowRight, BookOpen } from "lucide-react"
 import { toast } from "react-hot-toast"
 
@@ -28,7 +27,6 @@ export function OngoingCourses({ limit = 3, showViewAll = true, className = "" }
     const fetchPurchasedCourses = async () => {
       try {
         setLoading(true)
-        // Get user ID from localStorage
         const userId = localStorage.getItem("Medical_User_Id")
 
         if (!userId) {
@@ -53,15 +51,18 @@ export function OngoingCourses({ limit = 3, showViewAll = true, className = "" }
 
         const { success, courses } = await response.json()
 
-        if (success) {
-          // Add ratings to purchased courses for display
-          const purchasedWithRatings = courses.map((course: any) => ({
+        if (success && Array.isArray(courses)) {
+          const validCourses = courses.filter((course: any) => course !== null)
+
+          const purchasedWithRatings = validCourses.map((course: any) => ({
             ...course,
             rating: course.rating || Math.random() * 4 + 1,
             reviewCount: course.reviewCount || Math.floor(Math.random() * 100) + 1,
           }))
 
           setPurchasedCourses(purchasedWithRatings)
+        } else {
+          setPurchasedCourses([])
         }
       } catch (error) {
         console.error("Error fetching purchased courses:", error)
@@ -74,7 +75,6 @@ export function OngoingCourses({ limit = 3, showViewAll = true, className = "" }
     fetchPurchasedCourses()
   }, [])
 
-  // If loading, show skeleton
   if (loading) {
     return (
       <div className={`space-y-4 ${className}`}>
@@ -107,7 +107,6 @@ export function OngoingCourses({ limit = 3, showViewAll = true, className = "" }
     )
   }
 
-  // If no purchased courses, show empty state
   if (purchasedCourses.length === 0) {
     return (
       <div className={`space-y-4 ${className}`}>
@@ -126,7 +125,6 @@ export function OngoingCourses({ limit = 3, showViewAll = true, className = "" }
     )
   }
 
-  // Display purchased courses
   return (
     <div className={`space-y-4 ${className}`}>
       <div className="flex items-center justify-between">
@@ -151,7 +149,6 @@ export function OngoingCourses({ limit = 3, showViewAll = true, className = "" }
                   height={192}
                   className="h-48 w-full object-cover"
                   onError={(e) => {
-                    // Fall back to placeholder if image fails to load
                     e.currentTarget.src = "/placeholder.svg"
                   }}
                 />

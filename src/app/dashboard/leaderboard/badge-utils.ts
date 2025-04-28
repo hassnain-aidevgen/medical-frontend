@@ -189,4 +189,3 @@ export function getBadgeCategoryName(category: BadgeCategory): string {
       return category
   }
 }
-

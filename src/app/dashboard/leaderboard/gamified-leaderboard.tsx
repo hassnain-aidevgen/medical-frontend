@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Award, Crown, Medal, Share2, Star, Target, Timer, Trophy, User } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import SpecialtyFilters from "./specialty-filters"
-// import CountryLeaderboard from "./country-leaderboard"
+import CountryLeaderboard from "./country-leaderboard"
 import { generateMockBadges } from "./badge-utils"
 import ExamLeaderboard from "./exam-leaderboard"
 import ProgressInsights from "./progress-insights"
@@ -1084,13 +1084,13 @@ export default function GamifiedLeaderboard() {
             </div>
           )}
 
-          {/* {activeTab === "country" && (
+          {activeTab === "country" && (
             <CountryLeaderboard
               timeFrame="all-time"
               loggedInUserId={loggedInUserId}
               globalLeaderboard={leaderboardData["all-time"]}
             />
-          )} */}
+          )}
 
           {activeTab === "streaks" && (
             <StreakLeaderboard

@@ -68,9 +68,10 @@ interface FilteredResponse {
 
 // Add this interface with the other interfaces
 interface TestResult {
+  _id: string // Add this line to include the _id property
   userId: string
   questions: {
-    questionId: string
+    questionId?: string // Some of your data doesn't have questionId
     questionText: string
     userAnswer: string
     correctAnswer: string
@@ -80,7 +81,9 @@ interface TestResult {
   totalTime: number
   percentage: number
   createdAt: string
+  updatedAt: string
 }
+
 
 const SubjectCheckbox: React.FC<{
   subject: Subject
@@ -116,7 +119,6 @@ const SubsectionCheckbox: React.FC<{
   </label>
 )
 
-// Replace the current RecentTests component with this improved version
 const RecentTests: React.FC<{ performanceData: TestResult[]; isLoading: boolean }> = ({
   performanceData,
   isLoading,
@@ -136,53 +138,62 @@ const RecentTests: React.FC<{ performanceData: TestResult[]; isLoading: boolean 
         ) : (
           <div className="max-h-[300px] overflow-y-auto pr-2">
             <div className="space-y-3">
-              {performanceData.slice(0, 5).map((test, index) => (
-                <div
-                  key={test.createdAt}
-                  className="bg-gray-50 rounded-lg p-4 border border-gray-100 hover:shadow-md transition-all duration-200"
-                >
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <BookOpen className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Test {performanceData.length - index}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(test.createdAt).toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="font-medium">{test.percentage}%</p>
-                        <p className="text-sm text-muted-foreground">
-                          Score: {test.score}/{test.questions.length}
-                        </p>
-                      </div>
-                      <div
-                        className={`w-2 h-10 rounded-full ${test.percentage >= 70
-                            ? "bg-green-500"
-                            : test.percentage >= 50
-                              ? "bg-yellow-500"
-                              : "bg-red-500"
-                          }`}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            {performanceData.slice(0, 5).map((test, index) => {
+  const totalQuestions = test.questions.length;
+  const correctAnswers = test.score || 0;
+  const percentageScore = test.percentage || 0;
+
+  const formattedDate = new Date(test.createdAt).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+
+  const scoreColor = percentageScore >= 70
+    ? "bg-green-500"
+    : percentageScore >= 50
+      ? "bg-yellow-500"
+      : "bg-red-500";
+
+  return (
+    <div
+      key={test._id}
+      className="bg-gray-50 rounded-lg p-4 border border-gray-100 hover:shadow-md transition-all duration-200"
+    >
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <BookOpen className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <p className="font-medium">Test {performanceData.length - index}</p>
+            <p className="text-sm text-muted-foreground">
+              {formattedDate}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="font-medium">{percentageScore}%</p>
+            <p className="text-sm text-muted-foreground">
+              Score: {correctAnswers}/{totalQuestions}
+            </p>
+          </div>
+          <div className={`w-2 h-10 rounded-full ${scoreColor}`}></div>
+        </div>
+      </div>
+    </div>
+  );
+})}
+
             </div>
           </div>
         )}
       </div>
     </div>
-  )
-}
+  );
+};
+
 
 export default function CreateTest() {
   const router = useRouter()
@@ -459,13 +470,22 @@ export default function CreateTest() {
         const userId = localStorage.getItem("Medical_User_Id")
         if (!userId) return
 
-        const performanceResponse = await axios.get<TestResult[]>(
-          "https://medical-backend-loj4.onrender.com/api/test/performance",
+        interface PerformanceResponse {
+          success: boolean;
+          results: TestResult[];
+        }
+        
+        const performanceResponse = await axios.get<PerformanceResponse>(
+          "http://localhost:5000/api/test/performance2",
           {
             params: { userId },
           },
-        )
-        setPerformanceData(performanceResponse.data)
+        );
+        if (performanceResponse.data.success) {
+          setPerformanceData(performanceResponse.data.results);
+        } else {
+          console.error("Failed to load performance data.");
+        }
       } catch (error) {
         console.error("Error fetching performance data:", error)
       }
