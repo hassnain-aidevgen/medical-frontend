@@ -8,6 +8,7 @@ import { PiRankingDuotone } from "react-icons/pi"
 const sidebarItems = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Create Test", href: "/dashboard/create-test", icon: BookOpen },
+  { name: "Questions", icon: FileQuestion, href: "/dashboard/questions", color: "bg-teal-500" },
   { name: "Flash Cards", href: "/dashboard/flash-cards", icon: Users },
   { name: "Leaderboard", href: "/dashboard/leaderboard", icon: PiRankingDuotone },
   { name: "Performance Tracking", href: "/dashboard/performance-tracking", icon: BarChart2 },

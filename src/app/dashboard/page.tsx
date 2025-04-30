@@ -35,7 +35,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import WeeklyPerformance from "@/components/weekly-performance"
 import NextTaskCard from "@/components/next-task-card"
-
+import { FileQuestion} from 'lucide-react'
 const featureCards = [
   { name: "Create Test", icon: BookOpen, href: "/dashboard/create-test", color: "bg-blue-500" },
   { name: "Flash Cards", icon: Users, href: "/dashboard/flash-cards", color: "bg-green-500" },
@@ -45,6 +45,7 @@ const featureCards = [
   { name: "Weekly Goals", icon: Settings, href: "/dashboard/custom-weekly-goals", color: "bg-indigo-500" },
   { name: "Error Notebook", icon: Users, href: "/dashboard/digital-error-notebook", color: "bg-red-500" },
   { name: "Pomodoro", icon: Clock, href: "/dashboard/pomodoro-timer", color: "bg-orange-500" },
+  { name: "Questions", icon: FileQuestion, href: "/dashboard/questions", color: "bg-teal-500" },
 ]
 
 interface Goal {

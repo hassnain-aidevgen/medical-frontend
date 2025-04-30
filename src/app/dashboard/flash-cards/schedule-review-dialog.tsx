@@ -74,32 +74,42 @@ export default function ScheduleReviewDialog({
     }
 
     const handleSubmit = async () => {
-        setIsSubmitting(true)
-
+        setIsSubmitting(true);
+    
         try {
-            const reviewDate = getReviewDate()
-
-            const payload = {
+            const reviewDate = getReviewDate();
+    
+            // Original calendar payload
+            const calendarPayload = {
                 userId,
                 subjectName: cardCategory || "Uncategorized",
                 testTopic: cardQuestion.length > 50 ? `${cardQuestion.substring(0, 47)}...` : cardQuestion,
                 date: reviewDate.toISOString(),
                 color: getColorFromDifficulty(cardDifficulty),
                 completed: false,
-            }
-
-            await axios.post("https://medical-backend-loj4.onrender.com/api/test/calender", payload)
-
-            toast.success(`Review scheduled for ${format(reviewDate, "PPP")}`)
-            onClose()
+            };
+    
+            // Send to calendar endpoint
+            await axios.post("https://medical-backend-loj4.onrender.com/api/test/calender", calendarPayload);
+            
+            // Also send to reviews endpoint to add to upcoming reviews
+            await axios.post("http://localhost:5000/api/reviews/add-to-upcoming", {
+                userId,
+                title: cardQuestion.length > 50 ? `${cardQuestion.substring(0, 47)}...` : cardQuestion,
+                scheduledFor: reviewDate.toISOString(),
+                type: "daily", // You can change this based on the selected option
+                stage: 1
+            });
+    
+            toast.success(`Review scheduled for ${format(reviewDate, "PPP")}`);
+            onClose();
         } catch (error) {
-            console.error("Error scheduling review:", error)
-            toast.error("Failed to schedule review. Please try again.")
+            console.error("Error scheduling review:", error);
+            toast.error("Failed to schedule review. Please try again.");
         } finally {
-            setIsSubmitting(false)
+            setIsSubmitting(false);
         }
-    }
-
+    };
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[425px]">

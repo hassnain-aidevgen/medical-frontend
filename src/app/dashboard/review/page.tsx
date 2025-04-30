@@ -5,14 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import axios from "axios"
-import { BarChart3, Calendar, Clock, Settings, Trophy } from "lucide-react"
-import { useEffect, useState } from "react"
+import { BarChart3, Calendar, Clock, RefreshCw, Settings, Trophy } from 'lucide-react'
+import { useEffect, useState, useCallback } from "react"
 import { toast, Toaster } from "react-hot-toast"
 import { CompletionChart } from "./completion-chart"
-// import FlashcardExport from "./flashcard-export"
-// import InfographicSuggestions from "./infographic-suggestions"
 import InfographicsTab from "../flash-cards/infographics-tab"
-import { ReviewPreferencesForm } from "./review-preferences-form"
 import { ReviewProgressMeter } from "./review-progress-meter"
 import { UpcomingReviews } from "./upcoming-reviews"
 import ChallengeModeSession from "./challenge-mode-session"
@@ -41,29 +38,49 @@ export default function ReviewDashboard() {
     upcomingReviews: [],
   })
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false) // New state for refresh button
   const [showChallengeMode, setShowChallengeMode] = useState(false)
   const [user1Id, setUser1Id] = useState<string>("")
 
-  useEffect(() => {
-    fetchDashboardData()
-  }, [])
-
-  const fetchDashboardData = async () => {
+  // Use useCallback to memoize the fetchDashboardData function
+  const fetchDashboardData = useCallback(async () => {
     try {
       const userId = localStorage.getItem("Medical_User_Id")
       setUser1Id(userId || "")
-      setLoading(true)
+      
+      // Use refreshing state for the refresh button
+      if (!loading) setRefreshing(true)
+      else setLoading(true)
+      
       const response = await axios.get(
         `https://medical-backend-loj4.onrender.com/api/reviews/dashboard?userId=${userId}`,
       )
       setStats(response.data)
+      
       setLoading(false)
+      setRefreshing(false)
     } catch (error) {
       toast.error("Failed to load dashboard data")
       console.log(error)
       setLoading(false)
+      setRefreshing(false)
     }
-  }
+  }, [loading])
+
+  useEffect(() => {
+    fetchDashboardData()
+    
+    // Add event listener for when user returns to this page
+    const handleFocus = () => {
+      fetchDashboardData()
+    }
+    
+    window.addEventListener("focus", handleFocus)
+    
+    return () => {
+      window.removeEventListener("focus", handleFocus)
+    }
+  }, [fetchDashboardData])
 
   const startReviewSession = async () => {
     try {
@@ -183,13 +200,25 @@ export default function ReviewDashboard() {
               Infographics
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="upcoming" className="mt-4">
+          <TabsContent value="upcoming" className="mt-4"> 
             <Card>
-              <CardHeader>
-                <CardTitle>Upcoming Review Sessions</CardTitle>
-                <CardDescription>
-                  Your scheduled review sessions based on the spaced repetition algorithm
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Upcoming Review Sessions</CardTitle>
+                  <CardDescription>
+                    Your scheduled review sessions based on the spaced repetition algorithm
+                  </CardDescription>
+                </div>
+                <Button 
+                  // variant="outline" 
+                  size="sm" 
+                  onClick={fetchDashboardData} 
+                  disabled={refreshing}
+                  className="flex items-center gap-1"
+                >
+                  <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  {refreshing ? 'Refreshing...' : 'Refresh'}
+                </Button>
               </CardHeader>
               <CardContent>
                 <UpcomingReviews reviews={stats.upcomingReviews} />
@@ -210,7 +239,7 @@ export default function ReviewDashboard() {
           </TabsContent>
           <TabsContent value="needsreview" className="mt-4">
             <Card>
-                <FlashcardsPage />
+            <FlashcardsPage {...{ refreshDashboard: fetchDashboardData } as any} />
             </Card>
           </TabsContent>
           <TabsContent value="infographics" className="mt-4">
