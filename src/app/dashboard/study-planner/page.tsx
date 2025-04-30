@@ -2,43 +2,43 @@
 
 import type React from "react"
 
-import { useState, useRef, useEffect } from "react"
+import axios from "axios"
+import { AnimatePresence, motion } from "framer-motion"
 import {
-  Brain,
-  Zap,
-  Loader2,
   AlertCircle,
-  X,
-  Edit3,
-  Target,
-  Book,
-  Clock,
   Award,
+  Book,
+  Brain,
   ChevronLeft,
   ChevronRight,
+  Clock,
+  Edit3,
+  Loader2,
+  Target,
+  X,
+  Zap,
 } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
-import axios from "axios"
+import { useEffect, useRef, useState } from "react"
 import toast from "react-hot-toast"
 
+import ExistingPlanNotice from "./components/existing-plan-notice"
+import GeneratingPlan from "./components/generating-plan"
+import StepIndicator from "./components/step-indicator"
+import ExamDetailsStep from "./components/steps/exam-details-step"
+import GoalsStep from "./components/steps/goals-step"
+import PersonalDetailsStep from "./components/steps/personal-details-step"
+import StudyPreferencesStep from "./components/steps/study-preferences-step"
+import SubjectAssessmentStep from "./components/steps/subject-assessment-step"
+import StudyTip from "./components/study-tip"
+import SuccessMessage from "./components/success-message"
+import StudyPlanResults from "./study-plan-results"
 import type {
   FormData,
   FormErrors,
+  StudyPlanResponse,
   TopicMasteryData,
   UserPerformanceData,
-  StudyPlanResponse,
 } from "./types/study-plan-types"
-import StudyPlanResults from "./study-plan-results"
-import StepIndicator from "./components/step-indicator"
-import PersonalDetailsStep from "./components/steps/personal-details-step"
-import ExamDetailsStep from "./components/steps/exam-details-step"
-import SubjectAssessmentStep from "./components/steps/subject-assessment-step"
-import StudyPreferencesStep from "./components/steps/study-preferences-step"
-import GoalsStep from "./components/steps/goals-step"
-import StudyTip from "./components/study-tip"
-import GeneratingPlan from "./components/generating-plan"
-import SuccessMessage from "./components/success-message"
-import ExistingPlanNotice from "./components/existing-plan-notice"
 
 import UserPlansList from "./components/user-plans-list"
 
@@ -135,10 +135,10 @@ const PlannerForm: React.FC = () => {
     fetchPerformanceData()
   }, [])
 
-   // Check for existing plans and fetch them
+  // Check for existing plans and fetch them
   useEffect(() => {
     const userId = localStorage.getItem("Medical_User_Id")
-    if(!userId) return
+    if (!userId) return
     fetchUserPlans()
   }, [])
 
@@ -196,13 +196,13 @@ const PlannerForm: React.FC = () => {
     try {
       const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/ai-planner/getUserStudyPlans/${userId}`)
       console.log("API response:", response.data)
-      if (response.data.success && response.data.data && response.data.data.length > 0){
+      if (response.data.success && response.data.data && response.data.data.length > 0) {
         setUserPlans(response.data.data)
         setHasExistingPlan(true)
       } else {
-         // Even if the API returns success but no data, set hasExistingPlan to false
-         setUserPlans([])
-         setHasExistingPlan(false)
+        // Even if the API returns success but no data, set hasExistingPlan to false
+        setUserPlans([])
+        setHasExistingPlan(false)
       }
     } catch (error) {
       console.error("Error fetching user plans:", error)
@@ -477,7 +477,7 @@ const PlannerForm: React.FC = () => {
           // Continue to fallback methods
         }
       }
-        setShowPlansList(true)
+      setShowPlansList(true)
     } catch (error) {
       console.error("Error loading saved plan:", error)
       toast.error("Failed to load your saved plan. Please try again.")
@@ -708,8 +708,8 @@ const PlannerForm: React.FC = () => {
         localStorage.setItem("currentPlanId", result.data.planId)
       }
 
-       // Refresh the user plans list
-       fetchUserPlans()
+      // Refresh the user plans list
+      fetchUserPlans()
 
       // Show success message
       setShowSuccess(true)
@@ -767,11 +767,11 @@ const PlannerForm: React.FC = () => {
     { title: "Goals", icon: <Award size={16} /> },
   ]
 
-    // Handle plan selection from the list
-    const handleSelectPlan = async (planId: string) => {
-      await loadExistingPlan(planId)
-      setShowPlansList(false)
-    }
+  // Handle plan selection from the list
+  const handleSelectPlan = async (planId: string) => {
+    await loadExistingPlan(planId)
+    setShowPlansList(false)
+  }
 
   // If we have a study plan, show the results component
   if (studyPlan) {
@@ -793,7 +793,7 @@ const PlannerForm: React.FC = () => {
   return (
     <div className="bg-white p-6 rounded-lg shadow-md relative overflow-hidden">
       {hasExistingPlan && !studyPlan && (
-         <ExistingPlanNotice onViewPlans={() => setShowPlansList(true)} hasPlans={hasExistingPlan} />
+        <ExistingPlanNotice onViewPlans={() => setShowPlansList(true)} hasPlans={hasExistingPlan} />
       )}
 
       {/* Background decoration */}
@@ -803,8 +803,8 @@ const PlannerForm: React.FC = () => {
       {/* Study tip toast notification */}
       <AnimatePresence>{showTip && <StudyTip tip={currentTip} />}</AnimatePresence>
 
-        {/* Plans list modal */}
-        {showPlansList && (
+      {/* Plans list modal */}
+      {showPlansList && (
         <UserPlansList
           plans={userPlans}
           onSelectPlan={handleSelectPlan}
@@ -952,9 +952,8 @@ const PlannerForm: React.FC = () => {
                 }
               }}
               disabled={isSubmitting}
-              className={`px-4 py-2 ${
-                isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
-              } text-white rounded-md transition-colors flex items-center shadow-md`}
+              className={`px-4 py-2 ${isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+                } text-white rounded-md transition-colors flex items-center shadow-md`}
             >
               {isSubmitting ? (
                 <>

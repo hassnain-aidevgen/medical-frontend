@@ -9,12 +9,14 @@ import { BarChart3, Calendar, Clock, Settings, Trophy } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast, Toaster } from "react-hot-toast"
 import { CompletionChart } from "./completion-chart"
-import FlashcardExport from "./flashcard-export"
-import InfographicSuggestions from "./infographic-suggestions"
+// import FlashcardExport from "./flashcard-export"
+// import InfographicSuggestions from "./infographic-suggestions"
+import InfographicsTab from "../flash-cards/infographics-tab"
 import { ReviewPreferencesForm } from "./review-preferences-form"
 import { ReviewProgressMeter } from "./review-progress-meter"
 import { UpcomingReviews } from "./upcoming-reviews"
 import ChallengeModeSession from "./challenge-mode-session"
+import FlashcardsPage from "./flashcard-export"
 
 export default function ReviewDashboard() {
   interface Review {
@@ -40,6 +42,7 @@ export default function ReviewDashboard() {
   })
   const [loading, setLoading] = useState(true)
   const [showChallengeMode, setShowChallengeMode] = useState(false)
+  const [user1Id, setUser1Id] = useState<string>("")
 
   useEffect(() => {
     fetchDashboardData()
@@ -48,6 +51,7 @@ export default function ReviewDashboard() {
   const fetchDashboardData = async () => {
     try {
       const userId = localStorage.getItem("Medical_User_Id")
+      setUser1Id(userId || "")
       setLoading(true)
       const response = await axios.get(
         `https://medical-backend-loj4.onrender.com/api/reviews/dashboard?userId=${userId}`,
@@ -172,14 +176,11 @@ export default function ReviewDashboard() {
             <TabsTrigger value="completion" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
               Completion History
             </TabsTrigger>
-            <TabsTrigger value="flashcards" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
-              Flashcards
+            <TabsTrigger value="needsreview" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+               Needs Review
             </TabsTrigger>
             <TabsTrigger value="infographics" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
               Infographics
-            </TabsTrigger>
-            <TabsTrigger value="preferences" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
-              Review Preferences
             </TabsTrigger>
           </TabsList>
           <TabsContent value="upcoming" className="mt-4">
@@ -194,7 +195,7 @@ export default function ReviewDashboard() {
                 <UpcomingReviews reviews={stats.upcomingReviews} />
               </CardContent>
             </Card>
-          </TabsContent>sdddddd
+          </TabsContent>
           <TabsContent value="completion" className="mt-4">
             <Card>
               <CardHeader>
@@ -207,15 +208,9 @@ export default function ReviewDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="flashcards" className="mt-4">
+          <TabsContent value="needsreview" className="mt-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Flashcard Export</CardTitle>
-                <CardDescription>Export your flashcards as PDF for offline study or printing</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <FlashcardExport />
-              </CardContent>
+                <FlashcardsPage />
             </Card>
           </TabsContent>
           <TabsContent value="infographics" className="mt-4">
@@ -225,18 +220,7 @@ export default function ReviewDashboard() {
                 <CardDescription>Visual learning aids for your most challenging topics</CardDescription>
               </CardHeader>
               <CardContent>
-                <InfographicSuggestions />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="preferences" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Review Preferences</CardTitle>
-                <CardDescription>Customize your preferred review times and frequency</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ReviewPreferencesForm />
+                <InfographicsTab  />
               </CardContent>
             </Card>
           </TabsContent>

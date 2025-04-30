@@ -34,11 +34,12 @@ interface InfographicsTabProps {
 // const API_URL = "https://medical-backend-loj4.onrender.com/api"
 const API_URL = "https://medical-backend-loj4.onrender.com/api" // Localhost for development
 
-export default function InfographicsTab({ userId }: InfographicsTabProps) {
+export default function InfographicsTab() {
   const [infographicData, setInfographicData] = useState<InfographicData | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isGenerating, setIsGenerating] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
+  const userid = localStorage.getItem("Medical_User_Id")
 
   // Define difficulty colors
   const getDifficultyColor = (difficulty: string) => {
@@ -56,13 +57,13 @@ export default function InfographicsTab({ userId }: InfographicsTabProps) {
 
   // Fetch infographic data
   const fetchInfographic = async () => {
-    if (!userId) return
+    if (!userid) return
 
     setIsLoading(true)
     setError(null)
 
     try {
-      const { data } = await axios.get(`${API_URL}/infographic?userId=${userId}`)
+      const { data } = await axios.get(`${API_URL}/infographic?userId=${userid}`)
       console.log("Fetched Infographic:", data)
       setInfographicData(data.infographic)
     } catch (error) {
@@ -80,13 +81,13 @@ export default function InfographicsTab({ userId }: InfographicsTabProps) {
 
   // Generate new infographic
   const generateInfographic = async () => {
-    if (!userId) return
+    if (!userid) return
 
     setIsGenerating(true)
     setError(null)
 
     try {
-      const response = await axios.post(`${API_URL}/infographic`, { userId })
+      const response = await axios.post(`${API_URL}/infographic`, { userid })
       console.log("Generated Infographic:", response.data)
       setInfographicData(response.data.infographic)
       toast.success("Infographic successfully generated!")
@@ -104,10 +105,10 @@ export default function InfographicsTab({ userId }: InfographicsTabProps) {
 
   // Initial data load
   useEffect(() => {
-    if (userId) {
+    if (userid) {
       fetchInfographic()
     }
-  }, [userId])
+  }, [userid])
 
   // Render loading state
   if (isLoading) {

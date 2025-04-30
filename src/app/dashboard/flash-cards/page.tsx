@@ -548,7 +548,7 @@ useEffect(() => {
           </TabsContent>
 
           <TabsContent value="insights" className="mt-6">
-            <InfographicsTab userId={userId} />
+            <InfographicsTab />
           </TabsContent>
         </Tabs>
       </main>

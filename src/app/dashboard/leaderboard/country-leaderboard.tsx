@@ -68,7 +68,7 @@ export default function CountryLeaderboard({ loggedInUserId, globalLeaderboard, 
 
         // Fetch leaderboard data with country information
         const response = await fetch(
-          `http://localhost:5000/api/test/leaderboard/country?timeFrame=${timeFrame}`,
+          `https://medical-backend-loj4.onrender.com/api/test/leaderboard/country?timeFrame=${timeFrame}`,
         )
 
         if (!response.ok) {

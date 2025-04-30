@@ -1,358 +1,246 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import axios from "axios"
-import { Download, FileText, Loader2 } from "lucide-react"
-import { useEffect, useState } from "react"
-import { toast } from "react-hot-toast"
-// We'll use dynamic imports for jsPDF since it's a client-side only library
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import toast, { Toaster } from "react-hot-toast"
 
-interface Flashcard {
-  _id: string
-  question: string
-  answer: string
-  explanation?: string
-  topic?: string
-  subtopics?: string[]
-  createdAt: string
-}
+import apiService, { type Flashcard } from "@/services/api-service"
+import ReviewsTab from "../flash-cards/reviews-tab"
 
-export function FlashcardExport() {
+export default function FlashcardsPage() {
+  // State for flashcards and filtering
   const [flashcards, setFlashcards] = useState<Flashcard[]>([])
-  const [loading, setLoading] = useState(true)
-  const [exporting, setExporting] = useState(false)
-  const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
-  const [topics, setTopics] = useState<string[]>([])
+  const [reviewCards, setReviewCards] = useState<Flashcard[]>([])
+  const [totalReviewCards, setTotalReviewCards] = useState<number>(0)
+  const [reviewedCardIds, setReviewedCardIds] = useState<Set<string>>(new Set())
+  const [currentReviewCard, setCurrentReviewCard] = useState(0)
 
+  // UI state
+  const [isReviewLoading, setIsReviewLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [reviewError, setReviewError] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string>("")
+  const [debugMode, setDebugMode] = useState(false)
+
+  // Initialize user ID from localStorage
   useEffect(() => {
-    fetchFlashcards()
+    const storedUserId = localStorage.getItem("Medical_User_Id")
+    if (storedUserId) {
+      setUserId(storedUserId)
+    } else {
+      // Handle case where user ID is not available
+      toast.error("User ID not found. Please log in again.")
+      // You could redirect to login page here
+    }
   }, [])
 
-  const fetchFlashcards = async () => {
+  // Fetch cards that need review (mastery < 30%)
+  const fetchReviewCards = useCallback(async () => {
+    if (!userId) return
+
+    setIsReviewLoading(true)
+    setReviewError(null)
+
     try {
-      setLoading(true)
-      const userId = localStorage.getItem("Medical_User_Id")
+      // Get all flashcards for the user
+      const response = await apiService.getFlashcards({ userId })
 
-      // Fetch flashcards from API
-      const response = await axios.get(
-        `https://medical-backend-loj4.onrender.com/api/test/flashcards?userId=${userId}`,
-        // `https://medical-backend-loj4.onrender.com/api/test/flashcards`,
-      )
+      // Filter cards with low mastery (marked for review)
+      const cardsForReview = response.data.filter((card: Flashcard) => card.mastery < 30 || card.reviewCount === 0)
 
-      // For demo purposes, if the API isn't implemented yet, we'll use mock data
-      const mockFlashcards: Flashcard[] = [
-        {
-          _id: "fc1",
-          question: "What is the primary function of hemoglobin?",
-          answer: "To transport oxygen from the lungs to the tissues",
-          explanation:
-            "Hemoglobin is a protein in red blood cells that binds to oxygen in the lungs and carries it to tissues throughout the body.",
-          topic: "Cardiovascular System",
-          subtopics: ["Blood", "Oxygen Transport"],
-          createdAt: new Date().toISOString(),
-        },
-        {
-          _id: "fc2",
-          question: "Which cranial nerve is responsible for taste sensation in the anterior two-thirds of the tongue?",
-          answer: "Facial nerve (CN VII)",
-          explanation:
-            "The facial nerve provides taste sensation to the anterior two-thirds of the tongue via the chorda tympani branch.",
-          topic: "Neuroanatomy",
-          subtopics: ["Cranial Nerves", "Sensory Function"],
-          createdAt: new Date().toISOString(),
-        },
-        {
-          _id: "fc3",
-          question: "What is the half-life of a drug?",
-          answer: "The time required for the concentration of the drug to reach half of its original value",
-          explanation:
-            "Half-life is a pharmacokinetic parameter that helps determine dosing intervals and the time required to reach steady state.",
-          topic: "Pharmacokinetics",
-          subtopics: ["Drug Metabolism", "Half-life"],
-          createdAt: new Date().toISOString(),
-        },
-        {
-          _id: "fc4",
-          question: "What causes metabolic acidosis?",
-          answer: "Increased production of acid, decreased excretion of acid, or increased loss of bicarbonate",
-          explanation: "Common causes include diabetic ketoacidosis, lactic acidosis, renal failure, and diarrhea.",
-          topic: "Acid-Base Balance",
-          subtopics: ["Metabolic Acidosis", "pH Regulation"],
-          createdAt: new Date().toISOString(),
-        },
-        {
-          _id: "fc5",
-          question: "What is the most common cause of community-acquired pneumonia?",
-          answer: "Streptococcus pneumoniae",
-          explanation:
-            "S. pneumoniae is a gram-positive, alpha-hemolytic bacterium that commonly colonizes the upper respiratory tract.",
-          topic: "Infectious Diseases",
-          subtopics: ["Respiratory Infections", "Bacterial Pathogens"],
-          createdAt: new Date().toISOString(),
-        },
-      ]
+      // Store the total number of cards that need review
+      setTotalReviewCards(cardsForReview.length)
 
-      const fetchedFlashcards = response.data?.flashcards || mockFlashcards
-      setFlashcards(fetchedFlashcards)
+      // Reset the reviewed cards set when fetching new review cards
+      setReviewedCardIds(new Set())
 
-      // Extract unique topics
-      const uniqueTopics = Array.from(new Set(fetchedFlashcards.map((fc: Flashcard) => fc.topic || "Uncategorized")))
-      setTopics(uniqueTopics as string[])
-
-      setLoading(false)
+      setReviewCards(cardsForReview)
+      setCurrentReviewCard(0)
+      
+      // Also set the full flashcards array for reference
+      setFlashcards(response.data)
     } catch (error) {
-      console.error("Error fetching flashcards:", error)
-      // Use mock data if API fails
-      const mockFlashcards: Flashcard[] = [
-        {
-          _id: "fc1",
-          question: "What is the primary function of hemoglobin?",
-          answer: "To transport oxygen from the lungs to the tissues",
-          explanation:
-            "Hemoglobin is a protein in red blood cells that binds to oxygen in the lungs and carries it to tissues throughout the body.",
-          topic: "Cardiovascular System",
-          subtopics: ["Blood", "Oxygen Transport"],
-          createdAt: new Date().toISOString(),
-        },
-        {
-          _id: "fc2",
-          question: "Which cranial nerve is responsible for taste sensation in the anterior two-thirds of the tongue?",
-          answer: "Facial nerve (CN VII)",
-          explanation:
-            "The facial nerve provides taste sensation to the anterior two-thirds of the tongue via the chorda tympani branch.",
-          topic: "Neuroanatomy",
-          subtopics: ["Cranial Nerves", "Sensory Function"],
-          createdAt: new Date().toISOString(),
-        },
-      ]
+      console.error("Error fetching review cards:", error)
 
-      setFlashcards(mockFlashcards)
+      if (error && typeof error === "object" && "message" in error) {
+        setReviewError((error as Error).message || "Failed to load review cards")
+      } else {
+        setReviewError("Failed to load review cards. Please try again later.")
+      }
 
-      // Extract unique topics
-      const uniqueTopics = Array.from(new Set(mockFlashcards.map((fc) => fc.topic || "Uncategorized")))
-      setTopics(uniqueTopics as string[])
-
-      setLoading(false)
-      toast.error("Failed to load flashcards")
+      setReviewCards([])
+      setTotalReviewCards(0)
+    } finally {
+      setIsReviewLoading(false)
     }
+  }, [userId])
+
+  // Add this function to handle shuffled cards
+  const handleShuffleReviewCards = (shuffledCards: Flashcard[]) => {
+    setReviewCards(shuffledCards)
+    setCurrentReviewCard(0)
   }
 
-  const exportToPDF = async (selectedCards: Flashcard[]) => {
+  // Initial data load
+  useEffect(() => {
+    if (userId) {
+      fetchReviewCards()
+    }
+  }, [fetchReviewCards, userId])
+
+  // Scroll to specific flashcard if coming from performance tracking
+  useEffect(() => {
+    const reviewId = localStorage.getItem("flashcardReviewId")
+    if (reviewId) {
+      // Wait for cards to render (just in case)
+      setTimeout(() => {
+        const el = document.getElementById(`flashcard-${reviewId}`)
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" })
+        }
+        localStorage.removeItem("flashcardReviewId")
+      }, 300)
+    }
+  }, [])
+
+  // Study progress tracking
+  const markCardAsKnown = async (card: Flashcard) => {
     try {
-      setExporting(true)
+      // Calculate new mastery level (increase by 10-20% based on current level)
+      const masteryIncrease = card.mastery < 50 ? 20 : 10
+      const newMastery = Math.min(100, card.mastery + masteryIncrease)
 
-      // Dynamically import jsPDF and jspdf-autotable
-      const jspdfModule = await import("jspdf")
-      const jsPDF = jspdfModule.default || jspdfModule.jsPDF
+      const updatedCard = {
+        ...card,
+        mastery: newMastery,
+        reviewCount: card.reviewCount + 1,
+        lastReviewed: new Date(),
+      }
 
-      // Create a new PDF document
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      })
+      if (!card.id) {
+        throw new Error("Card ID is missing")
+      }
 
-      // Import and add the autotable plugin
-      const autoTableModule = await import("jspdf-autotable")
-      const autoTable = autoTableModule.default
+      const response = await apiService.updateFlashcard(card.id, updatedCard)
 
-      // Add title
-      const title = selectedTopic ? `Medical Flashcards - ${selectedTopic}` : "Medical Flashcards"
-      doc.setFontSize(18)
-      doc.text(title, 105, 15, { align: "center" })
+      // Update the cards in state
+      setFlashcards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
 
-      // Add date
-      doc.setFontSize(10)
-      doc.text(`Generated on ${new Date().toLocaleDateString()}`, 105, 22, { align: "center" })
+      // Add this card ID to the set of reviewed cards
+      if (card.id) {
+        setReviewedCardIds((prev) => {
+          const newSet = new Set(prev)
+          newSet.add(card.id!)
+          return newSet
+        })
+      }
 
-      // Add flashcards
-      doc.setFontSize(12)
+      // Remove from review cards if mastery is now above threshold
+      if (newMastery >= 30) {
+        setReviewCards((prevCards) => prevCards.filter((c) => c.id !== response.data.id))
+      } else {
+        setReviewCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+      }
 
-      // Prepare data for table
-      const tableData = selectedCards.map((card, index) => [
-        `${index + 1}`,
-        card.question,
-        card.answer,
-        card.explanation || "",
-      ])
-
-      // Add table using the imported autoTable function
-      autoTable(doc, {
-        head: [["#", "Question", "Answer", "Explanation"]],
-        body: tableData,
-        startY: 30,
-        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-        alternateRowStyles: { fillColor: [240, 240, 240] },
-        columnStyles: {
-          0: { cellWidth: 10 },
-          1: { cellWidth: 60 },
-          2: { cellWidth: 60 },
-          3: { cellWidth: 60 },
-        },
-        styles: { overflow: "linebreak", cellPadding: 3 },
-        margin: { top: 30 },
-      })
-
-      // Save the PDF
-      const filename = selectedTopic
-        ? `medical_flashcards_${selectedTopic.toLowerCase().replace(/\s+/g, "_")}.pdf`
-        : "medical_flashcards.pdf"
-
-      doc.save(filename)
-
-      toast.success(`PDF exported successfully!`)
-      setExporting(false)
+      toast.success("Card marked as known")
+      return true
     } catch (error) {
-      console.error("Error exporting to PDF:", error)
-      toast.error("Failed to export PDF. Please try again.")
-      setExporting(false)
+      apiService.handleApiError(error, "Failed to update card progress")
+      return false
     }
   }
 
-  const handleExportPDF = () => {
-    const cardsToExport = selectedTopic ? flashcards.filter((card) => card.topic === selectedTopic) : flashcards
+  const markCardForReview = async (card: Flashcard) => {
+    try {
+      // Set mastery to a low value to mark for review (below 30%)
+      const newMastery = Math.min(25, card.mastery)
 
-    if (cardsToExport.length === 0) {
-      toast.error("No flashcards to export")
-      return
+      const updatedCard = {
+        ...card,
+        mastery: newMastery,
+        reviewCount: card.reviewCount + 1,
+        lastReviewed: new Date(),
+      }
+
+      if (!card.id) {
+        throw new Error("Card ID is missing")
+      }
+
+      const response = await apiService.updateFlashcard(card.id, updatedCard)
+
+      // Update the cards in state
+      setFlashcards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+
+      // Add this card ID to the set of reviewed cards
+      if (card.id) {
+        setReviewedCardIds((prev) => {
+          const newSet = new Set(prev)
+          newSet.add(card.id!)
+          return newSet
+        })
+      }
+
+      // Add to review cards if not already there
+      if (!reviewCards.some((c) => c.id === response.data.id)) {
+        setReviewCards((prevCards) => [...prevCards, response.data])
+      } else {
+        setReviewCards((prevCards) => prevCards.map((c) => (c.id === response.data.id ? response.data : c)))
+      }
+
+      toast("Card marked for review", { icon: "📝" })
+      return true
+    } catch (error) {
+      apiService.handleApiError(error, "Failed to update card progress")
+      return false
     }
-
-    exportToPDF(cardsToExport)
-  }
-
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-32 w-full" />
-      </div>
-    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h3 className="text-lg font-medium">Export Flashcards</h3>
-            <p className="text-sm text-muted-foreground">Export your flashcards as PDF for offline study or printing</p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        <div className="mt-4">
+          <ReviewsTab
+            reviewCards={reviewCards}
+            currentReviewCard={currentReviewCard}
+            isReviewLoading={isReviewLoading}
+            reviewError={reviewError}
+            setCurrentReviewCard={setCurrentReviewCard}
+            setActiveTab={() => {}} // Empty function as we removed tabs
+            fetchReviewCards={fetchReviewCards}
+            markCardAsKnown={markCardAsKnown}
+            markCardForReview={markCardForReview}
+            handleShuffleReviewCards={handleShuffleReviewCards}
+            totalReviewCards={totalReviewCards}
+            reviewedCardIds={reviewedCardIds}
+            userId={userId}
+          />
+        </div>
+      </main>
 
-          <div className="flex flex-col sm:flex-row gap-2">
-            <select
-              className="px-3 py-2 rounded-md border border-input bg-background text-sm"
-              value={selectedTopic || ""}
-              onChange={(e) => setSelectedTopic(e.target.value || null)}
-            >
-              <option value="">All Topics ({flashcards.length} cards)</option>
-              {topics.map((topic) => {
-                const count = flashcards.filter((card) => card.topic === topic).length
-                return (
-                  <option key={topic} value={topic}>
-                    {topic} ({count} cards)
-                  </option>
-                )
-              })}
-            </select>
-
-            <Button
-              onClick={handleExportPDF}
-              disabled={exporting || flashcards.length === 0}
-              className="flex items-center gap-2"
-            >
-              {exporting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Exporting...
-                </>
-              ) : (
-                <>
-                  <FileText className="h-4 w-4" />
-                  Download PDF
-                </>
-              )}
+      <Toaster position="top-right" />
+      {debugMode && (
+        <div className="fixed bottom-4 right-4 p-4 bg-black/80 text-white rounded-lg max-w-md max-h-96 overflow-auto">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-bold">Debug Info</h3>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-white" onClick={() => setDebugMode(false)}>
+              X
             </Button>
           </div>
+          <div className="text-xs">
+            <p>User ID: {userId || "Not set"}</p>
+            <p>Cards: {flashcards.length}</p>
+            <p>Review: {reviewCards.length}</p>
+            <p>Total Review: {totalReviewCards}</p>
+            <p>Reviewed IDs: {reviewedCardIds.size}</p>
+            <p>Error: {reviewError || "None"}</p>
+            <details>
+              <summary>First Card Data</summary>
+              <pre>{JSON.stringify(flashcards[0] || {}, null, 2)}</pre>
+            </details>
+          </div>
         </div>
-
-        {flashcards.length === 0 ? (
-          <Card>
-            <CardContent className="py-6">
-              <div className="text-center text-muted-foreground">
-                <p>No flashcards found. Create some flashcards during your review sessions.</p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>Flashcard Preview</CardTitle>
-              <CardDescription>
-                {selectedTopic
-                  ? `Showing ${flashcards.filter((card) => card.topic === selectedTopic).length} flashcards for ${selectedTopic}`
-                  : `Showing all ${flashcards.length} flashcards`}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                {(selectedTopic ? flashcards.filter((card) => card.topic === selectedTopic) : flashcards)
-                  .slice(0, 5)
-                  .map((card, index) => (
-                    <Card key={card._id} className="border-muted">
-                      <CardHeader className="py-3">
-                        <div className="flex justify-between items-start">
-                          <CardTitle className="text-base">Question {index + 1}</CardTitle>
-                          {card.topic && <span className="text-xs px-2 py-1 bg-muted rounded-full">{card.topic}</span>}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="py-2">
-                        <p className="text-sm font-medium">{card.question}</p>
-                        <div className="mt-2 pt-2 border-t">
-                          <p className="text-sm text-muted-foreground">
-                            <span className="font-medium text-foreground">Answer:</span> {card.answer}
-                          </p>
-                          {card.explanation && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              <span className="font-medium text-foreground">Explanation:</span> {card.explanation}
-                            </p>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-
-                {(selectedTopic ? flashcards.filter((card) => card.topic === selectedTopic) : flashcards).length >
-                  5 && (
-                  <div className="text-center text-sm text-muted-foreground py-2">
-                    {selectedTopic
-                      ? flashcards.filter((card) => card.topic === selectedTopic).length - 5
-                      : flashcards.length - 5}{" "}
-                    more flashcards not shown in preview
-                  </div>
-                )}
-              </div>
-            </CardContent>
-            <CardFooter className="border-t bg-muted/50 flex justify-between">
-              <div className="text-sm text-muted-foreground">Export all flashcards or filter by topic</div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportPDF}
-                disabled={exporting}
-                className="flex items-center gap-2"
-              >
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
-            </CardFooter>
-          </Card>
-        )}
-      </div>
+      )}
     </div>
   )
 }
-
-export default FlashcardExport
-

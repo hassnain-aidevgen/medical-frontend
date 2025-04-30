@@ -507,7 +507,7 @@ export default function AnalyticsDashboard() {
       try {
         // Fetch performance data
         const performanceResponse = await axios.get(
-          "http://localhost:5000/api/test/performance2",
+          "https://medical-backend-loj4.onrender.com/api/test/performance2",
           {
             params: { userId },
           }

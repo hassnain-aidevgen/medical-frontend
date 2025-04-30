@@ -34,6 +34,7 @@ import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import WeeklyPerformance from "@/components/weekly-performance"
+import NextTaskCard from "@/components/next-task-card"
 
 const featureCards = [
   { name: "Create Test", icon: BookOpen, href: "/dashboard/create-test", color: "bg-blue-500" },
@@ -189,7 +190,7 @@ useEffect(() => {
     if (lowAccuracyExams.length > 0) {
       try {
         const response = await axios.get(
-          `http://localhost:5000/api/courses/recommended-courses/${userId}?examTypes=${lowAccuracyExams.join(',')}`
+          `https://medical-backend-loj4.onrender.com/api/courses/recommended-courses/${userId}?examTypes=${lowAccuracyExams.join(',')}`
         );
         
         if (response.data && response.data.success) {
@@ -499,7 +500,7 @@ useEffect(() => {
             )}
           </CardContent>
         </Card>
-
+{/* 
         <Card className="cursor-pointer overflow-hidden border-l-4 border-l-green-500" onClick={navigateToWeeklyGoals}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Weekly Goal Progress</CardTitle>
@@ -518,7 +519,8 @@ useEffect(() => {
               </>
             )}
           </CardContent>
-        </Card>
+        </Card> */}
+        <NextTaskCard userId={userId} onNavigate={navigateToWeeklyGoals} />
 
         <Card className="overflow-hidden border-l-4 border-l-emerald-500">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -606,9 +608,9 @@ useEffect(() => {
           </div>
 
           {/* Study Plan */}
-          <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
+          {/* <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
             <DashboardStudyPlan />
-          </div>
+          </div> */}
         </div>
 
         {/* Right Side (1/3 width) */}

@@ -80,6 +80,8 @@ interface SubmitAnswerResponse {
     correctAnswer: string
     explanation: string
     sessionComplete: boolean
+    flashcardCreated?: boolean
+    flashcardCategory?: string
     metrics?: {
         totalCorrect: number
         totalQuestions: number
@@ -135,6 +137,8 @@ export default function ChallengePage() {
     const [elapsedTime, setElapsedTime] = useState<number>(0)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [sessionComplete, setSessionComplete] = useState(false)
+    const [flashcardCreated, setFlashcardCreated] = useState<boolean>(false)
+    const [flashcardCategory, setFlashcardCategory] = useState<string | null>(null)
     const [results, setResults] = useState<ChallengeResults>({
         correct: 0,
         total: 0,
@@ -367,6 +371,12 @@ Note: A more detailed explanation will be available when our explanation service
 
                 // Fetch question analytics and AI explanation
                 // Make sure these are called immediately and not conditionally
+                if (response.data.flashcardCreated) {
+                    setFlashcardCreated(true)
+                    setFlashcardCategory(response.data.flashcardCategory || "Mistakes")
+                } else {
+                    setFlashcardCreated(false)
+                }
                 fetchQuestionAnalytics(currentQuestion._id)
                 fetchAiExplanation(currentQuestion._id, response.data.correctAnswer)
 
@@ -463,6 +473,10 @@ Note: A more detailed explanation will be available when our explanation service
 
     const returnToDashboard = () => {
         router.push("/dashboard")
+    }
+
+    const goToFlashcards = () => {
+        router.push("/dashboard/flashcards/review")
     }
 
     const formatTime = (seconds: number): string => {
@@ -626,6 +640,41 @@ Note: A more detailed explanation will be available when our explanation service
         )
     }
 
+
+    const FlashcardNotification = () => {
+        if (!flashcardCreated) return null
+
+        return (
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                            className="h-5 w-5 text-blue-500 mr-2">
+                            <rect x="2" y="4" width="20" height="16" rx="2" />
+                            <path d="M2 10h20" />
+                        </svg>
+                        <h4 className="text-base font-medium text-blue-700">Flashcard Created</h4>
+                    </div>
+                    <div className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs">
+                        Category: {flashcardCategory}
+                    </div>
+                </div>
+                <p className="text-sm text-blue-600 mb-3">
+                    This question has been added to your flashcards for later review.
+                </p>
+                {/* <Button
+                    onClick={goToFlashcards}
+                    variant="outline"
+                    className="w-full border-blue-300 text-blue-700 hover:bg-blue-100"
+                >
+                    Review Your Flashcards
+                </Button> */}
+            </div>
+        )
+    }
+
     return (
         <div className="flex-1 p-4 md:p-8 max-w-5xl mx-auto">
             <Button variant="ghost" onClick={returnToDashboard} className="mb-6">
@@ -711,7 +760,7 @@ Note: A more detailed explanation will be available when our explanation service
                                                         className={`flex items-center space-x-2 border-2 rounded-md p-4 hover:bg-muted/30 cursor-pointer transition-colors ${selectedAnswer === option ? "border-primary bg-primary/5" : "border-muted"
 
                                                             }`}
-                                                            onClick={() => setSelectedAnswer(option)}
+                                                        onClick={() => setSelectedAnswer(option)}
                                                     >
                                                         <div
                                                             className={`flex items-center justify-center w-8 h-8 rounded-full mr-2 flex-shrink-0 ${selectedAnswer === option
@@ -880,7 +929,7 @@ Note: A more detailed explanation will be available when our explanation service
                                                                     </svg>
                                                                 </div>
                                                                 <div>
-                                                                    <div className="text-xs text-slate-500">Response Time</div>
+                                                                    <div className="text-xs text-slate-500">Avg. Response Time</div>
                                                                     <div className="font-medium text-slate-700">
                                                                         {questionAnalytics.avgResponseTime.toFixed(1)}{" "}
                                                                         <span className="text-xs">seconds</span>
@@ -939,6 +988,10 @@ Note: A more detailed explanation will be available when our explanation service
                                                 </div>
                                             </div>
                                         )}
+
+                                        {answerResult && !answerResult.isCorrect && <FlashcardNotification />}
+
+
 
                                         {/* Toggle Explanation Button (only visible on mobile) */}
                                         {answerResult && (
