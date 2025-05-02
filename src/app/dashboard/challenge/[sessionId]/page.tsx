@@ -216,24 +216,14 @@ export default function ChallengePage() {
                     // Reset timer for the current question
                     setTimeStarted(Date.now())
 
-                    toast.success("Challenge loaded successfully", {
-                        duration: 2000,
-                        position: "top-center",
-                        icon: "🏆",
-                    })
+                    console.log("Challenge loaded successfully")
                 } else {
-                    toast.error("Failed to load challenge session", {
-                        duration: 4000,
-                        position: "top-center",
-                    })
+                    console.error("Failed to load challenge session")
                 }
             } catch (error) {
                 console.error("Error fetching challenge session:", error)
                 const axiosError = error as AxiosError
-                toast.error(axiosError.message || "Failed to load challenge session", {
-                    duration: 4000,
-                    position: "top-center",
-                })
+                console.error(axiosError.message || "Failed to load challenge session")
             } finally {
                 setIsLoading(false)
             }
@@ -684,10 +674,10 @@ Note: A more detailed explanation will be available when our explanation service
 
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold flex items-center">
+                    {/* <h1 className="text-2xl font-bold flex items-center">
                         <Trophy className="h-5 w-5 mr-2 text-orange-500" />
                         Hard Challenge
-                    </h1>
+                    </h1> */}
                     <p className="text-muted-foreground mt-1">
                         Question {currentQuestionIndex + 1} of {questions.length}
                     </p>

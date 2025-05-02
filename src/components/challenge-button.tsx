@@ -5,7 +5,6 @@ import axios from "axios"
 import { Trophy } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { toast } from "react-hot-toast"
 
 export default function ChallengeButton() {
     const router = useRouter()
@@ -19,7 +18,7 @@ export default function ChallengeButton() {
             const userId = localStorage.getItem("Medical_User_Id")
 
             if (!userId) {
-                toast.error("Please log in to start a challenge")
+                console.error("Please log in to start a challenge")
                 return
             }
 
@@ -33,11 +32,11 @@ export default function ChallengeButton() {
                 // Navigate to the challenge page with the session ID
                 router.push(`/dashboard/challenge/${response.data.sessionId}`)
             } else {
-                toast.error(response.data.message || "Please try again later")
+                console.error(response.data.message || "Please try again later")
             }
         } catch (error) {
             console.error("Error starting challenge:", error)
-            toast.error("Failed to start challenge. Please try again later.")
+            console.error("Failed to start challenge. Please try again later.")
         } finally {
             setIsLoading(false)
         }

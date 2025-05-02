@@ -70,10 +70,12 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className}  ${pathname === "/dashboard/create-test" ? "md:overflow-y-hidden" : ""}`}>
         <div className={`flex min-h-screen bg-gray-100`}>
-          <Sidebar isOpen={isOpen} toggleSidebar={toggleSidebar} />
-          <div className="flex flex-col flex-1 overflow-hidden h-screen ">
+        <div className="sticky top-0 h-screen z-40">
+  <Sidebar isOpen={isOpen} toggleSidebar={toggleSidebar} />
+</div>
+          <div className="flex flex-col flex-1  ">
             <Navbar toggleSidebar={toggleSidebar} />
-            <main className="flex-1  bg-gray-50 p-6 overflow-auto">
+            <main className="flex-1  bg-gray-50 p-6 overflow-y-auto">
               <DailyChallengeProvider>{children}</DailyChallengeProvider>
             </main>
           </div>
