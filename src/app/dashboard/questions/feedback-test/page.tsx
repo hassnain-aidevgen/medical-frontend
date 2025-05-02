@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 
-export default function FeedbackTestPage() {
+// This component handles the actual logic after params are available
+function FeedbackTestContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
@@ -73,5 +74,25 @@ export default function FeedbackTestPage() {
       <Skeleton className="h-12 w-64 mb-4" />
       <Skeleton className="h-4 w-48" />
     </div>
+  )
+}
+
+// Loading fallback component
+function LoadingFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center h-screen">
+      <Skeleton className="h-12 w-64 mb-4" />
+      <Skeleton className="h-4 w-48" />
+      <p className="text-sm text-gray-500 mt-4">Loading test...</p>
+    </div>
+  )
+}
+
+// Main component that wraps the content with Suspense
+export default function FeedbackTestPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <FeedbackTestContent />
+    </Suspense>
   )
 }
