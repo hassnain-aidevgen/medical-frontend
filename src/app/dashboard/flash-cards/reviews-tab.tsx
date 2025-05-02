@@ -201,33 +201,30 @@ export default function ReviewsTab({
   }
 
   const markReviewCardAsKnown = async () => {
-    if (reviewCards.length === 0) return
-
-    const card = reviewCards[currentReviewCard]
-    const success = await markCardAsKnown(card)
-
+    if (reviewCards.length === 0) return;
+  
+    const card = reviewCards[currentReviewCard];
+    const success = await markCardAsKnown(card);
+  
     if (success) {
-      // If this was the last review card, show a message
+      setShowReviewAnswer(false); // ✅ Reset the flip state for next card
+  
       if (reviewCards.length <= 1) {
-        toast.success("All cards reviewed! Great job!")
+        toast.success("All cards reviewed! Great job!");
       } else {
-        // Check if this is the last card in the array
-        const isLastCard = currentReviewCard === reviewCards.length - 1
-
-        // If it's the last card, go to the previous card instead of the next one
+        const isLastCard = currentReviewCard === reviewCards.length - 1;
+  
         if (isLastCard) {
-          setCurrentReviewCard(currentReviewCard - 1)
+          setCurrentReviewCard(currentReviewCard - 1);
         } else {
-          // Stay at the same index, which will now contain the next card
-          // (since the current card will be removed)
-          setCurrentReviewCard(currentReviewCard)
+          setCurrentReviewCard(currentReviewCard);
         }
-
-        toast.success("Card mastered and removed from review")
+  
+        toast.success("Card mastered and removed from review");
       }
     }
-  }
-
+  };
+  
   const openScheduleDialog = () => {
     setIsScheduleDialogOpen(true)
   }

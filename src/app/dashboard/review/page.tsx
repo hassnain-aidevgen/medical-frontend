@@ -55,7 +55,12 @@ export default function ReviewDashboard() {
       const response = await axios.get(
         `https://medical-backend-loj4.onrender.com/api/reviews/dashboard?userId=${userId}`,
       )
-      setStats(response.data)
+      setStats({
+        ...response.data,
+        completionRate: response.data.totalReviews > 0
+          ? Math.round((response.data.completedReviews / response.data.totalReviews) * 100)
+          : 0
+      })
       
       setLoading(false)
       setRefreshing(false)
@@ -190,9 +195,9 @@ export default function ReviewDashboard() {
             <TabsTrigger value="upcoming" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
               Upcoming Reviews
             </TabsTrigger>
-            <TabsTrigger value="completion" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
+            {/* <TabsTrigger value="completion" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
               Completion History
-            </TabsTrigger>
+            </TabsTrigger> */}
             <TabsTrigger value="needsreview" className="text-xs sm:text-sm whitespace-nowrap px-2 sm:px-4">
                Needs Review
             </TabsTrigger>
@@ -225,7 +230,7 @@ export default function ReviewDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="completion" className="mt-4">
+          {/* <TabsContent value="completion" className="mt-4">
             <Card>
               <CardHeader>
                 <CardTitle>Completion History</CardTitle>
@@ -236,7 +241,7 @@ export default function ReviewDashboard() {
                 <CompletionChart />
               </CardContent>
             </Card>
-          </TabsContent>
+          </TabsContent> */}
           <TabsContent value="needsreview" className="mt-4">
             <Card>
             <FlashcardsPage {...{ refreshDashboard: fetchDashboardData } as any} />

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
-
+import jsPDF from "jspdf"
 import apiService, { type Flashcard } from "@/services/api-service"
 import ReviewsTab from "../flash-cards/reviews-tab"
 
@@ -75,6 +75,23 @@ export default function FlashcardsPage() {
       setIsReviewLoading(false)
     }
   }, [userId])
+
+  const exportToPDF = () => {
+    const doc = new jsPDF()
+  
+    reviewCards.forEach((card, index) => {
+      doc.setFontSize(14)
+      doc.text(`Q${index + 1}: ${card.question}`, 10, 20 + index * 30)
+      doc.text(`A${index + 1}: ${card.answer}`, 10, 30 + index * 30)
+      
+      // Create new page after every 3 cards
+      if ((index + 1) % 3 === 0 && index !== reviewCards.length - 1) {
+        doc.addPage()
+      }
+    })
+  
+    doc.save("needs-review-cards.pdf")
+  }
 
   // Add this function to handle shuffled cards
   const handleShuffleReviewCards = (shuffledCards: Flashcard[]) => {
@@ -200,6 +217,11 @@ export default function FlashcardsPage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <main className="max-w-7xl mx-auto px-4 py-6">
         <div className="mt-4">
+        <div className="flex justify-end mb-4">
+            <Button onClick={exportToPDF} variant="outline">
+              Export to PDF
+            </Button>
+          </div>
           <ReviewsTab
             reviewCards={reviewCards}
             currentReviewCard={currentReviewCard}

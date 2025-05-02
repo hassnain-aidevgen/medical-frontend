@@ -93,7 +93,7 @@ export default function ScheduleReviewDialog({
             await axios.post("https://medical-backend-loj4.onrender.com/api/test/calender", calendarPayload);
             
             // Also send to reviews endpoint to add to upcoming reviews
-            await axios.post("http://localhost:5000/api/reviews/add-to-upcoming", {
+            await axios.post("https://medical-backend-loj4.onrender.com/api/reviews/add-to-upcoming", {
                 userId,
                 title: cardQuestion.length > 50 ? `${cardQuestion.substring(0, 47)}...` : cardQuestion,
                 scheduledFor: reviewDate.toISOString(),

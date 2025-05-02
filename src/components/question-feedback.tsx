@@ -59,7 +59,7 @@ export default function QuestionFeedback() {
       setIsLoading(true)
       setError(null)
       try {
-        const response = await axios.get("http://localhost:5000/api/test/question-feedback")
+        const response = await axios.get("https://medical-backend-loj4.onrender.com/api/test/question-feedback")
 
         if (response.data.success) {
           // Convert string percentages to numbers for sorting
@@ -133,10 +133,10 @@ export default function QuestionFeedback() {
     })
 
     setFilteredFeedback(result)
-    
+
     // Calculate total pages for pagination
     setTotalPages(Math.ceil(result.length / itemsPerPage))
-    
+
     // Reset to first page when filtering/sorting changes
     setCurrentPage(1)
   }, [feedback, searchQuery, sortField, sortOrder, filterType, itemsPerPage])
@@ -506,15 +506,15 @@ export default function QuestionFeedback() {
   const generatePaginationItems = () => {
     const items = []
     const maxVisiblePages = 5 // Maximum number of page numbers to show
-    
+
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
     let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
-    
+
     // Adjust if we're near the end
     if (endPage - startPage + 1 < maxVisiblePages) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1)
     }
-    
+
     // First page
     if (startPage > 1) {
       items.push(
@@ -522,7 +522,7 @@ export default function QuestionFeedback() {
           <PaginationLink onClick={() => setCurrentPage(1)}>1</PaginationLink>
         </PaginationItem>
       )
-      
+
       // Ellipsis if needed
       if (startPage > 2) {
         items.push(
@@ -532,7 +532,7 @@ export default function QuestionFeedback() {
         )
       }
     }
-    
+
     // Page numbers
     for (let i = startPage; i <= endPage; i++) {
       items.push(
@@ -543,7 +543,7 @@ export default function QuestionFeedback() {
         </PaginationItem>
       )
     }
-    
+
     // Last page
     if (endPage < totalPages) {
       // Ellipsis if needed
@@ -554,14 +554,14 @@ export default function QuestionFeedback() {
           </PaginationItem>
         )
       }
-      
+
       items.push(
         <PaginationItem key="last">
           <PaginationLink onClick={() => setCurrentPage(totalPages)}>{totalPages}</PaginationLink>
         </PaginationItem>
       )
     }
-    
+
     return items
   }
 
@@ -613,177 +613,175 @@ export default function QuestionFeedback() {
       <CardContent className="p-6">
 
         <div className="space-y-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                  <Input
-                    placeholder="Search questions..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-                  />
-                </div>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Search questions..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+              />
+            </div>
 
-                <div className="flex gap-2 flex-wrap md:flex-nowrap">
-                  <Select value={filterType} onValueChange={(value) => setFilterType(value as FilterType)}>
-                    <SelectTrigger className="w-full md:w-[160px] bg-white dark:bg-slate-950">
-                      <div className="flex items-center">
-                        <Filter className="h-4 w-4 mr-2" />
-                        <span>Filter</span>
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Questions</SelectItem>
-                      <SelectItem value="high">High Difficulty (≥70%)</SelectItem>
-                      <SelectItem value="medium">Medium Difficulty (40-69%)</SelectItem>
-                      <SelectItem value="low">Low Difficulty (&lt;40%)</SelectItem>
-                      <SelectItem value="noData">No Data Available</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={sortField} onValueChange={(value) => setSortField(value as SortField)}>
-                    <SelectTrigger className="w-full md:w-[160px] bg-white dark:bg-slate-950">
-                      <div className="flex items-center">
-                        {sortOrder === "asc" ? (
-                          <SortAsc className="h-4 w-4 mr-2" />
-                        ) : (
-                          <SortDesc className="h-4 w-4 mr-2" />
-                        )}
-                        <span>Sort By</span>
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="missedPercentage">Missed Percentage</SelectItem>
-                      <SelectItem value="totalAttempts">Total Attempts</SelectItem>
-                      <SelectItem value="questionText">Question Text</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-                    className="bg-white dark:bg-slate-950"
-                  >
-                    {sortOrder === "asc" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Items per page selector */}
-              <div className="flex items-center justify-end gap-2 text-sm">
-                <span className="text-muted-foreground">Questions per page:</span>
-                <Select 
-                  value={itemsPerPage.toString()} 
-                  onValueChange={(value) => setItemsPerPage(parseInt(value))}
-                >
-                  <SelectTrigger className="w-[80px] h-8 bg-white dark:bg-slate-950">
-                    <SelectValue>{itemsPerPage}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">5</SelectItem>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-4 mt-4">
-                {isLoading ? (
-                  renderSkeletons()
-                ) : displayedItems.length === 0 ? (
-                  <div className="text-center py-12 border rounded-lg bg-slate-50 dark:bg-slate-900/50 text-muted-foreground">
-                    <Info className="h-12 w-12 mx-auto mb-3 text-slate-400" />
-                    <p>No questions match your search criteria</p>
-                    <p className="text-sm mt-2">Try adjusting your filters or search term</p>
+            <div className="flex gap-2 flex-wrap md:flex-nowrap">
+              <Select value={filterType} onValueChange={(value) => setFilterType(value as FilterType)}>
+                <SelectTrigger className="w-full md:w-[160px] bg-white dark:bg-slate-950">
+                  <div className="flex items-center">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <span>Filter</span>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {displayedItems.map((item) => (
-                      <div
-                        key={item.questionId}
-                        className="p-5 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors group"
-                      >
-                        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
-                          <div className="flex-1">
-                            <p className="font-medium text-lg">{item.questionText}</p>
-                            <div className="flex flex-wrap items-center gap-x-2 mt-2 text-sm text-muted-foreground">
-                              <Badge variant="outline" className="bg-slate-100 dark:bg-slate-800 font-normal">
-                                {item.totalAttempts} attempts
-                              </Badge>
-                              <span>•</span>
-                              <Badge variant="outline" className="bg-slate-100 dark:bg-slate-800 font-normal">
-                                {item.missedCount} incorrect
-                              </Badge>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3 mt-2 lg:mt-0">
-                            <Badge
-                              variant="outline"
-                              className={`${getDifficultyColor(item.missedPercentage)} flex items-center gap-1 px-3 py-1 text-sm shadow-sm`}
-                            >
-                              {getDifficultyIcon(item.missedPercentage)}
-                              <span>{item.missedPercentage} missed</span>
-                            </Badge>
-                            <Button
-                              onClick={() => addQuestionToTest(item)}
-                              variant={selectedQuestions.includes(item.questionId) ? "secondary" : "outline"}
-                              size="sm"
-                              className={`transition-all ${
-                                selectedQuestions.includes(item.questionId) 
-                                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800" 
-                                  : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950"
-                              }`}
-                              disabled={isFetchingQuestions}
-                            >
-                              {isFetchingQuestions && !selectedQuestions.includes(item.questionId) ? (
-                                <span className="flex items-center">
-                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Loading...
-                                </span>
-                              ) : selectedQuestions.includes(item.questionId) ? (
-                                <span className="flex items-center">
-                                  <Check className="h-4 w-4 mr-1" /> Added
-                                </span>
-                              ) : (
-                                <span className="flex items-center">
-                                  <Plus className="h-4 w-4 mr-1" /> Add to Test
-                                </span>
-                              )}
-                            </Button>
-                          </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Questions</SelectItem>
+                  <SelectItem value="high">High Difficulty (≥70%)</SelectItem>
+                  <SelectItem value="medium">Medium Difficulty (40-69%)</SelectItem>
+                  <SelectItem value="low">Low Difficulty (&lt;40%)</SelectItem>
+                  <SelectItem value="noData">No Data Available</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={sortField} onValueChange={(value) => setSortField(value as SortField)}>
+                <SelectTrigger className="w-full md:w-[160px] bg-white dark:bg-slate-950">
+                  <div className="flex items-center">
+                    {sortOrder === "asc" ? (
+                      <SortAsc className="h-4 w-4 mr-2" />
+                    ) : (
+                      <SortDesc className="h-4 w-4 mr-2" />
+                    )}
+                    <span>Sort By</span>
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="missedPercentage">Missed Percentage</SelectItem>
+                  <SelectItem value="totalAttempts">Total Attempts</SelectItem>
+                  <SelectItem value="questionText">Question Text</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                className="bg-white dark:bg-slate-950"
+              >
+                {sortOrder === "asc" ? <SortAsc className="h-4 w-4" /> : <SortDesc className="h-4 w-4" />}
+              </Button>
+            </div>
+          </div>
+
+          {/* Items per page selector */}
+          <div className="flex items-center justify-end gap-2 text-sm">
+            <span className="text-muted-foreground">Questions per page:</span>
+            <Select
+              value={itemsPerPage.toString()}
+              onValueChange={(value) => setItemsPerPage(parseInt(value))}
+            >
+              <SelectTrigger className="w-[80px] h-8 bg-white dark:bg-slate-950">
+                <SelectValue>{itemsPerPage}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-4 mt-4">
+            {isLoading ? (
+              renderSkeletons()
+            ) : displayedItems.length === 0 ? (
+              <div className="text-center py-12 border rounded-lg bg-slate-50 dark:bg-slate-900/50 text-muted-foreground">
+                <Info className="h-12 w-12 mx-auto mb-3 text-slate-400" />
+                <p>No questions match your search criteria</p>
+                <p className="text-sm mt-2">Try adjusting your filters or search term</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {displayedItems.map((item) => (
+                  <div
+                    key={item.questionId}
+                    className="p-5 border rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors group"
+                  >
+                    <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4">
+                      <div className="flex-1">
+                        <p className="font-medium text-lg">{item.questionText}</p>
+                        <div className="flex flex-wrap items-center gap-x-2 mt-2 text-sm text-muted-foreground">
+                          <Badge variant="outline" className="bg-slate-100 dark:bg-slate-800 font-normal">
+                            {item.totalAttempts} attempts
+                          </Badge>
+                          <span>•</span>
+                          <Badge variant="outline" className="bg-slate-100 dark:bg-slate-800 font-normal">
+                            {item.missedCount} incorrect
+                          </Badge>
                         </div>
                       </div>
-                    ))}
+                      <div className="flex items-center gap-3 mt-2 lg:mt-0">
+                        <Badge
+                          variant="outline"
+                          className={`${getDifficultyColor(item.missedPercentage)} flex items-center gap-1 px-3 py-1 text-sm shadow-sm`}
+                        >
+                          {getDifficultyIcon(item.missedPercentage)}
+                          <span>{item.missedPercentage} missed</span>
+                        </Badge>
+                        <Button
+                          onClick={() => addQuestionToTest(item)}
+                          variant={selectedQuestions.includes(item.questionId) ? "secondary" : "outline"}
+                          size="sm"
+                          className={`transition-all ${selectedQuestions.includes(item.questionId)
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800"
+                              : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950"
+                            }`}
+                          disabled={isFetchingQuestions}
+                        >
+                          {isFetchingQuestions && !selectedQuestions.includes(item.questionId) ? (
+                            <span className="flex items-center">
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Loading...
+                            </span>
+                          ) : selectedQuestions.includes(item.questionId) ? (
+                            <span className="flex items-center">
+                              <Check className="h-4 w-4 mr-1" /> Added
+                            </span>
+                          ) : (
+                            <span className="flex items-center">
+                              <Plus className="h-4 w-4 mr-1" /> Add to Test
+                            </span>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
+            )}
+          </div>
 
-              {/* Pagination */}
-              {!isLoading && filteredFeedback.length > 0 && (
-                <Pagination className="mt-6">
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious 
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={currentPage === 1} 
-                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                      />
-                    </PaginationItem>
-                    
-                    {generatePaginationItems()}
-                    
-                    <PaginationItem>
-                      <PaginationNext 
-                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage === totalPages}
-                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              )}
-            </div>
+          {/* Pagination */}
+          {!isLoading && filteredFeedback.length > 0 && (
+            <Pagination className="mt-6">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+
+                {generatePaginationItems()}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    // disabled={currentPage === totalPages}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </div>
 
         {/* Selected Questions Summary */}
         {selectedQuestions.length > 0 && (
@@ -809,8 +807,8 @@ export default function QuestionFeedback() {
                     <SelectItem value="timer">Timed Test</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button 
-                  onClick={handleCreateSelectedTest} 
+                <Button
+                  onClick={handleCreateSelectedTest}
                   disabled={isCreatingTest}
                   size="sm"
                   className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
@@ -830,7 +828,7 @@ export default function QuestionFeedback() {
           </div>
         )}
       </CardContent>
-      
+
       <CardFooter className="flex items-center justify-between p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-sm text-muted-foreground rounded-b-lg">
         <div>
           {!isLoading && filteredFeedback.length > 0 && (
