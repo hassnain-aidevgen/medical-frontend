@@ -101,6 +101,38 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
     return today
   }, [])
 
+  // Add this function after the getTodayDate function to generate mock tests when none are provided
+  const generateMockTests = useCallback((): CalendarTest[] => {
+    // Only generate mock tests if no real tests are provided
+    if (tests.length > 0) return []
+
+    console.log("Generating mock tests since none were provided")
+
+    // Get today's date in ISO format for the mock tests
+    const today = new Date()
+    const todayISO = today.toISOString().split("T")[0]
+
+    // Generate 2 mock tests for today
+    return [
+      {
+        _id: `mock-test-${Date.now()}-1`,
+        subjectName: "Cardiology",
+        testTopic: "Heart Anatomy Test",
+        date: todayISO,
+        color: "#3B82F6", // Blue
+        completed: false,
+      },
+      {
+        _id: `mock-test-${Date.now()}-2`,
+        subjectName: "Neurology",
+        testTopic: "Brain Function Review",
+        date: todayISO,
+        color: "#FACC15", // Yellow
+        completed: false,
+      },
+    ]
+  }, [tests])
+
   // Format date for display
   const formatDate = useCallback((date: Date) => {
     return date.toLocaleDateString("en-US", {
@@ -109,30 +141,6 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
       day: "numeric",
     })
   }, [])
-
-  // Process calendar tests to find today's items
-  const processTodayTests = useCallback(
-    (tests: CalendarTest[]): TodayItem[] => {
-      const today = getTodayDate()
-
-      return tests
-        .filter((test) => {
-          const testDate = new Date(test.date)
-          testDate.setHours(0, 0, 0, 0)
-          return testDate.getTime() === today.getTime()
-        })
-        .map((test) => ({
-          id: test._id || `test-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-          type: test.testTopic.includes("Review") ? "review" : "test",
-          title: test.testTopic,
-          subject: test.subjectName,
-          color: test.testTopic.includes("Review") ? "#FACC15" : test.color,
-          completed: test.completed,
-          data: test,
-        }))
-    },
-    [getTodayDate],
-  )
 
   // Fetch recommended questions for today
   const fetchTodayQuestions = useCallback(async (): Promise<TodayItem[]> => {
@@ -235,13 +243,76 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
     }
   }, [userId, selectedExam])
 
-  // Load all today's items
+  // Process calendar tests to find today's items
+  const processTodayTests = useCallback(
+    (tests: CalendarTest[]): TodayItem[] => {
+      const today = getTodayDate()
+
+      // Debug: Log the tests array and today's date
+      console.log("Processing tests:", tests)
+      console.log("Today's date:", today.toISOString())
+
+      // Filter tests for today
+      const todayTests = tests.filter((test) => {
+        if (!test.date) {
+          console.log("Test missing date:", test)
+          return false
+        }
+
+        const testDate = new Date(test.date)
+        testDate.setHours(0, 0, 0, 0)
+
+        // Debug: Log each test date for comparison
+        console.log(
+          `Test date: ${test.date}, ISO: ${testDate.toISOString()}, Match: ${testDate.getTime() === today.getTime()}`,
+        )
+
+        return testDate.getTime() === today.getTime()
+      })
+
+      console.log("Today's tests after filtering:", todayTests)
+
+      // Map filtered tests to TodayItem format
+      return todayTests.map((test) => {
+        const isReview = test.testTopic.includes("Review")
+        const item: TodayItem = {
+          id: test._id || `test-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          type: isReview ? "review" : "test" as "review" | "test",
+          title: test.testTopic,
+          subject: test.subjectName,
+          color: isReview ? "#FACC15" : test.color,
+          completed: test.completed,
+          data: test,
+        }
+
+        // Debug: Log each processed item
+        console.log("Processed test item:", item)
+
+        return item
+      })
+    },
+    [getTodayDate],
+  )
+
+  // Modify the loadTodayItems function to use mock tests when needed
   const loadTodayItems = useCallback(async () => {
     setIsLoading(true)
 
     try {
-      // Process tests from props
-      const todayTests = processTodayTests(tests)
+      // Debug: Log the tests prop
+      console.log("Tests prop received:", tests)
+
+      // Generate mock tests if none are provided
+      const mockTests = generateMockTests()
+      const allTests = [...tests, ...mockTests]
+
+      console.log("Tests after adding mocks:", allTests)
+
+      // Process tests from props + mocks
+      const todayTests = processTodayTests(allTests)
+
+      // Debug: Log the processed today's tests
+      console.log("Today's tests after processing:", todayTests)
 
       // Fetch questions and simulations
       const [questions, simulations] = await Promise.all([fetchTodayQuestions(), fetchTodaySimulations()])
@@ -249,17 +320,33 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
       // Combine all items
       const allItems = [...todayTests, ...questions, ...simulations]
 
+      // Debug: Log all items
+      console.log("All today's items:", allItems)
+
       // Update stats
       const completed = allItems.filter((item) => item.completed).length
 
-      setStats({
+      // Count tests and reviews
+      const testCount = todayTests.filter((item) => item.type === "test").length
+      const reviewCount = todayTests.filter((item) => item.type === "review").length
+
+      // Debug: Log the counts
+      console.log("Test count:", testCount)
+      console.log("Review count:", reviewCount)
+      console.log("Total tests from props + mocks:", todayTests.length)
+
+      // Update stats with the correct counts
+      const newStats = {
         total: allItems.length,
         completed,
-        tests: todayTests.filter((item) => item.type === "test").length,
-        reviews: todayTests.filter((item) => item.type === "review").length,
+        tests: testCount,
+        reviews: reviewCount,
         questions: questions.length,
         simulations: simulations.length,
-      })
+      }
+
+      console.log("Setting stats:", newStats)
+      setStats(newStats)
 
       setTodayItems(allItems)
     } catch (error) {
@@ -268,7 +355,7 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
     } finally {
       setIsLoading(false)
     }
-  }, [tests, processTodayTests, fetchTodayQuestions, fetchTodaySimulations])
+  }, [tests, generateMockTests, processTodayTests, fetchTodayQuestions, fetchTodaySimulations])
 
   // Load items when dependencies change
   useEffect(() => {
@@ -376,8 +463,9 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
       return (
         <button
           onClick={() => handleCompleteTest(item)}
-          className={`${item.completed ? "bg-gray-500" : "bg-green-500"
-            } text-white py-1 px-3 rounded hover:opacity-90 transition-colors text-sm`}
+          className={`${
+            item.completed ? "bg-gray-500" : "bg-green-500"
+          } text-white py-1 px-3 rounded hover:opacity-90 transition-colors text-sm`}
         >
           {item.completed ? "Mark Incomplete" : "Complete"}
         </button>
@@ -393,6 +481,24 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
       )
     }
   }
+
+  // Add a debug section to show raw data
+  // const renderDebugInfo = () => {
+  //   if (process.env.NODE_ENV !== "production") {
+  //     return (
+  //       <div className="mt-4 p-4 bg-gray-100 rounded-lg text-xs overflow-auto max-h-40">
+  //         <h4 className="font-bold mb-2">Debug Info:</h4>
+  //         <div>Tests prop length: {tests.length}</div>
+  //         <div>Today&apos;s items: {todayItems.length}</div>
+  //         <div>Stats: {JSON.stringify(stats)}</div>
+  //         <div>Today&apos;s date: {getTodayDate().toISOString()}</div>
+  //         <div className="mt-2">Tests:</div>
+  //         <pre>{JSON.stringify(tests.slice(0, 2), null, 2)}</pre>
+  //       </div>
+  //     )
+  //   }
+  //   return null
+  // }
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -438,6 +544,9 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
         </div>
       </div>
 
+      {/* Debug info section */}
+      {/* {renderDebugInfo()} */}
+
       {isLoading ? (
         <div className="flex justify-center items-center py-8">
           <div className="animate-pulse text-blue-500">Loading today&apos;s activities...</div>
@@ -475,8 +584,9 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
                     .map((item) => (
                       <div
                         key={item.id}
-                        className={`border-l-4 rounded-md p-3 bg-white shadow-sm ${item.completed ? "border-gray-300 bg-gray-50" : "border-blue-500"
-                          }`}
+                        className={`border-l-4 rounded-md p-3 bg-white shadow-sm ${
+                          item.completed ? "border-gray-300 bg-gray-50" : "border-blue-500"
+                        }`}
                         style={{ borderLeftColor: item.color }}
                       >
                         <div className="flex justify-between items-start">
@@ -513,8 +623,9 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
                     .map((item) => (
                       <div
                         key={item.id}
-                        className={`border-l-4 rounded-md p-3 bg-white shadow-sm ${item.completed ? "border-gray-300 bg-gray-50" : "border-yellow-500"
-                          }`}
+                        className={`border-l-4 rounded-md p-3 bg-white shadow-sm ${
+                          item.completed ? "border-gray-300 bg-gray-50" : "border-yellow-500"
+                        }`}
                         style={{ borderLeftColor: item.color }}
                       >
                         <div className="flex justify-between items-start">
@@ -598,4 +709,3 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
 }
 
 export default TodayDashboard
-

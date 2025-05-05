@@ -7,6 +7,7 @@ import { useEffect, useState } from "react"
 interface ProgressData {
   totalScheduled: number
   totalCompleted: number
+  reviewLaterCount: number
   progressPercentage: number
 }
 
@@ -14,66 +15,113 @@ export function ReviewProgressMeter() {
   const [progressData, setProgressData] = useState<ProgressData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [triggerRefresh, setTriggerRefresh] = useState(0)
 
+  // Listen for localStorage changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "review_later_update_trigger") {
+        // Trigger a refresh when localStorage changes
+        setTriggerRefresh(prev => prev + 1);
+      }
+    };
+
+    // For same-tab updates
+    const checkLocalStorage = () => {
+      const updateCount = localStorage.getItem("review_later_update_trigger");
+      if (updateCount && updateCount !== lastUpdateCount.current) {
+        lastUpdateCount.current = updateCount;
+        setTriggerRefresh(prev => prev + 1);
+      }
+    };
+    
+    const lastUpdateCount = { current: localStorage.getItem("review_later_update_trigger") };
+    const interval = setInterval(checkLocalStorage, 1000);
+    
+    window.addEventListener("storage", handleStorageChange);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Fetch data from API and localStorage
   useEffect(() => {
     const fetchProgressData = async () => {
       try {
         setLoading(true)
         setError(null)
-
+    
         const userId = localStorage.getItem("Medical_User_Id")
         if (!userId) {
           setError("User ID not found")
           setLoading(false)
           return
         }
-
-        // Use the existing dashboard API endpoint
-        const response = await fetch(`https://medical-backend-loj4.onrender.com/api/reviews/dashboard?userId=${userId}`)
-
-        if (!response.ok) {
-          throw new Error(`API error: ${response.status}`)
+    
+        // Get review later count from localStorage if available, otherwise from API
+        let reviewLaterCount = 0;
+        const storedCount = localStorage.getItem("review_later_count");
+        
+        if (storedCount && !isNaN(parseInt(storedCount, 10))) {
+          reviewLaterCount = parseInt(storedCount, 10);
+        } else {
+          // Fallback to API call
+          const reviewLaterResponse = await fetch(`http://localhost:5000/api/reviews/review-later-count?userId=${userId}`);
+          const reviewLaterData = await reviewLaterResponse.json();
+          reviewLaterCount = reviewLaterData.reviewLaterCount || 0;
+          
+          // Update localStorage with the latest count
+          localStorage.setItem("review_later_count", reviewLaterCount.toString());
         }
-
-        const data = await response.json()
-
-        // Extract the relevant data for the progress meter
-        const totalScheduled = data.totalReviews || 0
-        const totalCompleted = data.completedReviews || 0
-        const progressPercentage = totalScheduled > 0 ? Math.round((totalCompleted / totalScheduled) * 100) : 0
-
+    
+        // Also get the completed reviews count
+        const completedResponse = await fetch(`http://localhost:5000/api/reviews/completed-count?userId=${userId}`);
+        const completedData = await completedResponse.json();
+        const totalCompleted = completedData.completedReviews || 0;
+        
+        // Calculate total as completed + pending review
+        const totalScheduled = totalCompleted + reviewLaterCount;
+        
+        // Calculate progress percentage
+        const progressPercentage = totalScheduled > 0 
+          ? Math.round((totalCompleted / totalScheduled) * 100) 
+          : 0;
+    
         setProgressData({
           totalScheduled,
           totalCompleted,
+          reviewLaterCount,
           progressPercentage,
-        })
-
-        setLoading(false)
+        });
+    
+        setLoading(false);
       } catch (error) {
-        console.error("Failed to fetch progress data:", error)
-        setError("Failed to load progress data")
-        setLoading(false)
+        console.error("Failed to fetch progress data:", error);
+        setError("Failed to load progress data");
+        setLoading(false);
       }
-    }
+    };
 
-    fetchProgressData()
-  }, [])
+    fetchProgressData();
+  }, [triggerRefresh]);  // Re-fetch when triggerRefresh changes
 
-  // Calculate the stroke-dasharray and stroke-dashoffset for the donut chart
+  // The rest of your component remains the same
   const calculateDonutValues = (percentage: number) => {
-    const radius = 40
-    const circumference = 2 * Math.PI * radius
+    const radius = 40;
+    const circumference = 2 * Math.PI * radius;
 
     return {
       circumference,
       offset: circumference - (percentage / 100) * circumference,
-    }
-  }
+    };
+  };
 
   const renderDonutChart = () => {
-    if (!progressData) return null
+    if (!progressData) return null;
 
-    const { circumference, offset } = calculateDonutValues(progressData.progressPercentage)
+    const { circumference, offset } = calculateDonutValues(progressData.progressPercentage);
 
     return (
       <div className="relative flex items-center justify-center">
@@ -98,8 +146,8 @@ export function ReviewProgressMeter() {
           <span className="text-xs text-muted-foreground">Reviewed</span>
         </div>
       </div>
-    )
-  }
+    );
+  };
 
   if (loading) {
     return (
@@ -112,7 +160,7 @@ export function ReviewProgressMeter() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </CardContent>
       </Card>
-    )
+    );
   }
 
   if (error) {
@@ -125,13 +173,13 @@ export function ReviewProgressMeter() {
         <CardContent className="py-2">
           <div className="text-center text-sm text-muted-foreground">
             <p>Unable to load progress data</p>
-            <button onClick={() => window.location.reload()} className="text-primary underline mt-1">
+            <button onClick={() => setTriggerRefresh(prev => prev + 1)} className="text-primary underline mt-1">
               Refresh
             </button>
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -151,12 +199,14 @@ export function ReviewProgressMeter() {
           <p className="text-sm text-muted-foreground">
             <span className="font-medium">{progressData?.totalCompleted}</span> of{" "}
             <span className="font-medium">{progressData?.totalScheduled}</span> items completed
+            {progressData && progressData.reviewLaterCount !== undefined && progressData.reviewLaterCount > 0 && (
+              <> + <span className="font-medium text-amber-500">{progressData.reviewLaterCount}</span> waiting for review</>
+            )}
           </p>
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
-export default ReviewProgressMeter
-
+export default ReviewProgressMeter;

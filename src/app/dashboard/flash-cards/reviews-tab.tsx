@@ -204,24 +204,58 @@ export default function ReviewsTab({
     if (reviewCards.length === 0) return;
   
     const card = reviewCards[currentReviewCard];
-    const success = await markCardAsKnown(card);
-  
-    if (success) {
-      setShowReviewAnswer(false); // ✅ Reset the flip state for next card
-  
-      if (reviewCards.length <= 1) {
-        toast.success("All cards reviewed! Great job!");
-      } else {
-        const isLastCard = currentReviewCard === reviewCards.length - 1;
-  
-        if (isLastCard) {
-          setCurrentReviewCard(currentReviewCard - 1);
-        } else {
-          setCurrentReviewCard(currentReviewCard);
+    
+    try {
+      // Call the existing markCardAsKnown function passed as prop
+      const success = await markCardAsKnown(card);
+    
+      if (success) {
+        // Reset the flip state for next card
+        setShowReviewAnswer(false); 
+        
+        // Update the localStorage review later count
+        const currentCount = parseInt(localStorage.getItem("review_later_count") || "0", 10);
+        if (!isNaN(currentCount) && currentCount > 0) {
+          // Make API call to check if card was marked for review and update the database
+          try {
+            const response = await axios.post("http://localhost:5000/api/reviews/remove-from-review-later", {
+              userId,
+              cardId: card._id
+            });
+            
+            if (response.data.success && response.data.wasMarkedForReview) {
+              // If the card was marked for review, update the count
+              const newCount = Math.max(0, currentCount - 1);
+              localStorage.setItem("review_later_count", newCount.toString());
+              
+              // Trigger update to notify other components
+              const triggerValue = localStorage.getItem("review_later_update_trigger") || "0";
+              const newTriggerValue = (parseInt(triggerValue, 10) + 1).toString();
+              localStorage.setItem("review_later_update_trigger", newTriggerValue);
+            }
+          } catch (error) {
+            console.error("Error updating review-later status:", error);
+          }
         }
   
-        toast.success("Card mastered and removed from review");
+        // Continue with existing logic
+        if (reviewCards.length <= 1) {
+          toast.success("All cards reviewed! Great job!");
+        } else {
+          const isLastCard = currentReviewCard === reviewCards.length - 1;
+    
+          if (isLastCard) {
+            setCurrentReviewCard(currentReviewCard - 1);
+          } else {
+            setCurrentReviewCard(currentReviewCard);
+          }
+    
+          toast.success("Card mastered and removed from review");
+        }
       }
+    } catch (error) {
+      console.error("Error marking card as known:", error);
+      toast.error("Failed to mark card as known");
     }
   };
   
@@ -242,17 +276,53 @@ export default function ReviewsTab({
     }
   }
 
-  const keepReviewCardForLater = async () => {
-    if (reviewCards.length === 0) return
+  // Replace the existing keepReviewCardForLater function
+const keepReviewCardForLater = async () => {
+  if (reviewCards.length === 0) return;
 
-    const card = reviewCards[currentReviewCard]
-    const success = await markCardForReview(card)
-
-    if (success) {
-      nextReviewCard()
-      toast("Card kept for later review", { icon: "📝" })
+  const card = reviewCards[currentReviewCard];
+  
+  try {
+    // Make a direct API call to mark the card for review
+    const response = await axios.post(
+      "http://localhost:5000/api/reviews/add-to-review-later",
+      {
+        userId,
+        cardId: card._id
+      }
+    );
+    
+    if (response.data.success) {
+      // Store the updated count in localStorage
+      localStorage.setItem("review_later_count", response.data.reviewLaterCount.toString());
+      
+      // Try to trigger a storage event to notify other components
+      const originalValue = localStorage.getItem("review_later_update_trigger") || "0";
+      const newValue = (parseInt(originalValue, 10) + 1).toString();
+      localStorage.setItem("review_later_update_trigger", newValue);
+      
+      // Continue with the existing logic
+      nextReviewCard();
+      toast("Card kept for later review", { icon: "📝" });
+      
+      // Still call the prop function if it exists (for compatibility)
+      if (typeof markCardForReview === 'function') {
+        markCardForReview(card).catch(err => 
+          console.error("Error in original markCardForReview:", err)
+        );
+      }
+      
+      return true;
+    } else {
+      toast.error("Failed to mark card for review");
+      return false;
     }
+  } catch (error) {
+    console.error("Error marking card for review:", error);
+    toast.error("Failed to mark card for review");
+    return false;
   }
+};
 
   // Calculate review progress percentage
   const calculateReviewProgress = () => {

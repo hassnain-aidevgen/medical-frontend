@@ -20,7 +20,6 @@ import {
 } from "recharts"
 import MentorshipsWidget from "@/components/upcoming-mentorships"
 import { OngoingCourses } from "@/components/ongoing-courses"
-import DashboardStudyPlan from "@/components/DashboardStudyPlan"
 import ChallengeButton from "@/components/challenge-button"
 import DailyChallengeButton from "@/components/daily-challenge-button"
 import DashboardNextReview from "@/components/dashboard-next-review"
@@ -35,7 +34,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import WeeklyPerformance from "@/components/weekly-performance"
 import NextTaskCard from "@/components/next-task-card"
-import { FileQuestion} from 'lucide-react'
+import { FileQuestion } from "lucide-react"
 const featureCards = [
   { name: "Create Test", icon: BookOpen, href: "/dashboard/create-test", color: "bg-blue-500" },
   { name: "Flash Cards", icon: Users, href: "/dashboard/flash-cards", color: "bg-green-500" },
@@ -134,15 +133,15 @@ export default function DashboardPage() {
   const [examTypeStatsLoading, setExamTypeStatsLoading] = useState(true)
   const [activeExamStatsTab, setActiveExamStatsTab] = useState<"accuracy" | "questions" | "time">("accuracy")
   interface RecommendedCourse {
-    _id: string;
-    title: string;
-    description: string;
-    thumbnail?: string;
-    examType: string;
-    level: string;
+    _id: string
+    title: string
+    description: string
+    thumbnail?: string
+    examType: string
+    level: string
   }
-  
-  const [recommendedCourses, setRecommendedCourses] = useState<RecommendedCourse[]>([]);
+
+  const [recommendedCourses, setRecommendedCourses] = useState<RecommendedCourse[]>([])
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -178,33 +177,31 @@ export default function DashboardPage() {
     }
   }, [userId])
   // Add this useEffect after your examTypeStats useEffect
-useEffect(() => {
-  const fetchRecommendedCourses = async () => {
-    if (!userId || examTypeStatsLoading || examTypeStats.length === 0) return;
-    
-    // Find exam types with accuracy below 75%
-    const lowAccuracyExams = examTypeStats
-      .filter(stat => stat.accuracy < 75)
-      .map(stat => stat.exam_type);
-    
-    // Only fetch if there are low accuracy exams
-    if (lowAccuracyExams.length > 0) {
-      try {
-        const response = await axios.get(
-          `https://medical-backend-loj4.onrender.com/api/courses/recommended-courses/${userId}?examTypes=${lowAccuracyExams.join(',')}`
-        );
-        
-        if (response.data && response.data.success) {
-          setRecommendedCourses(response.data.recommendedCourses);
+  useEffect(() => {
+    const fetchRecommendedCourses = async () => {
+      if (!userId || examTypeStatsLoading || examTypeStats.length === 0) return
+
+      // Find exam types with accuracy below 75%
+      const lowAccuracyExams = examTypeStats.filter((stat) => stat.accuracy < 75).map((stat) => stat.exam_type)
+
+      // Only fetch if there are low accuracy exams
+      if (lowAccuracyExams.length > 0) {
+        try {
+          const response = await axios.get(
+            `https://medical-backend-loj4.onrender.com/api/courses/recommended-courses/${userId}?examTypes=${lowAccuracyExams.join(",")}`,
+          )
+
+          if (response.data && response.data.success) {
+            setRecommendedCourses(response.data.recommendedCourses)
+          }
+        } catch (error) {
+          console.error("Error fetching recommended courses:", error)
         }
-      } catch (error) {
-        console.error("Error fetching recommended courses:", error);
       }
     }
-  };
-  
-  fetchRecommendedCourses();
-}, [userId, examTypeStats, examTypeStatsLoading]);
+
+    fetchRecommendedCourses()
+  }, [userId, examTypeStats, examTypeStatsLoading])
 
   useEffect(() => {
     const fetchStreakData = async () => {
@@ -297,9 +294,14 @@ useEffect(() => {
         )
         console.log("DailyQuestionStat: ", response.data)
         if (response.data) {
+          // Limit totalQuestions to 10
+          const totalQuestions = Math.min(response.data.totalQuestions || 0, 10)
+          // Ensure completedQuestions doesn't exceed the totalQuestions limit
+          const completedQuestions = Math.min(response.data.completedQuestions || 0, totalQuestions)
+
           setDailyStats({
-            completedQuestions: response.data.completedQuestions || 0,
-            totalQuestions: response.data.totalQuestions || 0,
+            completedQuestions,
+            totalQuestions,
           })
         }
       } catch (error) {
@@ -501,26 +503,6 @@ useEffect(() => {
             )}
           </CardContent>
         </Card>
-{/* 
-        <Card className="cursor-pointer overflow-hidden border-l-4 border-l-green-500" onClick={navigateToWeeklyGoals}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Weekly Goal Progress</CardTitle>
-            <Settings className="h-5 w-5 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            {goalsLoading ? (
-              <div className="text-2xl font-bold">Loading...</div>
-            ) : (
-              <>
-                <div className="text-2xl font-bold">{goalProgressPercentage}%</div>
-                <Progress value={goalProgressPercentage} className="h-2" />
-                <p className="text-xs text-muted-foreground mt-2">
-                  {completedQuests} of {totalQuests} quests completed
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card> */}
         <NextTaskCard userId={userId} onNavigate={navigateToWeeklyGoals} />
 
         <Card className="overflow-hidden border-l-4 border-l-emerald-500">
@@ -880,47 +862,47 @@ useEffect(() => {
             </CardContent>
           </Card>
           {recommendedCourses.length > 0 && (
-  <Card className="mb-6">
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <div>
-        <CardTitle>Recommended Courses</CardTitle>
-        <CardDescription>Based on your exam performance</CardDescription>
-      </div>
-      <BookOpen className="h-5 w-5 text-blue-500" />
-    </CardHeader>
-    <CardContent>
-      <div className="space-y-4">
-        {recommendedCourses.map(course => (
-          <div 
-            key={course._id}
-            className="flex gap-4 p-3 border rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
-            onClick={() => router.push(`/dashboard/courses/${course._id}`)}
-          >
-            {/* <div className="relative h-20 w-32 rounded-md overflow-hidden flex-shrink-0">
+            <Card className="mb-6">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle>Recommended Courses</CardTitle>
+                  <CardDescription>Based on your exam performance</CardDescription>
+                </div>
+                <BookOpen className="h-5 w-5 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {recommendedCourses.map((course) => (
+                    <div
+                      key={course._id}
+                      className="flex gap-4 p-3 border rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => router.push(`/dashboard/courses/${course._id}`)}
+                    >
+                      {/* <div className="relative h-20 w-32 rounded-md overflow-hidden flex-shrink-0">
               <img 
                 src={course.thumbnail || "/placeholder.svg?height=80&width=128&query=medical course"} 
                 alt={course.title}
                 className="object-cover w-full h-full"
               />
             </div> */}
-            <div className="flex-1">
-              <h4 className="font-medium">{course.title}</h4>
-              <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{course.description}</p>
-              <div className="flex gap-2 mt-2">
-                <span className="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full">
-                  {course.examType.replace("_", " ")}
-                </span>
-                <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 px-2 py-0.5 rounded-full">
-                  {course.level}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </CardContent>
-  </Card>
-)}
+                      <div className="flex-1">
+                        <h4 className="font-medium">{course.title}</h4>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{course.description}</p>
+                        <div className="flex gap-2 mt-2">
+                          <span className="text-xs bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                            {course.examType.replace("_", " ")}
+                          </span>
+                          <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 px-2 py-0.5 rounded-full">
+                            {course.level}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
       <MotivationalMessage />

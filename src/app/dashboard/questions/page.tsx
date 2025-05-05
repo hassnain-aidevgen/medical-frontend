@@ -284,13 +284,13 @@ export default function QuestionsPage() {
     <div className="flex-1 p-4 md:p-6 lg:p-8 bg-background min-h-screen">
       <div className="max-w-6xl mx-auto pb-16">
         <Toaster position="top-right" />
-        
+
         {/* Stats Cards Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {/* Study Hours Card */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} 
-            animate={{ opacity: 1, y: 0 }} 
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
             className="col-span-1"
           >
@@ -299,7 +299,7 @@ export default function QuestionsPage() {
                 <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-green-600 opacity-90"></div>
                 <div className="relative p-6 text-white h-full flex flex-col justify-between">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold">Total Study Time</h3>
+                    <h3 className="text-lg font-semibold">Total Study Hours</h3>
                     <div className="p-3 bg-white/20 rounded-lg">
                       <Clock className="h-6 w-6 text-white" />
                     </div>
@@ -308,8 +308,7 @@ export default function QuestionsPage() {
                     <p className="text-4xl font-bold">
                       {isStatsLoading || performanceData.length === 0
                         ? "0"
-                        : (performanceData.reduce((sum, item) => sum + item.totalTime, 0) / 3600).toFixed(1)}
-                      <span className="text-lg ml-1">hrs</span>
+                        : (performanceData.reduce((sum, item) => sum + item.totalTime, 0) / 3600).toFixed(3)}
                     </p>
                     <p className="text-sm mt-2 opacity-90">
                       Average {isStatsLoading ? "0" : statsData?.avgTimePerTest?.toFixed(1) || "0"} min/test
@@ -321,9 +320,9 @@ export default function QuestionsPage() {
           </motion.div>
 
           {/* Questions Answered Card */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} 
-            animate={{ opacity: 1, y: 0 }} 
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
             className="col-span-1"
           >
@@ -342,8 +341,13 @@ export default function QuestionsPage() {
                       {isStatsLoading ? "0" : statsData?.totalQuestionsAttempted || "0"}
                     </p>
                     <p className="text-sm mt-2 opacity-90">
-                      Accuracy: {isStatsLoading ? "0" : Math.round((statsData?.totalQuestionsCorrect || 0) / 
-                      (statsData?.totalQuestionsAttempted || 1) * 100)}%
+                      Accuracy:{" "}
+                      {isStatsLoading
+                        ? "0"
+                        : Math.round(
+                            ((statsData?.totalQuestionsCorrect || 0) / (statsData?.totalQuestionsAttempted || 1)) * 100,
+                          )}
+                      %
                     </p>
                   </div>
                 </div>
@@ -352,9 +356,9 @@ export default function QuestionsPage() {
           </motion.div>
 
           {/* Daily Challenge Card */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }} 
-            animate={{ opacity: 1, y: 0 }} 
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.2 }}
             className="col-span-1"
           >
@@ -422,9 +426,9 @@ export default function QuestionsPage() {
 
           {/* Recommended Questions Section */}
           {showRecommendations && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }} 
-              animate={{ opacity: 1, y: 0 }} 
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.4 }}
             >
               <Card className="overflow-hidden border-amber-200 dark:border-amber-800">
@@ -459,9 +463,7 @@ export default function QuestionsPage() {
                           <p className="text-amber-800 dark:text-amber-300 font-medium">
                             {recommendations.length} recommended questions available
                           </p>
-                          <p className="text-sm text-muted-foreground">
-                            Based on your recent performance analysis
-                          </p>
+                          <p className="text-sm text-muted-foreground">Based on your recent performance analysis</p>
                         </div>
                         <div className="flex gap-3">
                           <Button
@@ -535,7 +537,7 @@ export default function QuestionsPage() {
               </Card>
             </motion.div>
           )}
-          
+
           {/* Question Feedback Section - Moved to End */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}

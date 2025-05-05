@@ -1,179 +1,202 @@
 "use client"
 
-import axios from 'axios';
-import { ActivitySquare, AlertTriangle, Award, BookCheck, BookOpen, ChevronDown, ChevronUp, Clock, LineChart } from 'lucide-react';
-import React, { useCallback, useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
-import { Bar, BarChart, CartesianGrid, Cell, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import axios from "axios"
+import {
+  ActivitySquare,
+  AlertTriangle,
+  Award,
+  BookCheck,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  LineChart,
+} from "lucide-react"
+import type React from "react"
+import { useCallback, useEffect, useState } from "react"
+import toast from "react-hot-toast"
+import { Bar, BarChart, CartesianGrid, Cell, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 
 interface ExamReadinessDashboardProps {
-  selectedExam: string;
-  userId: string;
-  examDate?: string; // Optional prop for time-based readiness calculation
+  selectedExam: string
+  userId: string
+  examDate?: string // Optional prop for time-based readiness calculation
 }
 
 interface Test {
-  _id?: string;
-  subjectName: string;
-  testTopic: string;
-  date: string;
-  color: string;
-  completed?: boolean;
+  _id?: string
+  subjectName: string
+  testTopic: string
+  date: string
+  color: string
+  completed?: boolean
 }
 
 interface ExamBlueprint {
-  topic: string;
-  percentage: number;
+  topic: string
+  percentage: number
 }
 
 interface SubjectReadiness {
-  subject: string;
-  testsTotal: number;
-  testsCompleted: number;
-  completionRate: number;
-  blueprintPercentage: number;
-  readinessScore: number;
-  color: string;
+  subject: string
+  testsTotal: number
+  testsCompleted: number
+  completionRate: number
+  blueprintPercentage: number
+  readinessScore: number
+  color: string
 }
 
 interface OverallReadiness {
-  score: number;
-  status: 'low' | 'moderate' | 'high';
-  completionRate: number;
-  subjectsCovered: number;
-  totalSubjects: number;
-  daysToExam?: number;
+  score: number
+  status: "low" | "moderate" | "high"
+  completionRate: number
+  subjectsCovered: number
+  totalSubjects: number
+  daysToExam?: number
 }
 
 const COLORS = [
-  '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8',
-  '#82CA9D', '#FFC658', '#8DD1E1', '#A4DE6C', '#D0ED57'
-];
+  "#0088FE",
+  "#00C49F",
+  "#FFBB28",
+  "#FF8042",
+  "#8884D8",
+  "#82CA9D",
+  "#FFC658",
+  "#8DD1E1",
+  "#A4DE6C",
+  "#D0ED57",
+]
 
 const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selectedExam, userId, examDate }) => {
-  const [tests, setTests] = useState<Test[]>([]);
-  const [examBlueprint, setExamBlueprint] = useState<ExamBlueprint[]>([]);
-  const [subjectReadiness, setSubjectReadiness] = useState<SubjectReadiness[]>([]);
-  const [overallReadiness, setOverallReadiness] = useState<OverallReadiness | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState<boolean>(true);
-  const [showAllSubjects, setShowAllSubjects] = useState<boolean>(false);
+  const [tests, setTests] = useState<Test[]>([])
+  const [examBlueprint, setExamBlueprint] = useState<ExamBlueprint[]>([])
+  const [subjectReadiness, setSubjectReadiness] = useState<SubjectReadiness[]>([])
+  const [overallReadiness, setOverallReadiness] = useState<OverallReadiness | null>(null)
+  const [loading, setLoading] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isExpanded, setIsExpanded] = useState<boolean>(true)
+  const [showAllSubjects, setShowAllSubjects] = useState<boolean>(false)
 
   // Helper to get days until exam
   const getDaysToExam = useCallback((date: string): number => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
 
-    const examDay = new Date(date);
-    examDay.setHours(0, 0, 0, 0);
+    const examDay = new Date(date)
+    examDay.setHours(0, 0, 0, 0)
 
-    const timeDiff = examDay.getTime() - today.getTime();
-    return Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
-  }, []);
+    const timeDiff = examDay.getTime() - today.getTime()
+    return Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)))
+  }, [])
 
   // Calculate overall readiness score
-  const calculateOverallReadiness = useCallback((subjects: SubjectReadiness[]) => {
-    // Count total and completed tests
-    const totalTests = tests.length;
-    const completedTests = tests.filter(test => test.completed).length;
-    const completionRate = totalTests > 0 ? (completedTests / totalTests) * 100 : 0;
+  const calculateOverallReadiness = useCallback(
+    (subjects: SubjectReadiness[]) => {
+      // Count total and completed tests
+      const totalTests = tests.length
+      const completedTests = tests.filter((test) => test.completed).length
+      const completionRate = totalTests > 0 ? (completedTests / totalTests) * 100 : 0
 
-    // Count subjects covered (has at least one completed test)
-    const subjectsWithCompletedTests = subjects.filter(s => s.testsCompleted > 0);
-    const subjectsCovered = subjectsWithCompletedTests.length;
+      // Count subjects covered (has at least one completed test)
+      const subjectsWithCompletedTests = subjects.filter((s) => s.testsCompleted > 0)
+      const subjectsCovered = subjectsWithCompletedTests.length
 
-    // Calculate weighted average of subject readiness scores
-    let weightedReadinessSum = 0;
-    let totalWeight = 0;
+      // Calculate weighted average of subject readiness scores
+      let weightedReadinessSum = 0
+      let totalWeight = 0
 
-    subjects.forEach(subject => {
-      // Only include blueprint subjects in this calculation
-      if (subject.blueprintPercentage > 0) {
-        weightedReadinessSum += subject.readinessScore * subject.blueprintPercentage;
-        totalWeight += subject.blueprintPercentage;
+      subjects.forEach((subject) => {
+        // Only include blueprint subjects in this calculation
+        if (subject.blueprintPercentage > 0) {
+          weightedReadinessSum += subject.readinessScore * subject.blueprintPercentage
+          totalWeight += subject.blueprintPercentage
+        }
+      })
+
+      // Readiness score (based on subject coverage and completion, weighted by blueprint)
+      let overallScore = totalWeight > 0 ? weightedReadinessSum / totalWeight : 0
+
+      // Adjust score based on time left until exam if exam date is provided
+      if (examDate) {
+        const today = new Date()
+        const examDay = new Date(examDate)
+        const daysToExam = Math.max(0, Math.floor((examDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))
+
+        // Time pressure factor: the closer to exam, the more penalized for low readiness
+        // Assumes a typical study period of 90 days
+        const timePressureFactor = Math.max(0, Math.min(1, daysToExam / 90))
+
+        // Adjust score based on time pressure
+        // As exam approaches, time pressure increases importance
+        const timeAdjustedScore = overallScore * (0.7 + 0.3 * timePressureFactor)
+
+        overallScore = timeAdjustedScore
       }
-    });
 
-    // Readiness score (based on subject coverage and completion, weighted by blueprint)
-    let overallScore = totalWeight > 0 ? weightedReadinessSum / totalWeight : 0;
+      // Cap score at 100
+      overallScore = Math.min(100, overallScore)
 
-    // Adjust score based on time left until exam if exam date is provided
-    if (examDate) {
-      const today = new Date();
-      const examDay = new Date(examDate);
-      const daysToExam = Math.max(0, Math.floor((examDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
+      // Determine readiness status
+      let status: "low" | "moderate" | "high" = "low"
+      if (overallScore >= 75) {
+        status = "high"
+      } else if (overallScore >= 50) {
+        status = "moderate"
+      }
 
-      // Time pressure factor: the closer to exam, the more penalized for low readiness
-      // Assumes a typical study period of 90 days
-      const timePressureFactor = Math.max(0, Math.min(1, daysToExam / 90));
-
-      // Adjust score based on time pressure
-      // As exam approaches, time pressure increases importance
-      const timeAdjustedScore = overallScore * (0.7 + 0.3 * timePressureFactor);
-
-      overallScore = timeAdjustedScore;
-    }
-
-    // Cap score at 100
-    overallScore = Math.min(100, overallScore);
-
-    // Determine readiness status
-    let status: 'low' | 'moderate' | 'high' = 'low';
-    if (overallScore >= 75) {
-      status = 'high';
-    } else if (overallScore >= 50) {
-      status = 'moderate';
-    }
-
-    setOverallReadiness({
-      score: Math.round(overallScore),
-      status,
-      completionRate,
-      subjectsCovered,
-      totalSubjects: examBlueprint.length,
-      daysToExam: examDate ? getDaysToExam(examDate) : undefined
-    });
-  }, [tests, examBlueprint, examDate, getDaysToExam]);
+      setOverallReadiness({
+        score: Math.round(overallScore),
+        status,
+        completionRate,
+        subjectsCovered,
+        totalSubjects: examBlueprint.length,
+        daysToExam: examDate ? getDaysToExam(examDate) : undefined,
+      })
+    },
+    [tests, examBlueprint, examDate, getDaysToExam],
+  )
 
   // Calculate readiness metrics
   const calculateReadiness = useCallback(() => {
     try {
       // Group tests by subject
-      const subjectGroups: Record<string, Test[]> = {};
+      const subjectGroups: Record<string, Test[]> = {}
 
-      tests.forEach(test => {
-        const subject = test.subjectName;
+      tests.forEach((test) => {
+        const subject = test.subjectName
 
         if (!subjectGroups[subject]) {
-          subjectGroups[subject] = [];
+          subjectGroups[subject] = []
         }
 
-        subjectGroups[subject].push(test);
-      });
+        subjectGroups[subject].push(test)
+      })
 
       // Calculate readiness for each subject in the blueprint
-      const subjectReadinessData: SubjectReadiness[] = examBlueprint.map(blueprint => {
+      const subjectReadinessData: SubjectReadiness[] = examBlueprint.map((blueprint) => {
         // Find tests for this subject (case insensitive matching)
-        const testsForSubject = subjectGroups[blueprint.topic] || [];
+        const testsForSubject = subjectGroups[blueprint.topic] || []
 
         // Calculate metrics
-        const testsTotal = testsForSubject.length;
-        const testsCompleted = testsForSubject.filter(test => test.completed).length;
-        const completionRate = testsTotal > 0 ? (testsCompleted / testsTotal) * 100 : 0;
+        const testsTotal = testsForSubject.length
+        const testsCompleted = testsForSubject.filter((test) => test.completed).length
+        const completionRate = testsTotal > 0 ? (testsCompleted / testsTotal) * 100 : 0
 
         // Base readiness score calculation
         // Formula: 0.7 * completion rate + 0.3 * (if there are enough tests scheduled relative to blueprint weight)
-        const scheduledTestsAdequacy = Math.min(100, (testsTotal / Math.max(1, blueprint.percentage / 10)) * 100);
-        let readinessScore = (0.7 * completionRate) + (0.3 * scheduledTestsAdequacy);
+        const scheduledTestsAdequacy = Math.min(100, (testsTotal / Math.max(1, blueprint.percentage / 10)) * 100)
+        let readinessScore = 0.7 * completionRate + 0.3 * scheduledTestsAdequacy
 
         // Cap score at 100
-        readinessScore = Math.min(100, readinessScore);
+        readinessScore = Math.min(100, readinessScore)
 
         // Get color from any test for this subject, or generate one
-        const color = testsForSubject.length > 0 && testsForSubject[0].color
-          ? testsForSubject[0].color
-          : COLORS[examBlueprint.findIndex(b => b.topic === blueprint.topic) % COLORS.length];
+        const color =
+          testsForSubject.length > 0 && testsForSubject[0].color
+            ? testsForSubject[0].color
+            : COLORS[examBlueprint.findIndex((b) => b.topic === blueprint.topic) % COLORS.length]
 
         return {
           subject: blueprint.topic,
@@ -182,29 +205,28 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
           completionRate,
           blueprintPercentage: blueprint.percentage,
           readinessScore,
-          color
-        };
-      });
+          color,
+        }
+      })
 
       // Add subjects that have tests but aren't in the blueprint
-      Object.keys(subjectGroups).forEach(subject => {
-        const existingSubject = subjectReadinessData.find(
-          s => s.subject.toLowerCase() === subject.toLowerCase()
-        );
+      Object.keys(subjectGroups).forEach((subject) => {
+        const existingSubject = subjectReadinessData.find((s) => s.subject.toLowerCase() === subject.toLowerCase())
 
         if (!existingSubject) {
-          const testsForSubject = subjectGroups[subject];
-          const testsTotal = testsForSubject.length;
-          const testsCompleted = testsForSubject.filter(test => test.completed).length;
-          const completionRate = testsTotal > 0 ? (testsCompleted / testsTotal) * 100 : 0;
+          const testsForSubject = subjectGroups[subject]
+          const testsTotal = testsForSubject.length
+          const testsCompleted = testsForSubject.filter((test) => test.completed).length
+          const completionRate = testsTotal > 0 ? (testsCompleted / testsTotal) * 100 : 0
 
           // For non-blueprint subjects, use a simplified readiness calculation
-          const readinessScore = completionRate;
+          const readinessScore = completionRate
 
           // Get color from a test for this subject, or use default
-          const color = testsForSubject.length > 0 && testsForSubject[0].color
-            ? testsForSubject[0].color
-            : COLORS[subjectReadinessData.length % COLORS.length];
+          const color =
+            testsForSubject.length > 0 && testsForSubject[0].color
+              ? testsForSubject[0].color
+              : COLORS[subjectReadinessData.length % COLORS.length]
 
           subjectReadinessData.push({
             subject,
@@ -213,162 +235,179 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
             completionRate,
             blueprintPercentage: 0, // Not in blueprint
             readinessScore,
-            color
-          });
+            color,
+          })
         }
-      });
+      })
 
       // Sort by blueprint percentage (highest first)
-      subjectReadinessData.sort((a, b) => b.blueprintPercentage - a.blueprintPercentage);
+      subjectReadinessData.sort((a, b) => b.blueprintPercentage - a.blueprintPercentage)
 
-      setSubjectReadiness(subjectReadinessData);
+      setSubjectReadiness(subjectReadinessData)
 
       // Calculate overall readiness
-      calculateOverallReadiness(subjectReadinessData);
-
+      calculateOverallReadiness(subjectReadinessData)
     } catch (error) {
-      console.error("Error calculating readiness:", error);
-      toast.error("An error occurred while calculating your exam readiness");
+      console.error("Error calculating readiness:", error)
+      toast.error("An error occurred while calculating your exam readiness")
     }
-  }, [tests, examBlueprint, calculateOverallReadiness]);
+  }, [tests, examBlueprint, calculateOverallReadiness])
 
   // Fetch test data
   useEffect(() => {
-    if (!userId || !selectedExam) return;
+    if (!userId || !selectedExam) return
 
     const fetchTestData = async () => {
-      setLoading(true);
-      setError(null);
+      setLoading(true)
+      setError(null)
 
       try {
         // Fetch test data
-        const testsResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`);
+        console.log("Fetching tests for userId:", userId)
+        const testsResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`)
+
+        console.log("Tests API response:", testsResponse.status, testsResponse.statusText)
+        console.log("Tests data:", testsResponse.data)
 
         if (Array.isArray(testsResponse.data)) {
-          setTests(testsResponse.data);
-          console.log(testsResponse.data);
-
+          if (testsResponse.data.length === 0) {
+            console.log("WARNING: Tests array is empty")
+          }
+          setTests(testsResponse.data)
         } else {
-          throw new Error("Invalid test data format");
+          console.error("Invalid test data format:", typeof testsResponse.data)
+          throw new Error("Invalid test data format")
         }
 
         // Fetch exam blueprint
         try {
-          const blueprintResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/exams/blueprint/${selectedExam}`);
+          console.log("About to fetch blueprint for exam:", selectedExam, "and user:", userId)
+
+          // The API requires both examName and userId parameters
+          const blueprintResponse = await axios.get(
+            `https://medical-backend-loj4.onrender.com/api/test/exams/blueprint/${selectedExam}/${userId}`,
+          )
 
           if (blueprintResponse.data && Array.isArray(blueprintResponse.data)) {
-            setExamBlueprint(blueprintResponse.data);
+            setExamBlueprint(blueprintResponse.data)
           } else {
-            throw new Error("Invalid blueprint data format");
+            throw new Error("Invalid blueprint data format")
           }
         } catch (blueprintError) {
-          console.error("Error fetching blueprint:", blueprintError);
-          toast.error("Failed to fetch exam blueprint. Readiness analysis may be limited.");
+          console.error("Error fetching blueprint:", blueprintError)
+          console.error("Error details:", {
+            status: axios.isAxiosError(blueprintError) ? blueprintError.response?.status : undefined,
+            statusText: axios.isAxiosError(blueprintError) ? blueprintError.response?.statusText : undefined,
+            data: axios.isAxiosError(blueprintError) ? blueprintError.response?.data : undefined,
+          })
+          toast.error("Failed to fetch exam blueprint. Readiness analysis may be limited.")
         }
-
       } catch (error) {
-        console.error("Error fetching data:", error);
-        setError("Failed to fetch your test data. Please try again later.");
-        toast.error("Failed to load your test data");
+        console.error("Error fetching data:", error)
+        setError("Failed to fetch your test data. Please try again later.")
+        toast.error("Failed to load your test data")
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchTestData();
-  }, [userId, selectedExam]);
+    fetchTestData()
+  }, [userId, selectedExam])
 
   // Calculate readiness metrics once data is loaded
   useEffect(() => {
-    if (!tests.length || !examBlueprint.length) return;
-    calculateReadiness();
-  }, [tests, examBlueprint, examDate, calculateReadiness]); // Added calculateReadiness to the dependency array
+    if (!tests.length || !examBlueprint.length) return
+    calculateReadiness()
+  }, [tests, examBlueprint, examDate, calculateReadiness]) // Added calculateReadiness to the dependency array
 
   // Create chart data for subject readiness vs blueprint
   const getSubjectChartData = () => {
     return subjectReadiness
-      .filter(subject => subject.blueprintPercentage > 0) // Only blueprint subjects
-      .map(subject => ({
+      .filter((subject) => subject.blueprintPercentage > 0) // Only blueprint subjects
+      .map((subject) => ({
         name: subject.subject,
         readiness: Math.round(subject.readinessScore),
         blueprint: subject.blueprintPercentage,
-        color: subject.color
-      }));
-  };
+        color: subject.color,
+      }))
+  }
 
   // Generate readiness recommendations
   const getRecommendations = (): string[] => {
-    if (!subjectReadiness.length) return [];
+    if (!subjectReadiness.length) return []
 
-    const recommendations: string[] = [];
+    const recommendations: string[] = []
 
     // Find subjects that need the most attention
     const lowReadinessSubjects = subjectReadiness
-      .filter(s => s.blueprintPercentage > 0) // Only consider blueprint subjects
+      .filter((s) => s.blueprintPercentage > 0) // Only consider blueprint subjects
       .sort((a, b) => a.readinessScore - b.readinessScore)
-      .slice(0, 3);
+      .slice(0, 3)
 
-    lowReadinessSubjects.forEach(subject => {
+    lowReadinessSubjects.forEach((subject) => {
       if (subject.readinessScore < 50) {
         if (subject.testsTotal === 0) {
-          recommendations.push(`Schedule tests for ${subject.subject} (${subject.blueprintPercentage}% of exam).`);
+          recommendations.push(`Schedule tests for ${subject.subject} (${subject.blueprintPercentage}% of exam).`)
         } else if (subject.completionRate < 50) {
-          recommendations.push(`Complete more ${subject.subject} tests (current completion: ${Math.round(subject.completionRate)}%).`);
+          recommendations.push(
+            `Complete more ${subject.subject} tests (current completion: ${Math.round(subject.completionRate)}%).`,
+          )
         } else {
-          recommendations.push(`Increase test coverage for ${subject.subject} to improve readiness.`);
+          recommendations.push(`Increase test coverage for ${subject.subject} to improve readiness.`)
         }
       }
-    });
+    })
 
     // Overall recommendations
     if (overallReadiness) {
       if (overallReadiness.score < 40) {
-        recommendations.push("Focus on completing scheduled tests before adding new ones.");
+        recommendations.push("Focus on completing scheduled tests before adding new ones.")
       } else if (overallReadiness.subjectsCovered < overallReadiness.totalSubjects) {
-        recommendations.push(`Expand your study to cover all ${overallReadiness.totalSubjects} exam subjects.`);
+        recommendations.push(`Expand your study to cover all ${overallReadiness.totalSubjects} exam subjects.`)
       }
 
-      if (overallReadiness.daysToExam !== undefined && overallReadiness.daysToExam < 30 && overallReadiness.score < 70) {
-        recommendations.push(`With only ${overallReadiness.daysToExam} days left, increase your study pace.`);
+      if (
+        overallReadiness.daysToExam !== undefined &&
+        overallReadiness.daysToExam < 30 &&
+        overallReadiness.score < 70
+      ) {
+        recommendations.push(`With only ${overallReadiness.daysToExam} days left, increase your study pace.`)
       }
     }
 
-    return recommendations;
-  };
+    return recommendations
+  }
 
   // Get text status color
-  const getTextStatusColor = (status: 'low' | 'moderate' | 'high'): string => {
+  const getTextStatusColor = (status: "low" | "moderate" | "high"): string => {
     switch (status) {
-      case 'high': return 'text-green-600';
-      case 'moderate': return 'text-yellow-600';
-      case 'low': return 'text-red-600';
-      default: return 'text-gray-600';
+      case "high":
+        return "text-green-600"
+      case "moderate":
+        return "text-yellow-600"
+      case "low":
+        return "text-red-600"
+      default:
+        return "text-gray-600"
     }
-  };
+  }
 
   // Get color for readiness score
   const getReadinessColor = (score: number): string => {
-    if (score >= 75) return '#10B981'; // Green
-    if (score >= 50) return '#F59E0B'; // Yellow
-    return '#EF4444'; // Red
-  };
+    if (score >= 75) return "#10B981" // Green
+    if (score >= 50) return "#F59E0B" // Yellow
+    return "#EF4444" // Red
+  }
 
   // Component to render the readiness score gauge
   const ReadinessGauge = ({ score }: { score: number }) => {
-    const color = getReadinessColor(score);
+    const color = getReadinessColor(score)
 
     return (
       <div className="relative w-32 h-32 mx-auto">
         {/* Background circle */}
         <svg className="w-full h-full" viewBox="0 0 100 100">
-          <circle
-            cx="50"
-            cy="50"
-            r="45"
-            fill="none"
-            stroke="#E5E7EB"
-            strokeWidth="10"
-          />
+          <circle cx="50" cy="50" r="45" fill="none" stroke="#E5E7EB" strokeWidth="10" />
           {/* Foreground circle (progress) */}
           <circle
             cx="50"
@@ -385,12 +424,14 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
         </svg>
         {/* Score text */}
         <div className="absolute inset-0 flex items-center justify-center flex-col">
-          <span className="text-3xl font-bold" style={{ color }}>{score}%</span>
+          <span className="text-3xl font-bold" style={{ color }}>
+            {score}%
+          </span>
           <span className="text-xs text-gray-500">Readiness</span>
         </div>
       </div>
-    );
-  };
+    )
+  }
 
   if (!selectedExam || !userId) {
     return (
@@ -404,7 +445,7 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
           <p>Please select an exam to view your readiness metrics.</p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -424,9 +465,7 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
       </div>
 
       {!isExpanded ? (
-        <div className="text-center py-4 text-gray-500">
-          Click to expand and view your exam readiness metrics.
-        </div>
+        <div className="text-center py-4 text-gray-500">Click to expand and view your exam readiness metrics.</div>
       ) : (
         <>
           {loading ? (
@@ -446,9 +485,7 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
                 <BookOpen className="h-12 w-12 mx-auto text-gray-400" />
               </div>
               <h3 className="text-lg font-medium text-gray-600 mb-2">No Test Data Available</h3>
-              <p className="text-gray-500 mb-4">
-                Schedule and complete some tests to see your exam readiness metrics.
-              </p>
+              <p className="text-gray-500 mb-4">Schedule and complete some tests to see your exam readiness metrics.</p>
             </div>
           ) : (
             <div>
@@ -461,9 +498,11 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
                       <ReadinessGauge score={overallReadiness.score} />
                       <div className="mt-2 text-center">
                         <p className={`font-medium ${getTextStatusColor(overallReadiness.status)}`}>
-                          {overallReadiness.status === 'high' ? 'Ready for Exam' :
-                            overallReadiness.status === 'moderate' ? 'Making Progress' :
-                              'Needs Improvement'}
+                          {overallReadiness.status === "high"
+                            ? "Ready for Exam"
+                            : overallReadiness.status === "moderate"
+                              ? "Making Progress"
+                              : "Needs Improvement"}
                         </p>
                       </div>
                     </>
@@ -480,15 +519,16 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
                       <div className="flex justify-between text-sm mb-1">
                         <span>Tests Completed</span>
                         <span className="font-medium">
-                          {tests.filter(t => t.completed).length}/{tests.length}
+                          {tests.filter((t) => t.completed).length}/{tests.length}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
                           className="bg-blue-500 h-2 rounded-full"
                           style={{
-                            width: `${tests.length > 0 ?
-                              (tests.filter(t => t.completed).length / tests.length) * 100 : 0}%`
+                            width: `${
+                              tests.length > 0 ? (tests.filter((t) => t.completed).length / tests.length) * 100 : 0
+                            }%`,
                           }}
                         ></div>
                       </div>
@@ -505,8 +545,11 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
                         <div
                           className="bg-green-500 h-2 rounded-full"
                           style={{
-                            width: `${overallReadiness?.totalSubjects ?
-                              (overallReadiness.subjectsCovered / overallReadiness.totalSubjects) * 100 : 0}%`
+                            width: `${
+                              overallReadiness?.totalSubjects
+                                ? (overallReadiness.subjectsCovered / overallReadiness.totalSubjects) * 100
+                                : 0
+                            }%`,
                           }}
                         ></div>
                       </div>
@@ -522,11 +565,9 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
 
                   {examDate ? (
                     <div className="flex flex-col items-center justify-center h-full">
-                      <div className="text-3xl font-bold text-blue-600">
-                        {overallReadiness?.daysToExam}
-                      </div>
+                      <div className="text-3xl font-bold text-blue-600">{overallReadiness?.daysToExam}</div>
                       <div className="text-sm text-gray-500">
-                        {overallReadiness?.daysToExam === 1 ? 'day' : 'days'} remaining
+                        {overallReadiness?.daysToExam === 1 ? "day" : "days"} remaining
                       </div>
                       <div className="mt-2 text-xs text-gray-400">
                         Exam Date: {new Date(examDate).toLocaleDateString()}
@@ -548,21 +589,16 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
 
                 <div className="space-y-3">
                   {subjectReadiness
-                    .filter(subject => subject.blueprintPercentage > 0) // Only show blueprint subjects
+                    .filter((subject) => subject.blueprintPercentage > 0) // Only show blueprint subjects
                     .slice(0, showAllSubjects ? undefined : 5) // Show 5 or all
                     .map((subject, index) => (
                       <div key={index} className="border rounded-md p-3">
                         <div className="flex justify-between mb-1">
                           <div className="flex items-center">
-                            <div
-                              className="w-3 h-3 rounded-full mr-2"
-                              style={{ backgroundColor: subject.color }}
-                            ></div>
+                            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: subject.color }}></div>
                             <span className="font-medium">{subject.subject}</span>
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {subject.blueprintPercentage}% of exam
-                          </div>
+                          <div className="text-xs text-gray-500">{subject.blueprintPercentage}% of exam</div>
                         </div>
 
                         <div className="flex justify-between text-xs mb-1">
@@ -575,7 +611,7 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
                             className="h-2 rounded-full"
                             style={{
                               width: `${subject.readinessScore}%`,
-                              backgroundColor: getReadinessColor(subject.readinessScore)
+                              backgroundColor: getReadinessColor(subject.readinessScore),
                             }}
                           ></div>
                         </div>
@@ -587,7 +623,7 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
                     ))}
                 </div>
 
-                {subjectReadiness.filter(s => s.blueprintPercentage > 0).length > 5 && (
+                {subjectReadiness.filter((s) => s.blueprintPercentage > 0).length > 5 && (
                   <button
                     onClick={() => setShowAllSubjects(!showAllSubjects)}
                     className="mt-3 text-blue-500 hover:text-blue-700 text-sm flex items-center mx-auto"
@@ -614,18 +650,10 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={getSubjectChartData()}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 50 }}
-                      >
+                      <BarChart data={getSubjectChartData()} margin={{ top: 5, right: 30, left: 20, bottom: 50 }}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="name"
-                          angle={-45}
-                          textAnchor="end"
-                          height={60}
-                        />
-                        <YAxis label={{ value: 'Percentage (%)', angle: -90, position: 'insideLeft' }} />
+                        <XAxis dataKey="name" angle={-45} textAnchor="end" height={60} />
+                        <YAxis label={{ value: "Percentage (%)", angle: -90, position: "insideLeft" }} />
                         <Tooltip />
                         <Legend />
                         <Bar dataKey="blueprint" name="Exam Weight" fill="#8884d8" />
@@ -662,7 +690,7 @@ const ExamReadinessDashboard: React.FC<ExamReadinessDashboardProps> = ({ selecte
         </>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default ExamReadinessDashboard;
+export default ExamReadinessDashboard

@@ -52,14 +52,38 @@ export default function ReviewDashboard() {
       if (!loading) setRefreshing(true)
       else setLoading(true)
       
-      const response = await axios.get(
+      // First, get the basic dashboard data for most fields
+      const dashboardResponse = await axios.get(
         `https://medical-backend-loj4.onrender.com/api/reviews/dashboard?userId=${userId}`,
       )
+      
+      // Get review later count from the dedicated endpoint
+      const reviewLaterResponse = await axios.get(
+        `http://localhost:5000/api/reviews/review-later-count?userId=${userId}`
+      )
+      
+      // Get the completed reviews count
+      const completedResponse = await axios.get(
+        `http://localhost:5000/api/reviews/completed-count?userId=${userId}`
+      )
+      
+      // Extract values from responses
+      const completedReviews = completedResponse.data.completedReviews || 0;
+      const reviewLaterCount = reviewLaterResponse.data.reviewLaterCount || 0;
+      
+      // Calculate total reviews as completed + pending reviews
+      const totalReviews = completedReviews + reviewLaterCount;
+      
+      // Calculate completion rate
+      const completionRate = totalReviews > 0
+        ? Math.round((completedReviews / totalReviews) * 100)
+        : 0;
+      
       setStats({
-        ...response.data,
-        completionRate: response.data.totalReviews > 0
-          ? Math.round((response.data.completedReviews / response.data.totalReviews) * 100)
-          : 0
+        ...dashboardResponse.data,
+        completionRate,
+        totalReviews,
+        completedReviews
       })
       
       setLoading(false)
@@ -230,18 +254,6 @@ export default function ReviewDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
-          {/* <TabsContent value="completion" className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Completion History</CardTitle>
-                <CardDescription>Your review completion history over time</CardDescription>
-              </CardHeader>
-              <CardContent>
-
-                <CompletionChart />
-              </CardContent>
-            </Card>
-          </TabsContent> */}
           <TabsContent value="needsreview" className="mt-4">
             <Card>
             <FlashcardsPage {...{ refreshDashboard: fetchDashboardData } as any} />

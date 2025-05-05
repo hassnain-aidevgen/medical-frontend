@@ -78,6 +78,7 @@ const PlannerForm: React.FC = () => {
     "Taking short breaks every 25-30 minutes can improve focus",
     "Mixing different subjects in one study session can improve retention",
     "Sleep is crucial for memory consolidation",
+    "Sleep is crucial for memory consolidation",
   ]
 
   const [formData, setFormData] = useState<FormData>({
@@ -194,7 +195,9 @@ const PlannerForm: React.FC = () => {
     setIsLoadingPlans(true)
 
     try {
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/ai-planner/getUserStudyPlans/${userId}`)
+      const response = await axios.get(
+        `https://medical-backend-loj4.onrender.com/api/ai-planner/getUserStudyPlans/${userId}`,
+      )
       console.log("API response:", response.data)
       if (response.data.success && response.data.data && response.data.data.length > 0) {
         setUserPlans(response.data.data)
@@ -206,17 +209,21 @@ const PlannerForm: React.FC = () => {
       }
     } catch (error) {
       console.error("Error fetching user plans:", error)
-      setApiError("Failed to load your study plans. Please try again.")
-      // Check if there's a plan in localStorage as fallback
-      // const savedPlan = localStorage.getItem("studyPlan")
-      // if (savedPlan) {
-      //   setHasExistingPlan(true)
-      // }
+
+      // Check if this is a 404 error, which is expected for new users with no plans
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        console.log("New user detected - no plans found (404)")
+        setUserPlans([])
+        setHasExistingPlan(false)
+        // Don't set an error message for this expected case
+      } else {
+        // For other errors, show the error message
+        setApiError("Failed to load your study plans. Please try again.")
+      }
     } finally {
       setIsLoadingPlans(false)
     }
   }
-
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -399,9 +406,9 @@ const PlannerForm: React.FC = () => {
 
               if (subsectionAccuracy < 50) {
                 subsectionMasteryLevel = "Beginner"
-                // Add weak subsections to weak topics
+                // Add weak subsections to weak topics with proper formatting
                 processedTopics.push({
-                  name: `${subject.subjectName}: ${subsection.subsectionName}`,
+                  name: `${subject.subjectName}: ${subsection.subsectionName}`, // Ensure proper formatting with subject name
                   masteryScore: subsectionAccuracy,
                   masteryLevel: subsectionMasteryLevel,
                   isQuestPriority: true,
@@ -423,6 +430,7 @@ const PlannerForm: React.FC = () => {
         ...prev,
         strongSubjects: strongSubjectsArray,
         weakSubjects: weakSubjectsArray,
+        // Ensure we're using the name property, not the ID
         weakTopics: processedTopics.filter((topic) => topic.masteryLevel === "Beginner").map((topic) => topic.name),
       }))
     } catch (error) {
@@ -457,7 +465,9 @@ const PlannerForm: React.FC = () => {
       // If a specific plan ID is provided, load that plan
       if (planId) {
         try {
-          const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/ai-planner/getStudyPlan/${planId}`)
+          const response = await axios.get(
+            `https://medical-backend-loj4.onrender.com/api/ai-planner/getStudyPlan/${planId}`,
+          )
 
           if (response.data.success && response.data.data) {
             setStudyPlan(response.data.data)
@@ -952,8 +962,9 @@ const PlannerForm: React.FC = () => {
                 }
               }}
               disabled={isSubmitting}
-              className={`px-4 py-2 ${isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
-                } text-white rounded-md transition-colors flex items-center shadow-md`}
+              className={`px-4 py-2 ${
+                isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+              } text-white rounded-md transition-colors flex items-center shadow-md`}
             >
               {isSubmitting ? (
                 <>

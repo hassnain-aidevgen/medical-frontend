@@ -3,10 +3,19 @@
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Award, Crown, Medal, Star, Timer, Trophy, User, Target, BookOpen } from 'lucide-react'
+import { Award, Crown, Medal, Star, Timer, Trophy, User, Target, BookOpen } from "lucide-react"
 import { useState, useEffect, useCallback } from "react"
-import type { LeaderboardEntry } from "./types"
 import { Badge } from "@/components/ui/badge"
+
+interface LeaderboardEntry {
+  _id: string
+  userId: string
+  name: string
+  score: number
+  totalTime: number
+  rank?: number
+  targetExam?: string
+}
 
 interface ExamLeaderboardProps {
   loggedInUserId: string | null
@@ -26,7 +35,7 @@ const EXAMS = [
   "PLAB 1",
   "PLAB 2",
   "AMC MCQ",
-  "NEET PG"
+  "NEET PG",
 ]
 
 // Deterministically assign an exam based on user ID
@@ -60,7 +69,6 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
   const [selectedExam, setSelectedExam] = useState<string | null>(null)
   const [availableExams, setAvailableExams] = useState<{ exam: string; count: number }[]>([])
 
-  // Process the global leaderboard to add exam information
   const processLeaderboardData = useCallback(() => {
     if (!globalLeaderboard.length) {
       setLoading(false)
@@ -70,10 +78,14 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
     try {
       setLoading(true)
 
+      // Check if any entries have targetExam property already
+      const hasTargetExam = globalLeaderboard.some((entry) => entry.targetExam)
+
       // Enhance the global leaderboard with exam information
       const enhancedLeaderboard = globalLeaderboard.map((entry) => ({
         ...entry,
-        targetExam: assignExam(entry.userId),
+        // Only assign an exam if the entry doesn't already have one
+        targetExam: entry.targetExam || assignExam(entry.userId),
       }))
 
       // Get all exams represented in the leaderboard
@@ -95,13 +107,18 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
 
       // Determine user's exam if logged in
       if (loggedInUserId) {
-        const assignedUserExam = assignExam(loggedInUserId)
+        // First check if the user has a targetExam in the leaderboard
+        const userEntry = enhancedLeaderboard.find((entry) => entry.userId === loggedInUserId)
+        const assignedUserExam = userEntry?.targetExam || assignExam(loggedInUserId)
         setUserExam(assignedUserExam)
 
         // If no exam is selected, use the user's exam
         if (!selectedExam) {
           setSelectedExam(assignedUserExam)
         }
+      } else if (!selectedExam && examsArray.length > 0) {
+        // If no user is logged in and no exam is selected, use the most popular exam
+        setSelectedExam(examsArray[0].exam)
       }
 
       // Filter and rank by the selected exam
@@ -131,9 +148,7 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
 
             // Calculate some stats for the exam
             const totalParticipants = examUsers.length
-            const averageScore = Math.round(
-              examUsers.reduce((sum, entry) => sum + entry.score, 0) / totalParticipants
-            )
+            const averageScore = Math.round(examUsers.reduce((sum, entry) => sum + entry.score, 0) / totalParticipants)
             const topScore = examUsers.length > 0 ? examUsers[0].score : 0
 
             setUserStats({
@@ -143,7 +158,7 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
               nearbyPlayers,
               totalParticipants,
               averageScore,
-              topScore
+              topScore,
             })
           } else {
             setUserStats(null)
@@ -211,7 +226,8 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
         <User className="h-12 w-12 text-muted-foreground mb-4" />
         <h3 className="text-xl font-bold mb-2">Sign in to view exam rankings</h3>
         <p className="text-muted-foreground max-w-md">
-          Exam rankings are available for logged in users. Sign in to see how you rank among others preparing for the same exam.
+          Exam rankings are available for logged in users. Sign in to see how you rank among others preparing for the
+          same exam.
         </p>
       </div>
     )
@@ -222,9 +238,7 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
       <div className="flex flex-col items-center justify-center min-h-[400px] p-6 text-center">
         <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
         <h3 className="text-xl font-bold mb-2">No leaderboard data available</h3>
-        <p className="text-muted-foreground max-w-md">
-          There is no leaderboard data available for exam rankings.
-        </p>
+        <p className="text-muted-foreground max-w-md">There is no leaderboard data available for exam rankings.</p>
       </div>
     )
   }
@@ -237,11 +251,20 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
           <div>
             <h3 className="text-xl font-bold">Your Exam Stats</h3>
             <p className="text-sm text-muted-foreground">
-              Your ranking among others preparing for{" "}
-              {userExam === selectedExam ? userExam : `${selectedExam} (not your exam)`}
+              {userExam === selectedExam
+                ? `Your ranking among others preparing for ${userExam}`
+                : `Rankings for ${selectedExam} (not your exam)`}
             </p>
             {userExam !== selectedExam && userExam && (
-              <p className="text-xs text-muted-foreground mt-1">Your exam is {userExam}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                <span className="font-medium">Your exam:</span> {userExam}
+                <button
+                  onClick={() => setSelectedExam(userExam)}
+                  className="ml-2 text-primary underline hover:text-primary/80"
+                >
+                  Switch to your exam
+                </button>
+              </p>
             )}
           </div>
 
@@ -336,7 +359,7 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
                   <Badge
                     key={exam}
                     variant={selectedExam === exam ? "default" : exam === userExam ? "secondary" : "outline"}
-                    className="cursor-pointer"
+                    className={`cursor-pointer transition-all ${selectedExam === exam ? "scale-105" : ""}`}
                     onClick={() => handleExamSelect(exam)}
                   >
                     {exam}

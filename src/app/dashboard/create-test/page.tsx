@@ -174,7 +174,7 @@ const RecentTests: React.FC<{ performanceData: TestResult[]; isLoading: boolean 
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="font-medium">{percentageScore}%</p>
+            <p className="font-medium">{percentageScore.toFixed(2)}%</p>
             <p className="text-sm text-muted-foreground">
               Score: {correctAnswers}/{totalQuestions}
             </p>

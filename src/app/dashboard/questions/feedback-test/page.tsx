@@ -2,9 +2,8 @@
 
 import { useEffect, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, BookOpen } from "lucide-react"
 
 // This component handles the actual logic after params are available
 function FeedbackTestContent() {
@@ -18,7 +17,7 @@ function FeedbackTestContent() {
     const mode = searchParams.get("mode") || "tutor"
 
     if (!testId) {
-      setError("Test ID is missing")
+      setError("Unable to load test. Please try again.")
       setIsLoading(false)
       return
     }
@@ -26,35 +25,29 @@ function FeedbackTestContent() {
     // Get the questions from localStorage
     const questionsJson = localStorage.getItem("feedbackQuestions")
     if (!questionsJson) {
-      setError("No questions found")
+      setError("No questions found for this test. Please return to the dashboard.")
       setIsLoading(false)
       return
     }
 
     try {
-      // DEBUG: Log the questions and parameters
-      console.log("DEBUG - feedback-test/page.tsx - testId:", testId)
-      console.log("DEBUG - feedback-test/page.tsx - mode:", mode)
-      console.log("DEBUG - feedback-test/page.tsx - questionsJson exists:", !!questionsJson)
-
+      // Remove debug logs in production
       const questions = JSON.parse(questionsJson)
 
       // Create a URL with the questions as a parameter
       const params = new URLSearchParams({
         mode,
         isRecommendedTest: "true",
-        id: testId, // Make sure to pass the testId
+        id: testId, // Still need to pass the ID, but users won't see it in the UI
       })
 
       // Force cache bust with timestamp
       params.append("t", Date.now().toString())
 
       // Navigate to the take-test page
-      console.log("DEBUG - feedback-test/page.tsx - Navigating to:", `/dashboard/take-test?${params.toString()}`)
       router.push(`/dashboard/take-test?${params.toString()}`)
     } catch (err) {
-      console.error("Error parsing questions:", err)
-      setError("Failed to parse questions")
+      setError("There was a problem loading your test. Please try again.")
       setIsLoading(false)
     }
   }, [router, searchParams])
@@ -71,8 +64,15 @@ function FeedbackTestContent() {
 
   return (
     <div className="flex flex-col items-center justify-center h-screen">
-      <Skeleton className="h-12 w-64 mb-4" />
-      <Skeleton className="h-4 w-48" />
+      <div className="text-center">
+        <div className="flex justify-center mb-6">
+          <div className="animate-pulse p-4 bg-primary/10 rounded-full">
+            <BookOpen className="h-12 w-12 text-primary" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-bold mb-2">Preparing Your Test</h2>
+        <p className="text-muted-foreground">Loading your questions...</p>
+      </div>
     </div>
   )
 }
@@ -81,9 +81,15 @@ function FeedbackTestContent() {
 function LoadingFallback() {
   return (
     <div className="flex flex-col items-center justify-center h-screen">
-      <Skeleton className="h-12 w-64 mb-4" />
-      <Skeleton className="h-4 w-48" />
-      <p className="text-sm text-gray-500 mt-4">Loading test...</p>
+      <div className="text-center">
+        <div className="flex justify-center mb-6">
+          <div className="animate-pulse p-4 bg-primary/10 rounded-full">
+            <BookOpen className="h-12 w-12 text-primary" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-bold mb-2">Preparing Your Test</h2>
+        <p className="text-muted-foreground">Loading your questions...</p>
+      </div>
     </div>
   )
 }

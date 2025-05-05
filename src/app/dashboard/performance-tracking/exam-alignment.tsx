@@ -39,7 +39,7 @@ interface UserExamData {
 }
 
 interface ExamAlignmentProps {
-  topicMasteryData: TopicMasteryMetrics | null
+  topicMasteryData?: TopicMasteryMetrics | null
   targetExam?: string | null
   isLoading?: boolean
   className?: string
@@ -61,8 +61,8 @@ const examTypeMap: { [key: string]: string } = {
 }
 
 export default function ExamAlignment({
-  // topicMasteryData,
-  // targetExam = null,
+  topicMasteryData,
+  targetExam = null,
   isLoading = false,
   className = "",
 }: ExamAlignmentProps) {
@@ -111,15 +111,57 @@ export default function ExamAlignment({
           }
 
           const data = await response.json()
+          console.log("API Response:", data) // Debug log
 
+          // Check if data is in the expected format
           if (data && Array.isArray(data)) {
-            setUserExamData(data)
+            // Process the data to ensure all required fields are present
+            const processedData: UserExamData[] = data.map((exam: any) => ({
+              examType: exam.examType || "General",
+              totalTests: exam.totalTests || 0,
+              totalQuestions: exam.totalQuestions || 0,
+              correctAnswers: exam.correctAnswers || 0,
+              incorrectAnswers: exam.incorrectAnswers || 0,
+              averageScore: exam.averageScore || 0,
+              highestScore: exam.highestScore || 0,
+              lastTestDate: exam.lastTestDate || new Date().toISOString(),
+            }))
 
-            // Set default selected exam type if available
-            if (data.length > 0) {
-              const defaultExamType = data[0].examType
+            setUserExamData(processedData)
+
+            // If targetExam is provided, try to select that exam first
+            if (targetExam && processedData.some((exam) => exam.examType === targetExam)) {
+              const targetExamData = processedData.find((exam) => exam.examType === targetExam)
+              setSelectedExamType(targetExam)
+              setCurrentExamData(targetExamData || processedData[0])
+            } else if (processedData.length > 0) {
+              // Otherwise select the first exam
+              const defaultExamType = processedData[0].examType
               setSelectedExamType(defaultExamType)
-              setCurrentExamData(data[0])
+              setCurrentExamData(processedData[0])
+            }
+          } else {
+            // If the data is not an array, check if it's a single exam object
+            if (data && typeof data === "object" && data.examType) {
+              const processedData: UserExamData[] = [
+                {
+                  examType: data.examType || "General",
+                  totalTests: data.totalTests || 0,
+                  totalQuestions: data.totalQuestions || 0,
+                  correctAnswers: data.correctAnswers || 0,
+                  incorrectAnswers: data.incorrectAnswers || 0,
+                  averageScore: data.averageScore || 0,
+                  highestScore: data.highestScore || 0,
+                  lastTestDate: data.lastTestDate || new Date().toISOString(),
+                },
+              ]
+
+              setUserExamData(processedData)
+              setSelectedExamType(data.examType)
+              setCurrentExamData(processedData[0])
+            } else {
+              console.error("Unexpected data format:", data)
+              setError("Received unexpected data format from server")
             }
           }
         } catch (error) {
@@ -135,7 +177,7 @@ export default function ExamAlignment({
     }
 
     fetchUserExamData()
-  }, [fetchAttempted])
+  }, [fetchAttempted, targetExam])
 
   // Update current exam data when selection changes
   useEffect(() => {
@@ -333,7 +375,7 @@ export default function ExamAlignment({
               </CardTitle>
               <CardDescription>Track your performance on medical exams</CardDescription>
             </div>
-            <Select value={selectedExamType || undefined} onValueChange={setSelectedExamType}>
+            <Select value={selectedExamType || undefined} onValueChange={(value: string) => setSelectedExamType(value)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select exam" />
               </SelectTrigger>
@@ -450,18 +492,7 @@ export default function ExamAlignment({
                         <h4 className="text-sm font-medium">Average Score</h4>
                         <span className="text-sm font-medium">{currentExamData.averageScore}%</span>
                       </div>
-                      <Progress
-                        value={currentExamData.averageScore}
-                        className={
-                          getScoreStatus(currentExamData.averageScore) === "excellent"
-                            ? "bg-green-500"
-                            : getScoreStatus(currentExamData.averageScore) === "good"
-                              ? "bg-blue-500"
-                              : getScoreStatus(currentExamData.averageScore) === "needs-work"
-                                ? "bg-yellow-500"
-                                : "bg-red-500"
-                        }
-                      />
+                      <Progress value={currentExamData.averageScore} className="h-2" />
                     </div>
 
                     <div>
@@ -469,18 +500,7 @@ export default function ExamAlignment({
                         <h4 className="text-sm font-medium">Highest Score</h4>
                         <span className="text-sm font-medium">{currentExamData.highestScore}%</span>
                       </div>
-                      <Progress
-                        value={currentExamData.highestScore}
-                        className={
-                          getScoreStatus(currentExamData.highestScore) === "excellent"
-                            ? "bg-green-500"
-                            : getScoreStatus(currentExamData.highestScore) === "good"
-                              ? "bg-blue-500"
-                              : getScoreStatus(currentExamData.highestScore) === "needs-work"
-                                ? "bg-yellow-500"
-                                : "bg-red-500"
-                        }
-                      />
+                      <Progress value={currentExamData.highestScore} className="h-2" />
                     </div>
 
                     <div>
@@ -499,31 +519,7 @@ export default function ExamAlignment({
                             ? Math.round((currentExamData.correctAnswers / currentExamData.totalQuestions) * 100)
                             : 0
                         }
-                        className={
-                          getScoreStatus(
-                            currentExamData.totalQuestions > 0
-                              ? Math.round((currentExamData.correctAnswers / currentExamData.totalQuestions) * 100)
-                              : 0,
-                          ) === "excellent"
-                            ? "bg-green-500"
-                            : getScoreStatus(
-                                  currentExamData.totalQuestions > 0
-                                    ? Math.round(
-                                        (currentExamData.correctAnswers / currentExamData.totalQuestions) * 100,
-                                      )
-                                    : 0,
-                                ) === "good"
-                              ? "bg-blue-500"
-                              : getScoreStatus(
-                                    currentExamData.totalQuestions > 0
-                                      ? Math.round(
-                                          (currentExamData.correctAnswers / currentExamData.totalQuestions) * 100,
-                                        )
-                                      : 0,
-                                  ) === "needs-work"
-                                ? "bg-yellow-500"
-                                : "bg-red-500"
-                        }
+                        className="h-2"
                       />
                     </div>
                   </div>
