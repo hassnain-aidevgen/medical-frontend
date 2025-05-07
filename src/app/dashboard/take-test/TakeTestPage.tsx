@@ -4,7 +4,7 @@ import TestPageWarning from "@/components/pageTestWarning"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import axios from "axios"
-import { AlertCircle, Brain, Calendar, Clock, GraduationCap, MessageSquare } from "lucide-react"
+import { AlertCircle, Brain, Calendar, Clock, GraduationCap, Lightbulb, MessageSquare } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useState, useRef } from "react"
 import QuestionBox from "./QuestionBox"
@@ -41,7 +41,17 @@ type Question = {
   system: string
   topic: string
   subtopics: string[]
-  exam_type: "USMLE_STEP1" | "USMLE_STEP2" | "USMLE_STEP3" | "NEET" | "PLAB" | "MCAT" | "NCLEX" | "COMLEX" | "FEEDBACK"
+  exam_type:
+    | "USMLE_STEP1"
+    | "USMLE_STEP2"
+    | "USMLE_STEP3"
+    | "NEET"
+    | "PLAB"
+    | "MCAT"
+    | "NCLEX"
+    | "COMLEX"
+    | "FEEDBACK"
+    | "RECOMMENDED"
   year: number
   difficulty: "easy" | "medium" | "hard"
   specialty: string
@@ -73,13 +83,17 @@ const TakeTestPage = () => {
   const hasRecommendedParam = searchParams.get("hasRecommended") === "true"
   const recommendedQuestionsParam = searchParams.get("recommendedQuestions")
   const isRecommendedTest = searchParams.get("isRecommendedTest") === "true"
+  const testType = searchParams.get("testType") || ""
+  const isRecommendationsType = testType === "recommendations"
 
   // Add parameters for feedback test
   const testId = searchParams.get("id") || ""
   const isFeedbackTest = testId.startsWith("feedback_")
+  const isRecommendedTestId = testId.startsWith("recommended_")
 
   // Use a ref to track if we've already processed feedback questions
   const processedFeedbackRef = useRef(false)
+  const processedRecommendedRef = useRef(false)
 
   // DEBUG: Log all parameters
   console.log("DEBUG - URL Parameters:", {
@@ -94,8 +108,11 @@ const TakeTestPage = () => {
     aiTopic,
     hasRecommendedParam,
     isRecommendedTest,
+    testType,
+    isRecommendationsType,
     testId,
     isFeedbackTest,
+    isRecommendedTestId,
   })
 
   const [questions, setQuestions] = useState<Question[]>([])
@@ -109,6 +126,7 @@ const TakeTestPage = () => {
   const [error, setError] = useState<string | null>(null)
   const [showResults, setShowResults] = useState(false)
   const [usingFeedbackQuestions, setUsingFeedbackQuestions] = useState(false)
+  const [usingRecommendedQuestions, setUsingRecommendedQuestions] = useState(false)
 
   const totalQuestions = Math.max(1, Number.parseInt(countParam, 10))
 
@@ -116,27 +134,121 @@ const TakeTestPage = () => {
     setIsLoading(true)
     setError(null)
 
-    // If we've already processed feedback questions, don't try again
-    if (processedFeedbackRef.current) {
-      console.log("DEBUG - Already processed feedback questions, skipping localStorage check")
+    // If we've already processed feedback or recommended questions, don't try again
+    if (processedFeedbackRef.current || processedRecommendedRef.current) {
+      console.log("DEBUG - Already processed feedback/recommended questions, skipping localStorage check")
       setIsLoading(false) // Make sure to set isLoading to false
       return
     }
 
-    // DEBUG: Check localStorage
+    // DEBUG: Check localStorage for both feedback and recommended questions
     const feedbackQuestionsJson = localStorage.getItem("feedbackQuestions")
     const currentFeedbackTestId = localStorage.getItem("currentFeedbackTestId")
+    const recommendedQuestionsJson = localStorage.getItem("recommendedQuestions")
+    const currentRecommendedTestId = localStorage.getItem("currentRecommendedTestId")
 
     console.log("DEBUG - localStorage:", {
       feedbackQuestionsJson: feedbackQuestionsJson ? "exists" : "not found",
       currentFeedbackTestId,
+      recommendedQuestionsJson: recommendedQuestionsJson ? "exists" : "not found",
+      currentRecommendedTestId,
       testId,
       isFeedbackTest,
+      isRecommendedTestId,
+      isRecommendationsType,
       shouldUseFeedbackQuestions:
         feedbackQuestionsJson && currentFeedbackTestId && (isFeedbackTest || testId === currentFeedbackTestId),
+      shouldUseRecommendedQuestions:
+        recommendedQuestionsJson &&
+        currentRecommendedTestId &&
+        (isRecommendedTestId || testId === currentRecommendedTestId || isRecommendationsType),
     })
 
-    // Check if this is a feedback test and we have feedback questions
+    // First check for recommended questions
+    if (
+      recommendedQuestionsJson &&
+      ((testId && testId.startsWith("recommended_")) ||
+        (isRecommendedTest && isRecommendationsType) ||
+        (testId && testId === currentRecommendedTestId))
+    ) {
+      try {
+        console.log("DEBUG - This is a recommended test, using localStorage recommendedQuestions")
+        processedRecommendedRef.current = true // Mark that we've processed recommended questions
+
+        // Parse the questions from localStorage
+        const recommendedQuestions = JSON.parse(recommendedQuestionsJson)
+        console.log("DEBUG - Parsed recommended questions:", recommendedQuestions)
+
+        // Log the first question to see its structure in detail
+        if (recommendedQuestions.length > 0) {
+          console.log("DEBUG - First recommended question structure:", JSON.stringify(recommendedQuestions[0], null, 2))
+          console.log("DEBUG - First recommended question options:", recommendedQuestions[0].options)
+        }
+
+        // Process the recommended questions to match the Question type
+        const processedQuestions = recommendedQuestions.map((q: any) => {
+          // Log each question's options
+          console.log(`DEBUG - Recommended Question "${q.question || q.questionText}" options:`, q.options)
+
+          return {
+            ...q,
+            // Make sure we have all required fields
+            _id: q._id || q.uniqueId || `recommended_${Math.random().toString(36).substring(2, 9)}`,
+            question: q.question || q.questionText || "Question text not available",
+            options: q.options || ["Option A", "Option B", "Option C", "Option D"],
+            answer: q.answer || q.correctAnswer || "Option A",
+            explanation: q.explanation || `This is a recommended question about ${q.topic || "this topic"}.`,
+            subject: q.subject || "Recommended",
+            subsection: q.subsection || "Recommended Questions",
+            system: q.system || "Recommended",
+            topic: q.topic || "Recommended Question",
+            subtopics: q.subtopics || [],
+            exam_type: "RECOMMENDED" as any,
+            year: q.year || new Date().getFullYear(),
+            difficulty: q.difficulty || "medium",
+            specialty: q.specialty || "General",
+            clinical_setting: q.clinical_setting || "General",
+            question_type: q.question_type || "single_best_answer",
+            // Display fields
+            subjectDisplay: q.subject || "Recommended",
+            subsectionDisplay: q.subsection || "Recommended Questions",
+          }
+        })
+
+        console.log("DEBUG - Setting recommended questions:", processedQuestions)
+
+        // Log the first processed question to see its structure
+        if (processedQuestions.length > 0) {
+          console.log("DEBUG - First processed recommended question:", processedQuestions[0])
+          console.log("DEBUG - First processed recommended question options:", processedQuestions[0].options)
+        }
+
+        // Set the questions state
+        setQuestions(processedQuestions)
+        setUsingRecommendedQuestions(true)
+
+        // IMPORTANT: Only clear localStorage AFTER we've set the questions
+        // This prevents the issue where we check localStorage again before the state is updated
+        localStorage.removeItem("recommendedQuestions")
+        localStorage.removeItem("currentRecommendedTestId")
+        console.log("DEBUG - Cleared localStorage after setting recommended questions")
+
+        setStartTime(Date.now())
+        if (mode === "timer") {
+          setTimeLeft(processedQuestions.length * 60) // 60 seconds per question
+        }
+
+        setIsLoading(false) // Make sure to set isLoading to false
+        return // Exit early since we've set the questions
+      } catch (error) {
+        console.error("DEBUG - Error parsing recommended questions:", error)
+        setIsLoading(false) // Make sure to set isLoading to false even on error
+        setError("Error loading recommended questions. Please try again.")
+        return // Exit early on error
+      }
+    }
+
+    // Then check for feedback questions if no recommended questions were found
     if (
       feedbackQuestionsJson &&
       ((testId && testId.startsWith("feedback_")) || (isRecommendedTest && testId?.startsWith("feedback_")))
@@ -216,6 +328,14 @@ const TakeTestPage = () => {
         setError("Error loading feedback questions. Please try again.")
         return // Exit early on error
       }
+    }
+
+    // If this is a recommended test but we don't have recommended questions, show an error
+    if ((isRecommendedTestId || isRecommendationsType) && !recommendedQuestionsJson) {
+      console.error("DEBUG - This is a recommended test but no recommended questions found in localStorage")
+      setError("No recommended questions found. Please try again.")
+      setIsLoading(false) // Make sure to set isLoading to false
+      return
     }
 
     // If this is a feedback test but we don't have feedback questions, show an error
@@ -306,8 +426,10 @@ const TakeTestPage = () => {
     targetExamParam,
     examTypeParam,
     isFeedbackTest,
+    isRecommendedTestId,
     testId,
     isRecommendedTest,
+    isRecommendationsType,
   ])
 
   useEffect(() => {
@@ -453,7 +575,14 @@ const TakeTestPage = () => {
         aiTopic={aiTopic}
         targetExam={targetExamParam}
         examDate={examDateParam}
-        isRecommendedTest={isRecommendedTest || isFeedbackTest || usingFeedbackQuestions}
+        isRecommendedTest={
+          isRecommendedTest ||
+          isFeedbackTest ||
+          usingFeedbackQuestions ||
+          isRecommendedTestId ||
+          usingRecommendedQuestions ||
+          isRecommendationsType
+        }
       />
     )
   }
@@ -470,39 +599,62 @@ const TakeTestPage = () => {
       <h1 className="text-3xl font-bold mb-8">
         {isAIGenerated
           ? `AI-Generated Medical Test: ${aiTopic}`
-          : isFeedbackTest || usingFeedbackQuestions
-            ? "Feedback Questions Test"
-            : "Medical Test"}
+          : isRecommendedTestId || usingRecommendedQuestions || isRecommendationsType
+            ? "Recommended Questions Test"
+            : isFeedbackTest || usingFeedbackQuestions
+              ? "Feedback Questions Test"
+              : "Medical Test"}
       </h1>
 
       {/* Target Exam Info Display */}
-      {targetExamParam && !isFeedbackTest && !usingFeedbackQuestions && (
-        <div className="bg-green-50 p-4 rounded-lg mb-6 border border-green-200">
-          <h2 className="text-lg font-semibold text-green-800 flex items-center">
-            <GraduationCap className="mr-2" size={20} />
-            Exam: {formatExamName(targetExamParam)}
+      {targetExamParam &&
+        !isFeedbackTest &&
+        !usingFeedbackQuestions &&
+        !isRecommendedTestId &&
+        !usingRecommendedQuestions &&
+        !isRecommendationsType && (
+          <div className="bg-green-50 p-4 rounded-lg mb-6 border border-green-200">
+            <h2 className="text-lg font-semibold text-green-800 flex items-center">
+              <GraduationCap className="mr-2" size={20} />
+              Exam: {formatExamName(targetExamParam)}
+            </h2>
+            {examDateParam && (
+              <p className="text-sm text-green-600 flex items-center mt-1">
+                <Calendar className="mr-1" size={16} />
+                Exam Date: {new Date(examDateParam).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+        )}
+
+      {/* Recommended Test banner when applicable */}
+      {(isRecommendedTestId || usingRecommendedQuestions || isRecommendationsType) && (
+        <div className="bg-amber-50 p-4 rounded-lg mb-6 border border-amber-200">
+          <h2 className="text-lg font-semibold text-amber-800 flex items-center">
+            <Lightbulb className="mr-2" size={20} />
+            Recommended Questions
           </h2>
-          {examDateParam && (
-            <p className="text-sm text-green-600 flex items-center mt-1">
-              <Calendar className="mr-1" size={16} />
-              Exam Date: {new Date(examDateParam).toLocaleDateString()}
-            </p>
-          )}
+          <p className="text-sm text-amber-600">
+            This test contains questions based on your learning needs and recommended topics.
+          </p>
         </div>
       )}
 
       {/* Feedback Test banner when applicable */}
-      {(isFeedbackTest || usingFeedbackQuestions) && (
-        <div className="bg-purple-50 p-4 rounded-lg mb-6 border border-purple-200">
-          <h2 className="text-lg font-semibold text-purple-800 flex items-center">
-            <MessageSquare className="mr-2" size={20} />
-            Feedback Questions
-          </h2>
-          <p className="text-sm text-purple-600">
-            This test contains questions based on user feedback and commonly missed topics.
-          </p>
-        </div>
-      )}
+      {(isFeedbackTest || usingFeedbackQuestions) &&
+        !isRecommendedTestId &&
+        !usingRecommendedQuestions &&
+        !isRecommendationsType && (
+          <div className="bg-purple-50 p-4 rounded-lg mb-6 border border-purple-200">
+            <h2 className="text-lg font-semibold text-purple-800 flex items-center">
+              <MessageSquare className="mr-2" size={20} />
+              Feedback Questions
+            </h2>
+            <p className="text-sm text-purple-600">
+              This test contains questions based on user feedback and commonly missed topics.
+            </p>
+          </div>
+        )}
 
       {/* AI Test banner when applicable */}
       {isAIGenerated && (
@@ -525,30 +677,36 @@ const TakeTestPage = () => {
       )}
 
       {questions.length > 0 && (
-        <QuestionBox
-          question={{
-            _id: questions[currentQuestionIndex]._id,
-            question: questions[currentQuestionIndex].question,
-            options: questions[currentQuestionIndex].options,
-            answer: questions[currentQuestionIndex].answer,
-            explanation: questions[currentQuestionIndex].explanation,
-            subject: questions[currentQuestionIndex].subject,
-            subsection: questions[currentQuestionIndex].subsection,
-            // Use our new display fields
-            subjectDisplay: questions[currentQuestionIndex].subjectDisplay,
-            subsectionDisplay: questions[currentQuestionIndex].subsectionDisplay,
-            exam_type: questions[currentQuestionIndex].exam_type,
-            difficulty: questions[currentQuestionIndex].difficulty,
-            topic: questions[currentQuestionIndex].topic,
-            targetExam: targetExamParam,
-          }}
-          selectedAnswer={selectedAnswers[currentQuestionIndex]}
-          onAnswerSelect={handleAnswerSelect}
-          questionNumber={currentQuestionIndex + 1}
-          totalQuestions={questions.length}
-          showCorrectAnswer={submittedAnswers[currentQuestionIndex]}
-          onSubmit={handleAnswerSubmit}
-        />
+        <>
+          {/* Debug log to check options */}
+          {console.log("DEBUG - Current question being rendered:", questions[currentQuestionIndex])}
+          {console.log("DEBUG - Current question options:", questions[currentQuestionIndex].options)}
+
+          <QuestionBox
+            question={{
+              _id: questions[currentQuestionIndex]._id,
+              question: questions[currentQuestionIndex].question,
+              options: questions[currentQuestionIndex].options,
+              answer: questions[currentQuestionIndex].answer,
+              explanation: questions[currentQuestionIndex].explanation,
+              subject: questions[currentQuestionIndex].subject,
+              subsection: questions[currentQuestionIndex].subsection,
+              // Use our new display fields
+              subjectDisplay: questions[currentQuestionIndex].subjectDisplay,
+              subsectionDisplay: questions[currentQuestionIndex].subsectionDisplay,
+              exam_type: questions[currentQuestionIndex].exam_type,
+              difficulty: questions[currentQuestionIndex].difficulty,
+              topic: questions[currentQuestionIndex].topic,
+              targetExam: targetExamParam,
+            }}
+            selectedAnswer={selectedAnswers[currentQuestionIndex]}
+            onAnswerSelect={handleAnswerSelect}
+            questionNumber={currentQuestionIndex + 1}
+            totalQuestions={questions.length}
+            showCorrectAnswer={submittedAnswers[currentQuestionIndex]}
+            onSubmit={handleAnswerSubmit}
+          />
+        </>
       )}
 
       <div className="flex gap-5 mt-6">

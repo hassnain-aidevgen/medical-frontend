@@ -17,38 +17,15 @@ interface LeaderboardEntry {
   targetExam?: string
 }
 
+interface ExamType {
+  _id: string
+  name: string
+  createdAt: string
+}
+
 interface ExamLeaderboardProps {
   loggedInUserId: string | null
   globalLeaderboard: LeaderboardEntry[] // Use the real leaderboard data
-}
-
-// List of exams for our mock implementation
-const EXAMS = [
-  "USMLE Step 1",
-  "USMLE Step 2 CK",
-  "USMLE Step 3",
-  "COMLEX Level 1",
-  "COMLEX Level 2",
-  "ENARE 2025",
-  "MCCQE Part I",
-  "MCCQE Part II",
-  "PLAB 1",
-  "PLAB 2",
-  "AMC MCQ",
-  "NEET PG",
-]
-
-// Deterministically assign an exam based on user ID
-const assignExam = (userId: string): string => {
-  // Simple hash function to consistently assign the same exam to the same user
-  let hash = 0
-  for (let i = 0; i < userId.length; i++) {
-    hash = (hash << 5) - hash + userId.charCodeAt(i)
-    hash |= 0 // Convert to 32bit integer
-  }
-  // Use absolute value and modulo to get an exam index
-  const examIndex = Math.abs(hash) % EXAMS.length
-  return EXAMS[examIndex]
 }
 
 interface ExamUserStats {
@@ -61,6 +38,20 @@ interface ExamUserStats {
   topScore: number
 }
 
+// Helper function to format exam name for display
+const formatExamName = (examName: string): string => {
+  // Convert from DB format (e.g., "USMLE_STEP1") to display format (e.g., "USMLE Step 1")
+  return examName
+    .replace(/_/g, " ")
+    .replace(/(\d+)$/, " $1") // Add space before numbers at the end
+    .replace(/(\w)(\w*)/g, (_, first, rest) => first + rest.toLowerCase())
+}
+
+// Helper function to convert display name back to DB format
+const toDbExamFormat = (displayName: string): string => {
+  return displayName.toUpperCase().replace(/\s+/g, "_")
+}
+
 export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: ExamLeaderboardProps) {
   const [examLeaderboard, setExamLeaderboard] = useState<LeaderboardEntry[]>([])
   const [userStats, setUserStats] = useState<ExamUserStats | null>(null)
@@ -68,9 +59,51 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
   const [userExam, setUserExam] = useState<string | null>(null)
   const [selectedExam, setSelectedExam] = useState<string | null>(null)
   const [availableExams, setAvailableExams] = useState<{ exam: string; count: number }[]>([])
+  const [examTypes, setExamTypes] = useState<ExamType[]>([])
+  const [loadingExams, setLoadingExams] = useState(true)
+
+  // Fetch exam types from the backend
+  useEffect(() => {
+    const fetchExamTypes = async () => {
+      try {
+        setLoadingExams(true)
+        const response = await fetch("http://localhost:5000/api/test/examtypes")
+        if (!response.ok) {
+          throw new Error("Failed to fetch exam types")
+        }
+        const data = await response.json()
+        setExamTypes(data)
+      } catch (error) {
+        console.error("Error fetching exam types:", error)
+      } finally {
+        setLoadingExams(false)
+      }
+    }
+
+    fetchExamTypes()
+  }, [])
+
+  // Assign an exam based on user ID using the fetched exam types
+  const assignExam = useCallback(
+    (userId: string): string => {
+      if (!examTypes.length) return ""
+
+      // Simple hash function to consistently assign the same exam to the same user
+      let hash = 0
+      for (let i = 0; i < userId.length; i++) {
+        hash = (hash << 5) - hash + userId.charCodeAt(i)
+        hash |= 0 // Convert to 32bit integer
+      }
+
+      // Use absolute value and modulo to get an exam index
+      const examIndex = Math.abs(hash) % examTypes.length
+      return examTypes[examIndex].name
+    },
+    [examTypes],
+  )
 
   const processLeaderboardData = useCallback(() => {
-    if (!globalLeaderboard.length) {
+    if (!globalLeaderboard.length || loadingExams) {
       setLoading(false)
       return
     }
@@ -170,7 +203,7 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
     } finally {
       setLoading(false)
     }
-  }, [globalLeaderboard, loggedInUserId, selectedExam])
+  }, [globalLeaderboard, loggedInUserId, selectedExam, assignExam, loadingExams])
 
   useEffect(() => {
     processLeaderboardData()
@@ -212,7 +245,7 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
     }
   }
 
-  if (loading) {
+  if (loading || loadingExams) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
@@ -252,12 +285,12 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
             <h3 className="text-xl font-bold">Your Exam Stats</h3>
             <p className="text-sm text-muted-foreground">
               {userExam === selectedExam
-                ? `Your ranking among others preparing for ${userExam}`
-                : `Rankings for ${selectedExam} (not your exam)`}
+                ? `Your ranking among others preparing for ${formatExamName(userExam || "")}`
+                : `Rankings for ${formatExamName(selectedExam || "")} (not your exam)`}
             </p>
             {userExam !== selectedExam && userExam && (
               <p className="text-xs text-muted-foreground mt-1">
-                <span className="font-medium">Your exam:</span> {userExam}
+                <span className="font-medium">Your exam:</span> {formatExamName(userExam)}
                 <button
                   onClick={() => setSelectedExam(userExam)}
                   className="ml-2 text-primary underline hover:text-primary/80"
@@ -277,7 +310,7 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
                 <div>
                   <p className="font-medium">{userStats.player.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    Rank #{userStats.rank} of {userStats.totalParticipants} for {selectedExam}
+                    Rank #{userStats.rank} of {userStats.totalParticipants} for {formatExamName(selectedExam || "")}
                   </p>
                 </div>
               </div>
@@ -312,14 +345,14 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
               <p className="text-muted-foreground">
                 {userExam === selectedExam
                   ? "No data available for your profile in this exam."
-                  : `You don't have a ranking for ${selectedExam}.`}
+                  : `You don't have a ranking for ${formatExamName(selectedExam || "")}.`}
               </p>
             </div>
           )}
 
           {userStats && userStats.nearbyPlayers && userStats.nearbyPlayers.length > 0 ? (
             <div>
-              <h4 className="text-sm font-medium mb-3">Nearby Competitors for {selectedExam}</h4>
+              <h4 className="text-sm font-medium mb-3">Nearby Competitors for {formatExamName(selectedExam || "")}</h4>
               <div className="space-y-2">
                 {userStats.nearbyPlayers.map((player) => (
                   <div
@@ -362,7 +395,7 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
                     className={`cursor-pointer transition-all ${selectedExam === exam ? "scale-105" : ""}`}
                     onClick={() => handleExamSelect(exam)}
                   >
-                    {exam}
+                    {formatExamName(exam)}
                     {exam === userExam && " (yours)"}
                     <span className="ml-1 text-xs opacity-70">({count})</span>
                   </Badge>
@@ -377,8 +410,10 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
       <Card className="flex-1 p-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
-            <h2 className="text-2xl font-bold">{selectedExam} Leaderboard</h2>
-            <p className="text-sm text-muted-foreground">Top performers preparing for {selectedExam}</p>
+            <h2 className="text-2xl font-bold">{selectedExam ? formatExamName(selectedExam) : "Exam"} Leaderboard</h2>
+            <p className="text-sm text-muted-foreground">
+              Top performers preparing for {selectedExam ? formatExamName(selectedExam) : "this exam"}
+            </p>
           </div>
         </div>
 

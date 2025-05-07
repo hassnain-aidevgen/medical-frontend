@@ -84,7 +84,6 @@ interface TestResult {
   updatedAt: string
 }
 
-
 const SubjectCheckbox: React.FC<{
   subject: Subject
   isSelected: boolean
@@ -138,62 +137,55 @@ const RecentTests: React.FC<{ performanceData: TestResult[]; isLoading: boolean 
         ) : (
           <div className="max-h-[300px] overflow-y-auto pr-2">
             <div className="space-y-3">
-            {performanceData.slice(0, 5).map((test, index) => {
-  const totalQuestions = test.questions.length;
-  const correctAnswers = test.score || 0;
-  const percentageScore = test.percentage || 0;
+              {performanceData.slice(0, 5).map((test, index) => {
+                const totalQuestions = test.questions.length
+                const correctAnswers = test.score || 0
+                const percentageScore = test.percentage || 0
 
-  const formattedDate = new Date(test.createdAt).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+                const formattedDate = new Date(test.createdAt).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })
 
-  const scoreColor = percentageScore >= 70
-    ? "bg-green-500"
-    : percentageScore >= 50
-      ? "bg-yellow-500"
-      : "bg-red-500";
+                const scoreColor =
+                  percentageScore >= 70 ? "bg-green-500" : percentageScore >= 50 ? "bg-yellow-500" : "bg-red-500"
 
-  return (
-    <div
-      key={test._id}
-      className="bg-gray-50 rounded-lg p-4 border border-gray-100 hover:shadow-md transition-all duration-200"
-    >
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <BookOpen className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <p className="font-medium">Test {performanceData.length - index}</p>
-            <p className="text-sm text-muted-foreground">
-              {formattedDate}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <p className="font-medium">{percentageScore.toFixed(2)}%</p>
-            <p className="text-sm text-muted-foreground">
-              Score: {correctAnswers}/{totalQuestions}
-            </p>
-          </div>
-          <div className={`w-2 h-10 rounded-full ${scoreColor}`}></div>
-        </div>
-      </div>
-    </div>
-  );
-})}
-
+                return (
+                  <div
+                    key={test._id}
+                    className="bg-gray-50 rounded-lg p-4 border border-gray-100 hover:shadow-md transition-all duration-200"
+                  >
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <BookOpen className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Test {performanceData.length - index}</p>
+                          <p className="text-sm text-muted-foreground">{formattedDate}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="font-medium">{percentageScore.toFixed(2)}%</p>
+                          <p className="text-sm text-muted-foreground">
+                            Score: {correctAnswers}/{totalQuestions}
+                          </p>
+                        </div>
+                        <div className={`w-2 h-10 rounded-full ${scoreColor}`}></div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}
       </div>
     </div>
-  );
-};
-
+  )
+}
 
 export default function CreateTest() {
   const router = useRouter()
@@ -234,9 +226,9 @@ export default function CreateTest() {
   const [selectedRecommendations, setSelectedRecommendations] = useState<string[]>([])
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false)
   const [showRecommendations, setShowRecommendations] = useState(false)
-  const [examTypes, setExamTypes] = useState<string[]>([]);
-  const [examType, setExamType] = useState("ALL_USMLE_TYPES");
-  const [loading, setLoading] = useState(true);
+  const [examTypes, setExamTypes] = useState<string[]>([])
+  const [examType, setExamType] = useState("ALL_USMLE_TYPES")
+  const [loading, setLoading] = useState(true)
 
   // Add this new state to track if recommendations are being added to the test
   const [recommendedQuestionsToAdd, setRecommendedQuestionsToAdd] = useState<Recommendation[]>([])
@@ -264,8 +256,10 @@ export default function CreateTest() {
         console.log("No user ID found in localStorage")
         return
       }
+      // old route:
+      // const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations3/${userId}`)
+      const { data } = await axios.get(`http://localhost:5000/api/test/recommendations4/${userId}`);
 
-      const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations3/${userId}`)
 
       console.log("Recommendation data received:", data) // For debugging
 
@@ -347,19 +341,19 @@ export default function CreateTest() {
   useEffect(() => {
     const fetchExamTypes = async () => {
       try {
-        const response = await axios.get("https://medical-backend-loj4.onrender.com/api/exam-type/exam-types"); // adjust if needed
+        const response = await axios.get("https://medical-backend-loj4.onrender.com/api/exam-type/exam-types") // adjust if needed
         if (response.data.success) {
-          setExamTypes(response.data.examTypes);
+          setExamTypes(response.data.examTypes)
         }
       } catch (err) {
-        console.error("Failed to fetch exam types:", err);
+        console.error("Failed to fetch exam types:", err)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchExamTypes();
-  }, []);
+    fetchExamTypes()
+  }, [])
 
   // Fix the fetchFilteredQuestions function to ensure it's not using selectedExam for filtering
   // Replace the existing fetchFilteredQuestions function with this updated version:
@@ -424,15 +418,15 @@ export default function CreateTest() {
       // Also update the examType filter to match the saved exam
       setExamType(
         savedExam as
-        | "USMLE_STEP1"
-        | "USMLE_STEP2"
-        | "USMLE_STEP3"
-        | "ALL_USMLE_TYPES"
-        | "NEET"
-        | "PLAB"
-        | "MCAT"
-        | "NCLEX"
-        | "COMLEX",
+          | "USMLE_STEP1"
+          | "USMLE_STEP2"
+          | "USMLE_STEP3"
+          | "ALL_USMLE_TYPES"
+          | "NEET"
+          | "PLAB"
+          | "MCAT"
+          | "NCLEX"
+          | "COMLEX",
       )
     }
 
@@ -471,20 +465,20 @@ export default function CreateTest() {
         if (!userId) return
 
         interface PerformanceResponse {
-          success: boolean;
-          results: TestResult[];
+          success: boolean
+          results: TestResult[]
         }
-        
+
         const performanceResponse = await axios.get<PerformanceResponse>(
           "https://medical-backend-loj4.onrender.com/api/test/performance2",
           {
             params: { userId },
           },
-        );
+        )
         if (performanceResponse.data.success) {
-          setPerformanceData(performanceResponse.data.results);
+          setPerformanceData(performanceResponse.data.results)
         } else {
-          console.error("Failed to load performance data.");
+          console.error("Failed to load performance data.")
         }
       } catch (error) {
         console.error("Error fetching performance data:", error)
@@ -678,9 +672,129 @@ export default function CreateTest() {
     }
   }
 
+  // Function to generate contextually appropriate options based on the correct answer
+  const generateContextualOptions = (correctAnswer: string, topic: string) => {
+    // Make sure we have a valid answer to work with
+    if (!correctAnswer || correctAnswer.trim() === "") {
+      return ["Option A", "Option B", "Option C", correctAnswer]
+    }
+
+    // Generate variations based on the correct answer
+    const options = []
+
+    // Always include the correct answer
+    options.push(correctAnswer)
+
+    // Generate 3 additional options that are contextually related to the correct answer
+    // These will be different depending on the type of answer
+
+    // For numerical answers (like dosages)
+    if (/\d+/.test(correctAnswer)) {
+      const numMatch = correctAnswer.match(/\d+/)
+      if (numMatch) {
+        const num = Number.parseInt(numMatch[0])
+        const unit = correctAnswer.replace(numMatch[0], "").trim()
+
+        // Add variations with different numbers
+        options.push(`${Math.floor(num * 0.5)}${unit}`)
+        options.push(`${Math.floor(num * 2)}${unit}`)
+        options.push(`${Math.floor(num * 1.5)}${unit}`)
+      }
+    }
+    // For multiple choice answers with common medical terms
+    else {
+      // Create variations based on the answer
+      const words = correctAnswer.split(" ")
+
+      // If it's a single word answer
+      if (words.length === 1) {
+        // Add similar but different terms
+        if (topic.toLowerCase().includes("diagnosis")) {
+          options.push(`Acute ${correctAnswer}`)
+          options.push(`Chronic ${correctAnswer}`)
+          options.push(`Recurrent ${correctAnswer}`)
+        } else if (topic.toLowerCase().includes("treatment")) {
+          options.push(`Modified ${correctAnswer}`)
+          options.push(`Alternative ${correctAnswer}`)
+          options.push(`Experimental ${correctAnswer}`)
+        } else {
+          // Generic variations
+          options.push(`${correctAnswer} Type I`)
+          options.push(`${correctAnswer} Type II`)
+          options.push(`Atypical ${correctAnswer}`)
+        }
+      }
+      // For multi-word answers
+      else {
+        // Create variations by modifying parts of the answer
+        if (words.length >= 3) {
+          // Replace first word
+          const variation1 = [...words]
+          variation1[0] =
+            variation1[0] === "Primary"
+              ? "Secondary"
+              : variation1[0] === "Acute"
+                ? "Chronic"
+                : variation1[0] === "Benign"
+                  ? "Malignant"
+                  : "Atypical"
+          options.push(variation1.join(" "))
+
+          // Replace last word
+          const variation2 = [...words]
+          variation2[variation2.length - 1] =
+            variation2[variation2.length - 1] === "Syndrome"
+              ? "Disease"
+              : variation2[variation2.length - 1] === "Deficiency"
+                ? "Excess"
+                : "Disorder"
+          options.push(variation2.join(" "))
+
+          // Combine modifications
+          const variation3 = [...words]
+          variation3[0] = variation3[0] === "Primary" ? "Secondary" : variation3[0] === "Acute" ? "Chronic" : "Atypical"
+          variation3[variation3.length - 1] = "Variant"
+          options.push(variation3.join(" "))
+        } else {
+          // For two-word answers
+          options.push(`${words[0]} Variant`)
+          options.push(`Atypical ${words.join(" ")}`)
+          options.push(`${words.join(" ")} Complex`)
+        }
+      }
+    }
+
+    // If we still don't have enough options, add generic ones
+    while (options.length < 4) {
+      if (topic.toLowerCase().includes("anatomy")) {
+        options.push(`Proximal ${correctAnswer}`)
+        options.push(`Distal ${correctAnswer}`)
+        options.push(`Lateral ${correctAnswer}`)
+      } else if (topic.toLowerCase().includes("pharmacology")) {
+        options.push(`${correctAnswer} Analog`)
+        options.push(`${correctAnswer} Derivative`)
+        options.push(`${correctAnswer} Antagonist`)
+      } else {
+        options.push(`${correctAnswer} (Type A)`)
+        options.push(`${correctAnswer} (Type B)`)
+        options.push(`${correctAnswer} (Variant)`)
+      }
+    }
+
+    // Shuffle the options and ensure the correct answer is included
+    const shuffledOptions = options.slice(0, 4).sort(() => Math.random() - 0.5)
+
+    // Make sure the correct answer is in the options
+    if (!shuffledOptions.includes(correctAnswer)) {
+      shuffledOptions[0] = correctAnswer
+    }
+
+    return shuffledOptions
+  }
+
   // Add new function to create test with only recommended questions
   // Updated function for "Create Test from All Recommendations" button
-  const handleCreateRecommendedTest = () => {
+  const handleCreateRecommendedTest = async () => {
     if (recommendations.length === 0) {
       toast.error("No recommendations available")
       return
@@ -689,23 +803,119 @@ export default function CreateTest() {
     setIsCreatingRecommendedTest(true)
 
     try {
+      // Create a unique test ID with a recommended_ prefix
+      const testId = `recommended_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+
+      // Fetch the full question details for each recommendation to get the actual options
+      const enhancedRecommendations = await Promise.all(
+        recommendations.map(async (rec, index) => {
+          try {
+            // Try to fetch the question by topic or text to get all options
+            const searchTerm = rec.topic || rec.questionText
+            const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/questions/search`, {
+              params: { query: searchTerm, limit: 5 },
+            })
+
+            // Check if we got any results
+            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+              // Find the best matching question
+              const matchingQuestion =
+                response.data.find(
+                  (q) => q.question === rec.questionText || (q.answer === rec.correctAnswer && q.topic === rec.topic),
+                ) || response.data[0]
+
+              console.log(`Found matching question for "${rec.questionText.substring(0, 30)}..."`, matchingQuestion)
+
+              // If the question has options, use them
+              if (
+                matchingQuestion.options &&
+                Array.isArray(matchingQuestion.options) &&
+                matchingQuestion.options.length >= 3
+              ) {
+                console.log(`DEBUG - Using actual options for question:`, matchingQuestion.options)
+
+                // Make sure the correct answer is in the options
+                const options = [...matchingQuestion.options]
+                if (!options.includes(rec.correctAnswer)) {
+                  options[0] = rec.correctAnswer
+                }
+
+                // Ensure we have exactly 4 options for consistency
+                while (options.length < 4) {
+                  options.push(generateContextualOptions(rec.correctAnswer, rec.topic || "")[0])
+                }
+
+                // Limit to 4 options if we have more
+                const finalOptions = options.slice(0, 4)
+
+                console.log(`DEBUG - Final options for "${rec.questionText.substring(0, 30)}...":`, finalOptions)
+
+                return {
+                  ...rec,
+                  uniqueId: `rec_${Date.now()}_${index}`,
+                  options: finalOptions,
+                  answer: rec.correctAnswer,
+                  explanation: matchingQuestion.explanation || `This is a recommended question about ${rec.topic}.`,
+                  question: rec.questionText,
+                  subject: matchingQuestion.subject || "Recommended",
+                  subsection: matchingQuestion.subsection || "Recommended Questions",
+                  difficulty: matchingQuestion.difficulty || "medium",
+                  question_type: matchingQuestion.question_type || "single_best_answer",
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching question details for "${rec.questionText.substring(0, 30)}...":`, error)
+          }
+
+          // If we couldn't find a matching question or get options, create contextually appropriate options
+          console.log(
+            `DEBUG - No matching question found for "${rec.questionText.substring(0, 30)}...", generating contextual options`,
+          )
+
+          // Generate contextually appropriate options based on the correct answer and topic
+          const options = generateContextualOptions(rec.correctAnswer, rec.topic || "")
+          console.log(`DEBUG - Generated contextual options:`, options)
+          console.log(`DEBUG - Is correct answer in generated options: ${options.includes(rec.correctAnswer)}`)
+
+          // Ensure we have exactly 4 options
+          const finalOptions = options.slice(0, 4)
+
+          return {
+            ...rec,
+            uniqueId: `rec_${Date.now()}_${index}`,
+            options: finalOptions,
+            answer: rec.correctAnswer,
+            explanation: `This is a recommended question about ${rec.topic}.`,
+            question: rec.questionText,
+            subject: "Recommended",
+            subsection: "Recommended Questions",
+            difficulty: "medium",
+            question_type: "single_best_answer",
+          }
+        }),
+      )
+
+      console.log("Enhanced recommendations with options:", enhancedRecommendations)
+
+      // Store the questions in localStorage with recommended naming
+      localStorage.setItem("recommendedQuestions", JSON.stringify(enhancedRecommendations))
+      localStorage.setItem("currentRecommendedTestId", testId)
+
+      // Also store in the standard feedback keys for backward compatibility
+      // This ensures the take-test page can still find the questions
+      localStorage.setItem("feedbackQuestions", JSON.stringify(enhancedRecommendations))
+      localStorage.setItem("currentFeedbackTestId", testId)
+
       // Create URL parameters for recommended questions test
       const params = new URLSearchParams({
         mode,
         isRecommendedTest: "true",
-        // Add these new parameters to pass target exam info
+        id: testId, // Add a test ID to identify this as a recommended test
+        testType: "recommendations", // Add this to distinguish from feedback tests
         targetExam: selectedExam || "",
         examDate: examDate || "",
       })
-
-      // Add the recommendations with a uniqueId to ensure they're processed correctly
-      const recommendationsWithIds = recommendations.map((rec, index) => ({
-        ...rec,
-        uniqueId: `rec_${Date.now()}_${index}`, // Add a unique identifier
-      }))
-
-      // Add all recommendations to the test
-      params.append("recommendedQuestions", JSON.stringify(recommendationsWithIds))
 
       // Force cache bust with timestamp
       params.append("t", Date.now().toString())
@@ -831,16 +1041,18 @@ export default function CreateTest() {
               <div className="flex space-x-4">
                 <button
                   type="button"
-                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${mode === "tutor" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                    mode === "tutor" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
                   onClick={() => setMode("tutor")}
                 >
                   Tutor Mode
                 </button>
                 <button
                   type="button"
-                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${mode === "timer" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                    mode === "timer" ? "bg-primary text-white shadow-md" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
                   onClick={() => setMode("timer")}
                 >
                   Timer Mode
@@ -864,10 +1076,11 @@ export default function CreateTest() {
                       type="button"
                       onClick={handleCreateRecommendedTest}
                       disabled={isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 shadow ${isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors duration-200 shadow ${
+                        isLoadingRecommendations || recommendations.length === 0 || isCreatingRecommendedTest
                           ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                           : "bg-amber-500 text-white hover:bg-amber-600"
-                        }`}
+                      }`}
                     >
                       {isCreatingRecommendedTest ? (
                         "Creating..."
@@ -901,10 +1114,11 @@ export default function CreateTest() {
                             <button
                               type="button"
                               onClick={() => addRecommendedQuestion(recommendation)}
-                              className={`ml-2 px-3 py-1 text-xs font-medium rounded-full transition-colors ${selectedRecommendations.includes(recommendation.questionText)
+                              className={`ml-2 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                                selectedRecommendations.includes(recommendation.questionText)
                                   ? "bg-green-100 text-green-800 hover:bg-green-200"
                                   : "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                                }`}
+                              }`}
                             >
                               {selectedRecommendations.includes(recommendation.questionText)
                                 ? "Added ✓"
@@ -1010,7 +1224,6 @@ export default function CreateTest() {
                   </SelectContent>
                 </Select>
               </div>
-
 
               <div>
                 <h2 className="text-lg font-semibold mb-2">Difficulty</h2>
@@ -1127,12 +1340,13 @@ export default function CreateTest() {
                   }))
                 }}
                 disabled={isFilterLoading || maxQuestions === 0}
-                className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:outline-none transition-colors duration-200 ${maxQuestions === 0
+                className={`w-full px-4 py-2 rounded-lg border focus:ring-2 focus:outline-none transition-colors duration-200 ${
+                  maxQuestions === 0
                     ? "bg-gray-100 text-gray-400 border-gray-200"
                     : validation.questionCount.isValid
                       ? "border-green-400 focus:border-green-500 focus:ring-green-200"
                       : "border-red-400 focus:border-red-500 focus:ring-red-200"
-                  }`}
+                }`}
                 placeholder="Enter number of questions"
                 aria-label="Total number of questions"
                 aria-describedby="questions-hint"
@@ -1150,12 +1364,8 @@ export default function CreateTest() {
                 </p>
                 {/* Add EstimatedTime component here */}
                 {validation.questionCount.isValid && totalQuestions > 0 && (
-                  <EstimatedTime 
-                    questionCount={totalQuestions} 
-                    mode={mode}
-                    difficulty={difficulty}
-                  />
-          )}
+                  <EstimatedTime questionCount={totalQuestions} mode={mode} difficulty={difficulty} />
+                )}
                 {error && error.includes("No questions available") && (
                   <div className="mt-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                     <h3 className="text-sm font-semibold text-amber-800 mb-2">
@@ -1223,13 +1433,14 @@ export default function CreateTest() {
                 selectedSubjects.length === 0 ||
                 selectedSubsections.length === 0 // Explicitly check for selections
               }
-              className={`w-full py-3 px-6 rounded-lg text-lg font-semibold transition-colors duration-200 shadow-md ${isLoading ||
-                  isFilterLoading ||
-                  (!validation.overall.isValid && recommendedQuestionsToAdd.length === 0) ||
-                  (selectedSubjects.length === 0 || selectedSubsections.length === 0)
+              className={`w-full py-3 px-6 rounded-lg text-lg font-semibold transition-colors duration-200 shadow-md ${
+                isLoading ||
+                isFilterLoading ||
+                (!validation.overall.isValid && recommendedQuestionsToAdd.length === 0) ||
+                (selectedSubjects.length === 0 || selectedSubsections.length === 0)
                   ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                   : "bg-primary text-white hover:bg-primary-dark"
-                }`}
+              }`}
             >
               {isLoading || isFilterLoading
                 ? "Loading..."
