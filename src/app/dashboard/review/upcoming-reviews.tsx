@@ -10,6 +10,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { toast } from "react-hot-toast"
 
 interface Review {
+  isTestReview: any
   _id: string
   title: string
   type: "daily" | "other"
@@ -23,7 +24,7 @@ export function UpcomingReviews({ reviews = [] }: { reviews: Review[] }) {
   const [flipping, setFlipping] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [completedReviews, setCompletedReviews] = useState<string[]>([])
-  
+
   // Load completed reviews from localStorage on component mount
   useEffect(() => {
     try {
@@ -120,7 +121,7 @@ export function UpcomingReviews({ reviews = [] }: { reviews: Review[] }) {
       // Mark as completed locally for immediate UI update
       const updatedCompletedReviews = [...completedReviews, reviewId]
       setCompletedReviews(updatedCompletedReviews)
-      
+
       // Also directly update localStorage as a backup
       try {
         localStorage.setItem("Medical_Completed_Reviews", JSON.stringify(updatedCompletedReviews))
@@ -183,6 +184,11 @@ export function UpcomingReviews({ reviews = [] }: { reviews: Review[] }) {
                   </span>
                 </div>
               </div>
+              {activeReviews[currentIndex].isTestReview && (
+                <Badge variant="outline" className="bg-blue-50 text-blue-500 border-blue-200 mt-2">
+                  Test Mistake Review
+                </Badge>
+              )}
             </CardHeader>
 
             <CardContent className="flex-grow flex items-center justify-center p-0">

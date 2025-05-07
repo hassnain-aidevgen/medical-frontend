@@ -27,6 +27,7 @@ export type Flashcard = {
   id?: string;
   _id?: string;
   question: string;
+  imageUrl?: string;
   answer: string;
   hint: string;
   category: string;
@@ -80,7 +81,6 @@ type FlashcardResponse =
 
 // Enhanced axios instance with improved error handling
 const apiClient = axios.create({
-  // baseURL: "https://medical-backend-loj4.onrender.com/api/v2",
   baseURL: "https://medical-backend-loj4.onrender.com/api/v2",
   headers: {
     "Content-Type": "application/json",
@@ -210,6 +210,7 @@ export const apiService = {
       if (!Array.isArray(response.data) && response.data.pagination) {
         result.pagination = response.data.pagination;
       }
+      console.log("Flashcards fetched successfully:", result.data, result);
 
       return result;
     } catch (error) {
@@ -432,6 +433,7 @@ function normalizeFlashcard(flashcard: RawFlashcardData): Flashcard {
     userId: flashcard.userId || "",
     createdAt: flashcard.createdAt ? new Date(flashcard.createdAt) : undefined,
     updatedAt: flashcard.updatedAt ? new Date(flashcard.updatedAt) : undefined,
+    imageUrl: typeof flashcard.imageUrl === "string" ? flashcard.imageUrl : "",
   };
 }
 

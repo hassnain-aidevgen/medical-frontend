@@ -473,12 +473,12 @@ useEffect(() => {
         </div>
         {/* Tabs */}
         <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="mb-6">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-5">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-4">
             <TabsTrigger value="browse">Browse</TabsTrigger>
             <TabsTrigger value="study">Study</TabsTrigger>
             <TabsTrigger value="reviews">Reviews</TabsTrigger>
             <TabsTrigger value="stats">Stats</TabsTrigger>
-            <TabsTrigger value="insights">Insights</TabsTrigger>
+            {/* <TabsTrigger value="insights">Insights</TabsTrigger> */}
           </TabsList>
 
           <TabsContent value="browse" className="mt-6">
@@ -546,10 +546,10 @@ useEffect(() => {
           <TabsContent value="stats" className="mt-6">
             <StatsTab flashcards={flashcards} />
           </TabsContent>
-
+{/* 
           <TabsContent value="insights" className="mt-6">
             <InfographicsTab />
-          </TabsContent>
+          </TabsContent> */}
         </Tabs>
       </main>
 

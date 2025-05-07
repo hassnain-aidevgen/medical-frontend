@@ -44,7 +44,7 @@ interface CalendarTest {
   taskType?: "study" | "review" | "practice" | "assessment" | "mentorship"
   duration?: number
   priority?: "high" | "medium" | "low"
-  source?: "ai-planner" | "manual"
+  source?: "ai-planner" | "manual" | "review_session"
   dayOfWeek?: string
 }
 
@@ -707,6 +707,11 @@ if (isMentorshipSession) {
                                {test.source === "manual" && (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                                   Manual
+                                </span>
+                              )}
+                              {test.source === "review_session" && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  Review Session
                                 </span>
                               )}
                               {test.taskType && (

@@ -46,6 +46,7 @@ const flashcardSchema = z.object({
     tags: z.array(z.string()).max(10, "Maximum 10 tags allowed"),
     mastery: z.number().min(0).max(100).optional(),
     reviewCount: z.number().min(0).optional(),
+    imageUrl: z.string().url("Please enter a valid URL").or(z.string().length(0)).optional(),
 })
 
 // Define props for the component
@@ -191,6 +192,45 @@ export default function FlashcardForm({
                             </FormItem>
                         )}
                     />
+
+                    <FormField
+                        control={form.control}
+                        name="imageUrl"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Image URL (Optional)</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Enter a direct link to an image (https://...)" {...field} />
+                                </FormControl>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Use a direct image URL (ending with .jpg, .png, etc.)
+                                </p>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    {form.watch("imageUrl") && (
+                        <div className="mt-2 p-2 border rounded-md">
+                            <p className="text-sm mb-2">Image Preview:</p>
+                            <div className="relative h-40 bg-slate-100 rounded flex items-center justify-center">
+                                <img
+                                    src={form.watch("imageUrl")}
+                                    alt="Preview"
+                                    className="max-h-40 max-w-full object-contain"
+                                    onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                        const parentDiv = e.currentTarget.parentElement;
+                                        if (parentDiv) {
+                                            parentDiv.innerHTML += '<p class="text-red-500 text-sm">Invalid image URL or image cannot be loaded</p>';
+                                        }
+                                    }}
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Tip: Images will be resized to fit the card while maintaining aspect ratio.
+                            </p>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Hint Field */}

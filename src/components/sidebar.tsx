@@ -17,7 +17,7 @@ const sidebarItems = [
   // { name: "Digital Error Notebook", href: "/dashboard/digital-error-notebook", icon: Users },
   { name: "Pomodoro Timer", href: "/dashboard/pomodoro-timer", icon: Clock },
   { name: "Payments", icon: Banknote, href: "/dashboard/payments", color: "bg-blue-500" },
-  { name: "Reviews", icon: ScanSearch, href: "/dashboard/review", color: "bg-blue-500" },
+  { name: "Review System", icon: ScanSearch, href: "/dashboard/review", color: "bg-blue-500" },
   { name: "Inquiries", icon: Info, href: "/dashboard/inquiries", color: "bg-blue-500" },
   { name: "Courses", icon: LaptopMinimalCheck, href: "/dashboard/courses", color: "bg-blue-500" },
   { name: "Mentor", icon: GraduationCap, href: "/dashboard/mentor", color: "bg-blue-500" },

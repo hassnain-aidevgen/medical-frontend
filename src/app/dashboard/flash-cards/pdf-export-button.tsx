@@ -229,6 +229,13 @@ export default function PdfExportButton({
                         pdf.text(`Tags: ${card.tags.join(", ")}`, margin + 5, y)
                         y += 5
                     }
+
+                    if (includeMetadata && card.imageUrl) {
+                        y += 5;
+                        pdf.setTextColor(100, 100, 100);
+                        pdf.text("Image available at: " + card.imageUrl, margin + 5, y);
+                        y += 5;
+                      }
                 }
 
                 y += 10 // Space between cards

@@ -43,7 +43,7 @@ export default function StudyTab({
     setCurrentCard((currentCard + 1) % filteredCards.length)
     setShowAnswer(false)
   }
-  
+
   const prevCard = () => {
     if (filteredCards.length === 0) return
     setCurrentCard((currentCard - 1 + filteredCards.length) % filteredCards.length)
@@ -122,7 +122,7 @@ export default function StudyTab({
               transition={{ duration: 0.5 }}
             >
               <Card
-                className={`h-[28rem] p-8 flex flex-col justify-between rounded-xl shadow-md overflow-hidden
+                className={`h-[28rem] p-8 flex flex-col justify-between rounded-xl shadow-md overflow-auto
                   ${flipping ? "scale-95 opacity-50" : ""}
                   ${showAnswer ? "bg-indigo-50 dark:bg-indigo-950" : "bg-white dark:bg-slate-800"}`}
               >
@@ -177,11 +177,33 @@ export default function StudyTab({
                       className="w-full h-full flex flex-col items-center justify-center"
                     >
                       {showAnswer ? (
-                        <div className="text-center">
-                          <Badge className="mb-4 bg-green-500">Answer</Badge>
-                          <p className="text-2xl font-bold text-slate-800 dark:text-white text-center">
-                            {filteredCards[currentCard]?.answer}
-                          </p>
+                        <div className="text-center md:text-left md:flex md:items-center md:gap-4">
+                          <div className="md:flex-1">
+                            <Badge className="mb-4 bg-green-500">Answer</Badge>
+                            <p className="text-2xl font-bold text-slate-800 dark:text-white">
+                              {filteredCards[currentCard]?.answer}
+                            </p>
+                          </div>
+
+                          {filteredCards[currentCard]?.imageUrl ? (
+                            <div className="mt-4 md:mt-0 md:flex-1 md:flex md:justify-center">
+                              <div className="overflow-hidden rounded-md max-h-60 md:max-h-48 lg:max-h-56 border">
+                                <img
+                                  src={filteredCards[currentCard]?.imageUrl}
+                                  alt="Answer illustration"
+                                  className="object-contain w-full h-full"
+                                  onError={(e) => {
+                                    const parentDiv = e.currentTarget.parentElement;
+                                    if (parentDiv) {
+                                      parentDiv.innerHTML = '<p class="text-gray-500 text-xs m-1">Unable to load image</p>';
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-400 mt-2 italic md:hidden">No image provided</p>
+                          )}
                         </div>
                       ) : (
                         <div className="text-center">

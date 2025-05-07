@@ -202,32 +202,32 @@ export default function ReviewsTab({
 
   const markReviewCardAsKnown = async () => {
     if (reviewCards.length === 0) return;
-  
+
     const card = reviewCards[currentReviewCard];
-    
+
     try {
       // Call the existing markCardAsKnown function passed as prop
       const success = await markCardAsKnown(card);
-    
+
       if (success) {
         // Reset the flip state for next card
-        setShowReviewAnswer(false); 
-        
+        setShowReviewAnswer(false);
+
         // Update the localStorage review later count
         const currentCount = parseInt(localStorage.getItem("review_later_count") || "0", 10);
         if (!isNaN(currentCount) && currentCount > 0) {
           // Make API call to check if card was marked for review and update the database
           try {
-            const response = await axios.post("http://localhost:5000/api/reviews/remove-from-review-later", {
+            const response = await axios.post("https://medical-backend-loj4.onrender.com/api/reviews/remove-from-review-later", {
               userId,
               cardId: card._id
             });
-            
+
             if (response.data.success && response.data.wasMarkedForReview) {
               // If the card was marked for review, update the count
               const newCount = Math.max(0, currentCount - 1);
               localStorage.setItem("review_later_count", newCount.toString());
-              
+
               // Trigger update to notify other components
               const triggerValue = localStorage.getItem("review_later_update_trigger") || "0";
               const newTriggerValue = (parseInt(triggerValue, 10) + 1).toString();
@@ -237,19 +237,19 @@ export default function ReviewsTab({
             console.error("Error updating review-later status:", error);
           }
         }
-  
+
         // Continue with existing logic
         if (reviewCards.length <= 1) {
           toast.success("All cards reviewed! Great job!");
         } else {
           const isLastCard = currentReviewCard === reviewCards.length - 1;
-    
+
           if (isLastCard) {
             setCurrentReviewCard(currentReviewCard - 1);
           } else {
             setCurrentReviewCard(currentReviewCard);
           }
-    
+
           toast.success("Card mastered and removed from review");
         }
       }
@@ -258,7 +258,7 @@ export default function ReviewsTab({
       toast.error("Failed to mark card as known");
     }
   };
-  
+
   const openScheduleDialog = () => {
     setIsScheduleDialogOpen(true)
   }
@@ -277,52 +277,52 @@ export default function ReviewsTab({
   }
 
   // Replace the existing keepReviewCardForLater function
-const keepReviewCardForLater = async () => {
-  if (reviewCards.length === 0) return;
+  const keepReviewCardForLater = async () => {
+    if (reviewCards.length === 0) return;
 
-  const card = reviewCards[currentReviewCard];
-  
-  try {
-    // Make a direct API call to mark the card for review
-    const response = await axios.post(
-      "http://localhost:5000/api/reviews/add-to-review-later",
-      {
-        userId,
-        cardId: card._id
+    const card = reviewCards[currentReviewCard];
+
+    try {
+      // Make a direct API call to mark the card for review
+      const response = await axios.post(
+        "https://medical-backend-loj4.onrender.com/api/reviews/add-to-review-later",
+        {
+          userId,
+          cardId: card._id
+        }
+      );
+
+      if (response.data.success) {
+        // Store the updated count in localStorage
+        localStorage.setItem("review_later_count", response.data.reviewLaterCount.toString());
+
+        // Try to trigger a storage event to notify other components
+        const originalValue = localStorage.getItem("review_later_update_trigger") || "0";
+        const newValue = (parseInt(originalValue, 10) + 1).toString();
+        localStorage.setItem("review_later_update_trigger", newValue);
+
+        // Continue with the existing logic
+        nextReviewCard();
+        toast("Card kept for later review", { icon: "📝" });
+
+        // Still call the prop function if it exists (for compatibility)
+        if (typeof markCardForReview === 'function') {
+          markCardForReview(card).catch(err =>
+            console.error("Error in original markCardForReview:", err)
+          );
+        }
+
+        return true;
+      } else {
+        toast.error("Failed to mark card for review");
+        return false;
       }
-    );
-    
-    if (response.data.success) {
-      // Store the updated count in localStorage
-      localStorage.setItem("review_later_count", response.data.reviewLaterCount.toString());
-      
-      // Try to trigger a storage event to notify other components
-      const originalValue = localStorage.getItem("review_later_update_trigger") || "0";
-      const newValue = (parseInt(originalValue, 10) + 1).toString();
-      localStorage.setItem("review_later_update_trigger", newValue);
-      
-      // Continue with the existing logic
-      nextReviewCard();
-      toast("Card kept for later review", { icon: "📝" });
-      
-      // Still call the prop function if it exists (for compatibility)
-      if (typeof markCardForReview === 'function') {
-        markCardForReview(card).catch(err => 
-          console.error("Error in original markCardForReview:", err)
-        );
-      }
-      
-      return true;
-    } else {
+    } catch (error) {
+      console.error("Error marking card for review:", error);
       toast.error("Failed to mark card for review");
       return false;
     }
-  } catch (error) {
-    console.error("Error marking card for review:", error);
-    toast.error("Failed to mark card for review");
-    return false;
-  }
-};
+  };
 
   // Calculate review progress percentage
   const calculateReviewProgress = () => {
@@ -412,7 +412,7 @@ const keepReviewCardForLater = async () => {
               transition={{ duration: 0.5 }}
             >
               <Card
-                className={`h-[28rem] p-8 flex flex-col justify-between rounded-xl shadow-md overflow-hidden
+                className={`h-[28rem] p-8 flex flex-col justify-between rounded-xl shadow-md overflow-auto
                   ${reviewFlipping ? "scale-95 opacity-50" : ""}
                   ${showReviewAnswer ? "bg-amber-50 dark:bg-amber-950" : "bg-white dark:bg-slate-800"}`}
               >
@@ -459,11 +459,33 @@ const keepReviewCardForLater = async () => {
                       className="w-full h-full flex flex-col items-center justify-center"
                     >
                       {showReviewAnswer ? (
-                        <div className="text-center">
-                          <Badge className="mb-4 bg-green-500">Answer</Badge>
-                          <p className="text-2xl font-bold text-slate-800 dark:text-white text-center">
-                            {reviewCards[currentReviewCard]?.answer}
-                          </p>
+                        <div className="text-center md:text-left md:flex md:items-center md:gap-4">
+                          <div className="md:flex-1">
+                            <Badge className="mb-4 bg-green-500">Answer</Badge>
+                            <p className="text-2xl font-bold text-slate-800 dark:text-white">
+                              {reviewCards[currentReviewCard]?.answer}
+                            </p>
+                          </div>
+
+                          {reviewCards[currentReviewCard]?.imageUrl ? (
+                            <div className="mt-4 md:mt-0 md:flex-1 md:flex md:justify-center">
+                              <div className="overflow-hidden rounded-md max-h-60 md:max-h-48 lg:max-h-56 border">
+                                <img
+                                  src={reviewCards[currentReviewCard]?.imageUrl}
+                                  alt="Answer illustration"
+                                  className="object-contain w-full h-full"
+                                  onError={(e) => {
+                                    const parentDiv = e.currentTarget.parentElement;
+                                    if (parentDiv) {
+                                      parentDiv.innerHTML = '<p class="text-gray-500 text-xs m-1">Unable to load image</p>';
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-400 mt-2 italic md:hidden">No image provided</p>
+                          )}
                         </div>
                       ) : (
                         <div className="text-center">
