@@ -67,7 +67,7 @@ export default function ExamLeaderboard({ loggedInUserId, globalLeaderboard }: E
     const fetchExamTypes = async () => {
       try {
         setLoadingExams(true)
-        const response = await fetch("http://localhost:5000/api/test/examtypes")
+        const response = await fetch("https://medical-backend-loj4.onrender.com/api/test/examtypes")
         if (!response.ok) {
           throw new Error("Failed to fetch exam types")
         }

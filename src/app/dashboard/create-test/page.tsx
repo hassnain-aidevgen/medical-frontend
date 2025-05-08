@@ -258,7 +258,7 @@ export default function CreateTest() {
       }
       // old route:
       // const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations3/${userId}`)
-      const { data } = await axios.get(`http://localhost:5000/api/test/recommendations4/${userId}`);
+      const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations4/${userId}`);
 
 
       console.log("Recommendation data received:", data) // For debugging
