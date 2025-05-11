@@ -93,8 +93,8 @@ const ExamDetailsStep: React.FC<ExamDetailsStepProps> = ({
       </div>
 
       <div className="group">
-        <label className="block text-sm font-medium text-gray-700 mb-1 group-hover:text-blue-600 transition-colors">
-          Target Exam Date
+       <label className="block text-sm font-medium text-gray-700 mb-1 group-hover:text-blue-600 transition-colors">
+          Target Exam Date <span className="text-red-500">*</span>
         </label>
         <div className="relative">
           <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
@@ -104,6 +104,7 @@ const ExamDetailsStep: React.FC<ExamDetailsStepProps> = ({
             value={formData.examDate}
             onChange={handleInputChange}
             className={`w-full p-2 pl-10 border ${errors.examDate ? "border-red-500" : "border-gray-300"} rounded-md focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:border-blue-400`}
+            required
           />
         </div>
         {errors.examDate && (

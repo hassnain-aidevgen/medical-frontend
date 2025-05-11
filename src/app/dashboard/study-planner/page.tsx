@@ -278,14 +278,17 @@ const PlannerForm: React.FC = () => {
 
       case 2:
         if (!formData.targetExam) newErrors.targetExam = "Target exam is required"
-        if (formData.examDate) {
+        // Add validation to require exam date
+        if (!formData.examDate) {
+          newErrors.examDate = "Exam date is required"
+        } else if (formData.examDate) {
           const examDate = new Date(formData.examDate)
           const today = new Date()
           if (examDate < today) {
             newErrors.examDate = "Exam date cannot be in the past"
           }
         }
-        break
+        break;
 
       case 3:
         // If not using performance data, require manual subject selection
@@ -495,84 +498,84 @@ const PlannerForm: React.FC = () => {
   }
 
   // Function to add study plan tasks to the calendar
- // Modified function to replace the existing addPlanTasksToCalendar
-const addPlanTasksToCalendar = async (planData: StudyPlanResponse) => {
-  if (!planData || !planData.plan || !planData.plan.weeklyPlans) return
+  // Modified function to replace the existing addPlanTasksToCalendar
+  const addPlanTasksToCalendar = async (planData: StudyPlanResponse) => {
+    if (!planData || !planData.plan || !planData.plan.weeklyPlans) return
 
-  const userId = localStorage.getItem("Medical_User_Id")
-  if (!userId) return
+    const userId = localStorage.getItem("Medical_User_Id")
+    if (!userId) return
 
-  try {
-    let addedCount = 0
+    try {
+      let addedCount = 0
 
-    // Process each week in the study plan
-    for (const week of planData.plan.weeklyPlans) {
-      if (!week.days) continue
+      // Process each week in the study plan
+      for (const week of planData.plan.weeklyPlans) {
+        if (!week.days) continue
 
-      // Process each day in the week
-      for (const day of week.days) {
-        if (!day.tasks) continue
+        // Process each day in the week
+        for (const day of week.days) {
+          if (!day.tasks) continue
 
-        // Get the day of week index (0 = Sunday, 1 = Monday, etc.)
-        const dayIndex = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"].findIndex(
-          (d) => d.toLowerCase() === day.dayOfWeek.toLowerCase(),
-        )
+          // Get the day of week index (0 = Sunday, 1 = Monday, etc.)
+          const dayIndex = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"].findIndex(
+            (d) => d.toLowerCase() === day.dayOfWeek.toLowerCase(),
+          )
 
-        if (dayIndex === -1) continue
+          if (dayIndex === -1) continue
 
-        // Calculate the date for this day
-        const today = new Date()
-        const taskDate = new Date(today)
-        const currentDay = today.getDay()
+          // Calculate the date for this day
+          const today = new Date()
+          const taskDate = new Date(today)
+          const currentDay = today.getDay()
 
-        // Calculate days to add to get to the target day this week
-        let daysToAdd = (dayIndex - currentDay + 7) % 7
+          // Calculate days to add to get to the target day this week
+          let daysToAdd = (dayIndex - currentDay + 7) % 7
 
-        // Add week offset (for future weeks)
-        const weekIndex = planData.plan.weeklyPlans.indexOf(week)
-        daysToAdd += weekIndex * 7
+          // Add week offset (for future weeks)
+          const weekIndex = planData.plan.weeklyPlans.indexOf(week)
+          daysToAdd += weekIndex * 7
 
-        taskDate.setDate(today.getDate() + daysToAdd)
+          taskDate.setDate(today.getDate() + daysToAdd)
 
-        // Process each task for this day
-        for (const task of day.tasks) {
-          try {
-            // Add the task to the calendar using the new endpoint and data structure
-            await axios.post("https://medical-backend-loj4.onrender.com/api/ai-planner/add_ai_plan_to_calender", {
-              userId: userId,
-              subjectName: task.subject,
-              testTopic: `${week.theme}: ${task.activity}`,
-              date: taskDate.toISOString(),
-              color: getSubjectColor(task.subject),
-              completed: false,
-              planId: planData.planId || null,
-              taskType: "study",
-              duration: 60, // Default duration in minutes
-              priority: "medium", // Default priority
-              resources: [], // Default empty resources array
-              weekNumber: weekIndex + 1, // Week number (1-based)
-              dayOfWeek: day.dayOfWeek, // Day of week from the plan
-              notes: task.details || "", // Use details as notes if available
-              isReviewTask: false, // Default to false
-              originalTaskId: null, // No original task ID for new tasks
-              source: "ai-planner", // Mark as coming from AI planner
-            })
-            addedCount++
-          } catch (error) {
-            console.error("Failed to add task to calendar:", error)
+          // Process each task for this day
+          for (const task of day.tasks) {
+            try {
+              // Add the task to the calendar using the new endpoint and data structure
+              await axios.post("https://medical-backend-loj4.onrender.com/api/ai-planner/add_ai_plan_to_calender", {
+                userId: userId,
+                subjectName: task.subject,
+                testTopic: `${week.theme}: ${task.activity}`,
+                date: taskDate.toISOString(),
+                color: getSubjectColor(task.subject),
+                completed: false,
+                planId: planData.planId || null,
+                taskType: "study",
+                duration: 60, // Default duration in minutes
+                priority: "medium", // Default priority
+                resources: [], // Default empty resources array
+                weekNumber: weekIndex + 1, // Week number (1-based)
+                dayOfWeek: day.dayOfWeek, // Day of week from the plan
+                notes: task.details || "", // Use details as notes if available
+                isReviewTask: false, // Default to false
+                originalTaskId: null, // No original task ID for new tasks
+                source: "ai-planner", // Mark as coming from AI planner
+              })
+              addedCount++
+            } catch (error) {
+              console.error("Failed to add task to calendar:", error)
+            }
           }
         }
       }
-    }
 
-    if (addedCount > 0) {
-      toast.success(`Added ${addedCount} study plan tasks to your calendar`)
+      if (addedCount > 0) {
+        toast.success(`Added ${addedCount} study plan tasks to your calendar`)
+      }
+    } catch (error) {
+      console.error("Error adding plan tasks to calendar:", error)
+      toast.error("Failed to add some tasks to calendar")
     }
-  } catch (error) {
-    console.error("Error adding plan tasks to calendar:", error)
-    toast.error("Failed to add some tasks to calendar")
   }
-}
 
   // Helper function to get color based on subject
   const getSubjectColor = (subject: string): string => {
@@ -974,9 +977,8 @@ const addPlanTasksToCalendar = async (planData: StudyPlanResponse) => {
                 }
               }}
               disabled={isSubmitting}
-              className={`px-4 py-2 ${
-                isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
-              } text-white rounded-md transition-colors flex items-center shadow-md`}
+              className={`px-4 py-2 ${isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+                } text-white rounded-md transition-colors flex items-center shadow-md`}
             >
               {isSubmitting ? (
                 <>

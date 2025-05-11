@@ -45,6 +45,66 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
     "Cell Biology",
   ]
 
+  // Handle "Select All" for strong subjects
+  const handleSelectAllStrong = () => {
+    // Get only subjects that aren't already selected as weak
+    const availableSubjects = allSubjects.filter(subject => !formData.weakSubjects.includes(subject))
+    const areAllSelected = formData.strongSubjects.length === availableSubjects.length
+    
+    if (areAllSelected) {
+      // Deselect all
+      setFormData((prev) => ({
+        ...prev,
+        strongSubjects: [],
+      }))
+    } else {
+      // Select all available subjects (excluding weak ones)
+      setFormData((prev) => ({
+        ...prev,
+        strongSubjects: [...availableSubjects],
+      }))
+    }
+
+    // Clear error if subjects are selected
+    if (errors.strongSubjects && availableSubjects.length > 0) {
+      setErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors.strongSubjects
+        return newErrors
+      })
+    }
+  }
+
+  // Handle "Select All" for weak subjects
+  const handleSelectAllWeak = () => {
+    // Get only subjects that aren't already selected as strong
+    const availableSubjects = allSubjects.filter(subject => !formData.strongSubjects.includes(subject))
+    const areAllSelected = formData.weakSubjects.length === availableSubjects.length
+    
+    if (areAllSelected) {
+      // Deselect all
+      setFormData((prev) => ({
+        ...prev,
+        weakSubjects: [],
+      }))
+    } else {
+      // Select all available subjects (excluding strong ones)
+      setFormData((prev) => ({
+        ...prev,
+        weakSubjects: [...availableSubjects],
+      }))
+    }
+
+    // Clear error if subjects are selected
+    if (errors.weakSubjects && availableSubjects.length > 0) {
+      setErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors.weakSubjects
+        return newErrors
+      })
+    }
+  }
+
   return (
     <motion.div
       className="space-y-4"
@@ -135,14 +195,28 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
       {!formData.usePerformanceData && (
         <>
           <div className="group">
-            <label className="block text-sm font-medium text-gray-700 mb-2 group-hover:text-blue-600 transition-colors">
-              Strong Subjects <span className="text-red-500">*</span>
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
+                Strong Subjects <span className="text-red-500">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => handleSelectAllStrong()}
+                className="text-xs py-1 px-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded border border-blue-200 transition-colors"
+              >
+                {formData.strongSubjects.length === allSubjects.filter(s => !formData.weakSubjects.includes(s)).length ? "Deselect All" : "Select All"}
+              </button>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {allSubjects.map((subject) => (
+              {allSubjects.map((subject) => {
+                const isDisabled = formData.weakSubjects.includes(subject);
+                return (
                 <div
                   key={`strong-${subject}`}
                   onClick={() => {
+                    // Don't do anything if the subject is disabled (already in weak subjects)
+                    if (isDisabled) return;
+                    
                     // Simplified approach to toggle selection
                     const isSelected = formData.strongSubjects.includes(subject)
                     const newStrongSubjects = isSelected
@@ -152,6 +226,10 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
                     setFormData((prev) => ({
                       ...prev,
                       strongSubjects: newStrongSubjects,
+                      // Remove this subject from weak subjects if it's being added to strong
+                      weakSubjects: isSelected 
+                        ? prev.weakSubjects 
+                        : prev.weakSubjects.filter(s => s !== subject)
                     }))
 
                     // Clear error if at least one subject is selected
@@ -163,30 +241,45 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
                       })
                     }
                   }}
-                  className={`cursor-pointer p-2 rounded-md border transition-all duration-300 ${
-                    formData.strongSubjects.includes(subject)
-                      ? "border-green-500 bg-green-50"
-                      : errors.strongSubjects
-                        ? "border-red-200 hover:border-green-300 hover:bg-green-50/50"
-                        : "border-gray-200 hover:border-green-300 hover:bg-green-50/50"
+                  className={`p-2 rounded-md border transition-all duration-300 ${
+                    isDisabled 
+                      ? "opacity-50 bg-gray-50 cursor-not-allowed" 
+                      : "cursor-pointer " + (
+                        formData.strongSubjects.includes(subject)
+                          ? "border-green-500 bg-green-50"
+                          : errors.strongSubjects
+                            ? "border-red-200 hover:border-green-300 hover:bg-green-50/50"
+                            : "border-gray-200 hover:border-green-300 hover:bg-green-50/50"
+                      )
                   }`}
                 >
                   <div className="flex items-center">
                     <div
                       className={`w-4 h-4 rounded-sm mr-2 flex items-center justify-center ${
-                        formData.strongSubjects.includes(subject) ? "bg-green-500 text-white" : "border border-gray-300"
+                        formData.strongSubjects.includes(subject) 
+                          ? "bg-green-500 text-white" 
+                          : isDisabled 
+                            ? "bg-gray-200" 
+                            : "border border-gray-300"
                       }`}
                     >
                       {formData.strongSubjects.includes(subject) && <CheckCircle size={12} />}
                     </div>
                     <span
-                      className={`text-sm ${formData.strongSubjects.includes(subject) ? "text-green-700 font-medium" : "text-gray-700"}`}
+                      className={`text-sm ${
+                        isDisabled 
+                          ? "text-gray-400" 
+                          : formData.strongSubjects.includes(subject) 
+                            ? "text-green-700 font-medium" 
+                            : "text-gray-700"
+                      }`}
                     >
                       {subject}
+                      {isDisabled && <span className="text-xs ml-1">(weak)</span>}
                     </span>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
             {errors.strongSubjects && (
               <p className="mt-1 text-sm text-red-500 flex items-center">
@@ -197,14 +290,28 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
           </div>
 
           <div className="group">
-            <label className="block text-sm font-medium text-gray-700 mb-2 group-hover:text-blue-600 transition-colors">
-              Weak Subjects <span className="text-red-500">*</span>
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
+                Weak Subjects <span className="text-red-500">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => handleSelectAllWeak()}
+                className="text-xs py-1 px-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded border border-blue-200 transition-colors"
+              >
+                {formData.weakSubjects.length === allSubjects.filter(s => !formData.strongSubjects.includes(s)).length ? "Deselect All" : "Select All"}
+              </button>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {allSubjects.map((subject) => (
+              {allSubjects.map((subject) => {
+                const isDisabled = formData.strongSubjects.includes(subject);
+                return (
                 <div
                   key={`weak-${subject}`}
                   onClick={() => {
+                    // Don't do anything if the subject is disabled (already in strong subjects)
+                    if (isDisabled) return;
+                    
                     // Simplified approach to toggle selection
                     const isSelected = formData.weakSubjects.includes(subject)
                     const newWeakSubjects = isSelected
@@ -225,30 +332,45 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
                       })
                     }
                   }}
-                  className={`cursor-pointer p-2 rounded-md border transition-all duration-300 ${
-                    formData.weakSubjects.includes(subject)
-                      ? "border-amber-500 bg-amber-50"
-                      : errors.weakSubjects
-                        ? "border-red-200 hover:border-amber-300 hover:bg-amber-50/50"
-                        : "border-gray-200 hover:border-amber-300 hover:bg-amber-50/50"
+                  className={`p-2 rounded-md border transition-all duration-300 ${
+                    isDisabled 
+                      ? "opacity-50 bg-gray-50 cursor-not-allowed" 
+                      : "cursor-pointer " + (
+                        formData.weakSubjects.includes(subject)
+                          ? "border-amber-500 bg-amber-50"
+                          : errors.weakSubjects
+                            ? "border-red-200 hover:border-amber-300 hover:bg-amber-50/50"
+                            : "border-gray-200 hover:border-amber-300 hover:bg-amber-50/50"
+                      )
                   }`}
                 >
                   <div className="flex items-center">
                     <div
                       className={`w-4 h-4 rounded-sm mr-2 flex items-center justify-center ${
-                        formData.weakSubjects.includes(subject) ? "bg-amber-500 text-white" : "border border-gray-300"
+                        formData.weakSubjects.includes(subject) 
+                          ? "bg-amber-500 text-white" 
+                          : isDisabled 
+                            ? "bg-gray-200" 
+                            : "border border-gray-300"
                       }`}
                     >
                       {formData.weakSubjects.includes(subject) && <CheckCircle size={12} />}
                     </div>
                     <span
-                      className={`text-sm ${formData.weakSubjects.includes(subject) ? "text-amber-700 font-medium" : "text-gray-700"}`}
+                      className={`text-sm ${
+                        isDisabled 
+                          ? "text-gray-400" 
+                          : formData.weakSubjects.includes(subject) 
+                            ? "text-amber-700 font-medium" 
+                            : "text-gray-700"
+                      }`}
                     >
                       {subject}
+                      {isDisabled && <span className="text-xs ml-1">(strong)</span>}
                     </span>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
             {errors.weakSubjects && (
               <p className="mt-1 text-sm text-red-500 flex items-center">
