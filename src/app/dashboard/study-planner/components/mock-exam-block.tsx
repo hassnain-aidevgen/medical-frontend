@@ -104,6 +104,8 @@ export const MockExamBlock: React.FC<MockExamBlockProps> = ({ weekNumber, weekTh
   const [showPopup, setShowPopup] = useState(false)
   const [flashcardCreated, setFlashcardCreated] = useState<boolean>(false)
   const [flashcardCategory, setFlashcardCategory] = useState<string | null>(null)
+  const [isSavingResults, setIsSavingResults] = useState(false)
+  const [resultsSaved, setResultsSaved] = useState(false) 
 
   // Calculate duration based on week number (more advanced weeks get longer exams)
   const duration = Math.min(30 + weekNumber * 5, 60)
@@ -173,6 +175,93 @@ const fetchQuestions = async () => {
     setIsLoading(false);
   }
 };
+const saveExamResults = async () => {
+  if (resultsSaved) {
+    toast.success("Results already saved!", {
+      duration: 2000,
+      position: "top-center",
+    })
+    return
+  }
+
+  setIsSavingResults(true)
+  try {
+    const userId = localStorage.getItem("Medical_User_Id")
+    if (!userId) {
+      toast.error("User ID not found. Please log in again.", {
+        duration: 3000,
+        position: "top-center",
+      })
+      setIsSavingResults(false)
+      return
+    }
+
+    // Prepare the questions data according to the TestData schema
+    const questionsData = questions.map((question, index) => {
+      // For each question, determine if the user answered it correctly
+      const userAnswer = results.correct > index ? question.options[0] : ""
+      
+      return {
+        questionId: question._id,
+        questionText: question.question,
+        correctAnswer: question.options[0], // This should be the actual correct answer
+        userAnswer: userAnswer,
+        timeSpent: Math.floor(results.timeSpent / questions.length), // Average time per question
+        subject: question.subject || question.specialty || "",
+        subjectName: question.subject || question.specialty || "",
+        subsection: question.subsection || "",
+        subsectionName: question.subsection || "",
+        exam_type: question.exam_type || "USMLE_STEP1",
+        difficulty: question.difficulty || "medium",
+        topic: question.topic || "",
+      }
+    })
+
+    // Prepare the test data
+    const testData = {
+      userId,
+      questions: questionsData,
+      score: results.correct,
+      totalTime: results.timeSpent,
+      percentage: calculateScore(),
+      isRecommendedTest: true,
+      targetExam: localStorage.getItem("targetExam") || "USMLE_STEP1",
+      examDate: localStorage.getItem("examDate") || "",
+    }
+
+    console.log("Submitting test data to API...", testData)
+
+    // Submit the data to the API
+    const response = await axios.post(
+      "https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test/v2",
+      testData,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    )
+
+    console.log("API response:", response.data)
+    console.log("API response status:", response.status);
+    console.log("API response data:", JSON.stringify(response.data, null, 2));
+
+    // Show success message
+    toast.success("Exam results saved successfully!", {
+      duration: 3000,
+      position: "top-center",
+    })
+
+    setResultsSaved(true)
+  } catch (error) {
+    console.error("Error saving exam results:", error)
+    const axiosError = error as AxiosError
+    toast.error(axiosError.message || "Failed to save exam results", {
+      duration: 3000,
+      position: "top-center",
+    })
+  } finally {
+    setIsSavingResults(false)
+  }
+}
 
   const handleStartExam = async () => {
     await fetchQuestions()
@@ -543,12 +632,45 @@ Note: A more detailed explanation will be available when our explanation service
               </div>
 
               <div className="flex justify-end">
-                <Button
+                {/* <Button
                   onClick={handleCloseExam}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
                 >
                   Close Review
-                </Button>
+                </Button> */}
+                <div className="flex justify-end space-x-3">
+  <Button
+    onClick={saveExamResults}
+    disabled={isSavingResults || resultsSaved}
+    className={`px-4 py-2 ${
+      resultsSaved ? "bg-green-600 hover:bg-green-700" : "bg-blue-600 hover:bg-blue-700"
+    } text-white rounded-md`}
+  >
+    {isSavingResults ? (
+      <>
+        <motion.div
+          className="mr-2 h-4 w-4 rounded-full border-2 border-current border-t-transparent"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+        />
+        Saving...
+      </>
+    ) : resultsSaved ? (
+      <>
+        <CheckCircle className="mr-2 h-4 w-4" />
+        Results Saved
+      </>
+    ) : (
+      "Save Results"
+    )}
+  </Button>
+  <Button
+    onClick={handleCloseExam}
+    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+  >
+    Close Review
+  </Button>
+</div>
               </div>
             </div>
           </div>

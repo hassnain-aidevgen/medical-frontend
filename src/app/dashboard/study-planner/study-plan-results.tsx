@@ -93,6 +93,21 @@ const {
     return () => clearTimeout(tipTimer)
   }, [])
 
+  // new useeffect
+  // Add this right after the existing useEffect that shows the tip
+useEffect(() => {
+  // Initialize empty performance data for new plans
+  // This ensures the progress bar shows 0% for newly generated plans
+  localStorage.setItem(
+    "studyPlanPerformance",
+    JSON.stringify({
+      tasks: {},
+      lastUpdated: Date.now(),
+    })
+  )
+  console.log("New plan detected - initialized empty performance data")
+}, []) // Only run once when the component mounts
+
 
   const weeklyPlans = studyPlanData.weeklyPlans || []
   const totalWeeks = weeklyPlans.length
@@ -869,17 +884,19 @@ const {
   }
 
   // Add this wrapper function inside the StudyPlanResults component, before the return statement
-  const handleTaskStatusChangeWrapper = (
-    taskId: string,
-    subject: string,
-    activity: string,
-    weekNumber: number,
-    dayOfWeek: string,
-    status: "completed" | "incomplete" | "not-understood" | "skipped",
-  ) => {
-    // We only need to pass taskId and status to the actual handler
-    handleTaskStatusChange(taskId, status)
-  }
+ // With this corrected version:
+const handleTaskStatusChangeWrapper = (
+  taskId: string,
+  subject: string,
+  activity: string,
+  weekNumber: number,
+  dayOfWeek: string,
+  status: "completed" | "incomplete" | "not-understood" | "skipped",
+) => {
+  // Format the taskId as expected by handleTaskStatusChange
+  const formattedTaskId = `${weekNumber}-${dayOfWeek}-${subject}-${activity}`
+  handleTaskStatusChange(formattedTaskId, status)
+}
 
   return (
     <div className="bg-gray-50 p-6 rounded-lg shadow-md relative">

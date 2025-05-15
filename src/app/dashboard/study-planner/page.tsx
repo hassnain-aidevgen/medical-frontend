@@ -164,15 +164,26 @@ const PlannerForm: React.FC = () => {
   }, [])
 
   // Update form data when weak topics change
-  useEffect(() => {
-    if (formData.usePerformanceData && weakTopics.length > 0) {
-      const topicNames = weakTopics.map((topic) => topic.name)
-      setFormData((prev) => ({
-        ...prev,
-        weakTopics: topicNames,
-      }))
-    }
-  }, [formData.usePerformanceData, weakTopics])
+  // Update form data when weak topics change
+useEffect(() => {
+  if (formData.usePerformanceData && weakTopics.length > 0) {
+    // Extract unique subject names from weak topics
+    const weakSubjectsSet = new Set<string>()
+    
+    weakTopics.forEach((topic) => {
+      // Extract the main subject from the topic name (before any colon)
+      const subject = topic.name.split(":")[0].trim()
+      weakSubjectsSet.add(subject)
+    })
+    
+    // Update both weakTopics and weakSubjects
+    setFormData((prev) => ({
+      ...prev,
+      weakTopics: weakTopics.map((topic) => topic.name),
+      weakSubjects: Array.from(weakSubjectsSet),
+    }))
+  }
+}, [formData.usePerformanceData, weakTopics])
 
   // Clean up interval on unmount
   useEffect(() => {
@@ -341,127 +352,116 @@ const PlannerForm: React.FC = () => {
   }
 
   const fetchPerformanceData = async () => {
-    const userId = localStorage.getItem("Medical_User_Id")
-    if (!userId) return
+  const userId = localStorage.getItem("Medical_User_Id")
+  if (!userId) return
 
-    setIsLoadingPerformanceData(true)
+  setIsLoadingPerformanceData(true)
 
-    try {
-      // First try to get data from our new endpoint
-      const performanceData = await fetchUserPerformanceData()
+  try {
+    // Only use the topic-mastery-v2 API which has more comprehensive data
+    console.log("Fetching performance data from topic-mastery-v2 API...")
+    const response = await axios.get(
+      `https://medical-backend-loj4.onrender.com/api/test/topic-mastery-v2/${userId}`
+    )
+    
+    console.log("Topic mastery API response:", response.data)
 
-      if (!performanceData || !performanceData.subjects || performanceData.subjects.length === 0) {
-        // Fall back to the legacy endpoint if no data from new one
-        const legacyResponse = await axios.get(
-          `https://medical-backend-loj4.onrender.com/api/test/topic-mastery-v2/${userId}`,
-        )
-        if (legacyResponse.data && legacyResponse.data.weakestTopics) {
-          setWeakTopics(legacyResponse.data.weakestTopics)
-        }
-        return
-      }
-
-      // Process the performance data to identify strong and weak subjects
-      const processedTopics: TopicMasteryData[] = []
-      const strongSubjectsArray: string[] = []
-      const weakSubjectsArray: string[] = []
-
-      // Process subjects
-      performanceData.subjects.forEach((subject) => {
-        let totalCorrect = 0
-        let totalIncorrect = 0
-        let totalQuestions = 0
-
-        // Calculate subject-level totals
-        subject.subsections.forEach((subsection) => {
-          totalCorrect += subsection.performance.correctCount
-          totalIncorrect += subsection.performance.incorrectCount
-          totalQuestions += subsection.performance.totalCount
-        })
-
-        // Only consider subjects with at least 3 questions
-        if (totalQuestions >= 3) {
-          const accuracyPercent = (totalCorrect / totalQuestions) * 100
-
-          // Determine mastery level
-          let masteryLevel = "Intermediate"
-          if (accuracyPercent >= 70) {
-            masteryLevel = "Advanced"
-            strongSubjectsArray.push(subject.subjectName)
-          } else if (accuracyPercent < 50) {
-            masteryLevel = "Beginner"
-            weakSubjectsArray.push(subject.subjectName)
+    if (response.data) {
+      // Extract weak topics from the API response
+      const extractedWeakTopics = response.data.weakestTopics || []
+      
+      // Set weakTopics for UI display
+      setWeakTopics(extractedWeakTopics)
+      
+      // Extract unique subject names from topics and systems
+      const weakSubjectsSet = new Set<string>()
+      
+      // Process main topics
+      if (response.data.topics) {
+        response.data.topics.forEach((topic: any) => {
+          if (topic.masteryLevel === "Beginner" || topic.masteryScore < 50) {
+            // Extract the main subject from the topic name (before any colon)
+            const subject = topic.name.split(":")[0].trim()
+            weakSubjectsSet.add(subject)
           }
-
-          // Add to processed topics list
-          processedTopics.push({
-            name: subject.subjectName,
-            masteryScore: accuracyPercent,
-            masteryLevel: masteryLevel,
-            isQuestPriority: accuracyPercent < 50,
-          })
-
-          // Add subsections as topics
-          subject.subsections.forEach((subsection) => {
-            if (subsection.performance.totalCount >= 2) {
-              const subsectionAccuracy = (subsection.performance.correctCount / subsection.performance.totalCount) * 100
-              let subsectionMasteryLevel = "Intermediate"
-
-              if (subsectionAccuracy < 50) {
-                subsectionMasteryLevel = "Beginner"
-                // Add weak subsections to weak topics with proper formatting
-                processedTopics.push({
-                  name: `${subject.subjectName}: ${subsection.subsectionName}`, // Ensure proper formatting with subject name
-                  masteryScore: subsectionAccuracy,
-                  masteryLevel: subsectionMasteryLevel,
-                  isQuestPriority: true,
-                })
-              }
-            }
-          })
-        }
+        })
+      }
+      
+      // Process systems as subjects
+      if (response.data.systems) {
+        response.data.systems.forEach((system: any) => {
+          if (system.masteryLevel === "Beginner" || system.masteryScore < 50) {
+            weakSubjectsSet.add(system.name)
+          }
+        })
+      }
+      
+      // Map to standard subject names if needed
+      const allSubjects = [
+        "Anatomy",
+        "Physiology",
+        "Biochemistry",
+        "Pharmacology",
+        "Pathology",
+        "Microbiology",
+        "Immunology",
+        "Behavioral Science",
+        "Biostatistics",
+        "Genetics",
+        "Nutrition",
+        "Cell Biology",
+      ]
+      
+      const standardizedSubjects = Array.from(weakSubjectsSet).map((subject: string) => {
+        // Try to find a match in standard subjects
+        const matchedSubject = allSubjects.find(
+          (std) => 
+            subject.toLowerCase().includes(std.toLowerCase()) || 
+            std.toLowerCase().includes(subject.toLowerCase())
+        )
+        return matchedSubject || subject
       })
-
-      // Sort by mastery score (ascending, so weakest first)
-      processedTopics.sort((a, b) => a.masteryScore - b.masteryScore)
-
-      // Update state
-      setWeakTopics(processedTopics.filter((topic) => topic.masteryLevel === "Beginner"))
-
-      // Update form data with strong and weak subjects
+      
+      // Filter out any duplicates
+      const uniqueWeakSubjects = Array.from(new Set(standardizedSubjects))
+      
+      console.log("Extracted weak subjects:", uniqueWeakSubjects)
+      
+      // Update form data with weak subjects and topics
       setFormData((prev) => ({
         ...prev,
-        strongSubjects: strongSubjectsArray,
-        weakSubjects: weakSubjectsArray,
-        // Ensure we're using the name property, not the ID
-        weakTopics: processedTopics.filter((topic) => topic.masteryLevel === "Beginner").map((topic) => topic.name),
+        weakSubjects: uniqueWeakSubjects,
+        weakTopics: extractedWeakTopics.map((topic: any) => topic.name),
       }))
-    } catch (error) {
-      console.error("Error fetching performance data:", error)
-    } finally {
-      setIsLoadingPerformanceData(false)
+    } else {
+      console.log("No data found in API response")
     }
+  } catch (error) {
+    console.error("Error fetching performance data:", error)
+  } finally {
+    setIsLoadingPerformanceData(false)
   }
+}
 
   // Function to fetch performance data from our new API endpoint
-  const fetchUserPerformanceData = async () => {
-    const userId = localStorage.getItem("Medical_User_Id")
-    if (!userId) return null
+  // const fetchUserPerformanceData = async () => {
+  //   const userId = localStorage.getItem("Medical_User_Id")
+  //   if (!userId) return null
 
-    try {
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/get-performance/${userId}`)
+  //   try {
+  //     const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/get-performance/${userId}`)
 
-      if (response.data.success) {
-        return response.data.data as UserPerformanceData
-      } else {
-        console.error("Failed to fetch performance data:", response.data.message)
-        return null
-      }
-    } catch (error) {
-      console.error("Error fetching performance data:", error)
-      return null
-    }
-  }
+  //     if (response.data.success) {
+  //       return response.data.data as UserPerformanceData
+  //     } else {
+  //       console.error("Failed to fetch performance data:", response.data.message)
+  //       return null
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching performance data:", error)
+  //     return null
+  //   }
+  // }
 
   const loadExistingPlan = async (planId?: string) => {
     try {

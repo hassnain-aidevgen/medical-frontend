@@ -62,6 +62,38 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
 
   // Wrap calculateProgress in useCallback to prevent it from being recreated on every render
   const calculateProgress = useCallback(() => {
+    // Check if this is a new plan by looking for a specific flag in localStorage
+    const isNewPlan = !localStorage.getItem("studyPlanPerformance")
+
+    // If this is a new plan, force everything to 0
+    if (isNewPlan) {
+      console.log("New plan detected - setting progress to 0%")
+      setProgress(0)
+      setCompletedTasks(0)
+      setTotalTasks(
+        weeklyPlans.reduce((acc, week) => {
+          if (week.days) {
+            week.days.forEach((day) => {
+              if (day.tasks) {
+                acc += day.tasks.length
+              }
+            })
+          }
+          return acc
+        }, 0),
+      )
+      setDaysCompleted(0)
+      setTotalDays(
+        weeklyPlans.reduce((acc, week) => {
+          if (week.days) {
+            acc += week.days.length
+          }
+          return acc
+        }, 0),
+      )
+      return
+    }
+
     // Get performance data from localStorage
     const storedData = localStorage.getItem("studyPlanPerformance")
     const performanceData: PerformanceData = storedData
@@ -104,6 +136,10 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
 
     // If no tasks in localStorage yet, count from the study plan
     if (total === 0 && weeklyPlans) {
+      // For a new plan, explicitly set completed tasks and days to 0
+      completed = 0
+      completedDays = 0
+
       weeklyPlans.forEach((week) => {
         if (week.days) {
           week.days.forEach((day: Day) => {
@@ -127,7 +163,21 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
     let progressPercentage = 0
     if (total > 0) {
       progressPercentage = Math.round((completed / total) * 100)
+
+      // Safety check: if no tasks are completed but we have tasks, ensure progress is 0
+      if (completed === 0) {
+        progressPercentage = 0
+      }
     }
+
+    // Final safety check - if this is a newly generated plan, force progress to 0
+    if (completed === 0 || Object.keys(performanceData.tasks).length === 0) {
+      progressPercentage = 0
+    }
+
+    console.log(
+      `Progress calculation: ${completed}/${total} tasks, ${completedDays}/${totalDaysCount} days, ${progressPercentage}%`,
+    )
 
     setProgress(progressPercentage)
     setCompletedTasks(completed)
@@ -149,7 +199,20 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
 
   // Calculate estimated completion date
   const getEstimatedCompletionDate = () => {
-    if (totalDays === 0 || daysCompleted === 0) return "Not available"
+    if (totalDays === 0 || daysCompleted === 0) {
+      // For a new plan, provide an estimate based on the total days and user's study schedule
+      const today = new Date()
+      const daysPerWeek = userData.daysPerWeek || 5
+      const totalWeeks = Math.ceil(totalDays / daysPerWeek)
+      const completionDate = new Date(today)
+      completionDate.setDate(today.getDate() + totalWeeks * 7)
+
+      return completionDate.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    }
 
     const today = new Date()
     const daysLeft = totalDays - daysCompleted
