@@ -31,6 +31,7 @@ import PerformanceVisualizer from "./performance-visualizer"
 import PlannerSyncScheduler from "./planner-sync-scheduler"
 import PriorityIndicator from "./priority-indicator"
 import TodayDashboard from "./today-dashboard"
+import { updateAIPlannerProgress } from "./integration-utils"
 
 // Update the CalendarTest interface to include source and additional information
 interface CalendarTest {
@@ -159,6 +160,19 @@ const SmartStudyCalendar = () => {
       localStorage.setItem("weeklyStudyPlan", JSON.stringify(weeklyStudyPlan))
     }
   }, [weeklyStudyPlan])
+
+  // Add this useEffect for debugging the custom event
+useEffect(() => {
+  const handleProgressUpdate = (event: Event) => {
+    console.log("Smart Study Calendar received progress update event:", event);
+  };
+  
+  window.addEventListener("studyPlanProgressUpdated", handleProgressUpdate);
+  
+  return () => {
+    window.removeEventListener("studyPlanProgressUpdated", handleProgressUpdate);
+  };
+}, []);
 
   const fetchTests = useCallback(async () => {
     if (!userId) return
@@ -295,34 +309,76 @@ const SmartStudyCalendar = () => {
     setShowCompletionDialog(true)
   }
 
-  const confirmToggleCompletion = async () => {
-    setShowCompletionDialog(false)
+  // In the confirmToggleCompletion function:
+const confirmToggleCompletion = async () => {
+  console.log("=== STARTING TASK COMPLETION ===");
+  console.log("Current test ID:", currentTestId);
+  console.log("Is completing:", isCompleting);
+  
+  setShowCompletionDialog(false);
 
-    if (!currentTestId) return
-
-    setIsLoading(true)
-    try {
-      const response = await axios.patch(
-        `https://medical-backend-loj4.onrender.com/api/test/calender/completion/${currentTestId}`,
-        {
-          completed: isCompleting,
-        },
-      )
-      if (response.data && response.data._id) {
-        setTests(
-          tests.map((test) => (test._id === currentTestId ? { ...test, completed: response.data.completed } : test)),
-        )
-        toast.success(`Test marked as ${isCompleting ? "completed" : "incomplete"}`)
-      } else {
-        throw new Error("Invalid response from server")
-      }
-    } catch (error) {
-      console.error(error)
-      toast.error("Failed to update test status. Please try again.")
-    } finally {
-      setIsLoading(false)
-    }
+  if (!currentTestId) {
+    console.error("No current test ID found!");
+    return;
   }
+
+  setIsLoading(true);
+  try {
+    console.log("Making API call to update task completion status...");
+    const response = await axios.patch(
+      `https://medical-backend-loj4.onrender.com/api/test/calender/completion/${currentTestId}`,
+      {
+        completed: isCompleting,
+      }
+    );
+    
+    console.log("API response:", response.data);
+    
+    if (response.data && response.data._id) {
+      // Update the local state
+      setTests(
+        tests.map((test) => (test._id === currentTestId ? { ...test, completed: response.data.completed } : test))
+      );
+
+      // Find the test that was updated
+      const updatedTest = tests.find((test) => test._id === currentTestId);
+      console.log("Found test to update:", updatedTest);
+      
+      // Check if this is an AI Planner task
+      if (updatedTest) {
+        console.log("Test source:", updatedTest.source);
+        console.log("Test planId:", updatedTest.planId);
+        console.log("Test dayOfWeek:", updatedTest.dayOfWeek);
+        
+        if (updatedTest.source === "ai-planner") {
+          console.log("This is an AI Planner task - updating progress...");
+          updateAIPlannerProgress(
+            currentTestId,
+            updatedTest.subjectName,
+            updatedTest.testTopic,
+            isCompleting,
+            updatedTest.planId || "unknown-plan",
+            updatedTest.dayOfWeek || "unknown-day"
+          );
+        } else {
+          console.log("Not an AI Planner task - skipping progress update");
+        }
+      } else {
+        console.error("Could not find the updated test in the tests array!");
+      }
+
+      toast.success(`Test marked as ${isCompleting ? "completed" : "incomplete"}`);
+    } else {
+      throw new Error("Invalid response from server");
+    }
+  } catch (error) {
+    console.error("Error updating task status:", error);
+    toast.error("Failed to update test status. Please try again.");
+  } finally {
+    setIsLoading(false);
+    console.log("=== COMPLETED TASK COMPLETION PROCESS ===");
+  }
+};
 
   const handleRescheduleTest = (id: string) => {
     const test = tests.find((t) => t._id === id)
@@ -499,24 +555,22 @@ const SmartStudyCalendar = () => {
                 // } else if (test.completed === false) {
                 //   dotColor = "#ef4444" // red for incomplete
                 // }
-                const isMentorshipSession = 
-  test.taskType === "mentorship" || 
-  (test.subjectName || "").toLowerCase().includes("mentorship")
+                const isMentorshipSession =
+                  test.taskType === "mentorship" || (test.subjectName || "").toLowerCase().includes("mentorship")
 
-if (isMentorshipSession) {
-  // Keep the original color for mentorship sessions
-  dotColor = "#8B5CF6" // Force purple color
-} else {
-  // For regular study tasks, apply status-based colors
-  if (test.completed === true) {
-    dotColor = "#22c55e" // green for complete
-  } else if (test.completed === false && testDate < today) {
-    dotColor = "#9ca3af" // gray for missed (past date and not completed)
-  } else if (test.completed === false) {
-    dotColor = "#ef4444" // red for incomplete
-  }
-}
-
+                if (isMentorshipSession) {
+                  // Keep the original color for mentorship sessions
+                  dotColor = "#8B5CF6" // Force purple color
+                } else {
+                  // For regular study tasks, apply status-based colors
+                  if (test.completed === true) {
+                    dotColor = "#22c55e" // green for complete
+                  } else if (test.completed === false && testDate < today) {
+                    dotColor = "#9ca3af" // gray for missed (past date and not completed)
+                  } else if (test.completed === false) {
+                    dotColor = "#ef4444" // red for incomplete
+                  }
+                }
 
                 return (
                   <div
@@ -594,9 +648,9 @@ if (isMentorshipSession) {
           <span>Missed</span>
         </div>
         <div className="flex items-center">
-    <div className="w-3 h-3 rounded-full bg-[#8B5CF6] mr-2"></div>
-    <span>Mentorship</span>
-  </div>
+          <div className="w-3 h-3 rounded-full bg-[#8B5CF6] mr-2"></div>
+          <span>Mentorship</span>
+        </div>
       </div>
 
       {/* Today Dashboard - Daily Snapshot */}
@@ -704,7 +758,7 @@ if (isMentorshipSession) {
                                   AI Planner
                                 </span>
                               )}
-                               {test.source === "manual" && (
+                              {test.source === "manual" && (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                                   Manual
                                 </span>

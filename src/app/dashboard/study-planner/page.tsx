@@ -41,7 +41,9 @@ import type {
 } from "./types/study-plan-types"
 
 import UserPlansList from "./components/user-plans-list"
-
+// import { loadPlan, saveCurrentPlanProgress } from "../../smart-study/plan-loader"
+import { saveCurrentPlanProgress } from "../smart-study/plan-loader"
+import { loadPlan } from "../smart-study/plan-loader"
 // Define the StudyPlan interface for the list
 interface StudyPlanListItem {
   _id: string
@@ -464,41 +466,44 @@ useEffect(() => {
   // }
 
   const loadExistingPlan = async (planId?: string) => {
-    try {
-      // If a specific plan ID is provided, load that plan
-      if (planId) {
-        try {
-          const response = await axios.get(
-            `https://medical-backend-loj4.onrender.com/api/ai-planner/getStudyPlan/${planId}`,
-          )
+  try {
+    // If a specific plan ID is provided, load that plan
+    if (planId) {
+      try {
+        // First, save the current plan's progress data
+        saveCurrentPlanProgress();
+        
+        // Then load the plan data from the API
+        const response = await axios.get(
+          `https://medical-backend-loj4.onrender.com/api/ai-planner/getStudyPlan/${planId}`,
+        );
 
-          if (response.data.success && response.data.data) {
-            setStudyPlan(response.data.data)
+        if (response.data.success && response.data.data) {
+          setStudyPlan(response.data.data);
 
-            // If you need user data
-            const savedUserData = localStorage.getItem("userData")
-            const parsedUserData = savedUserData ? JSON.parse(savedUserData) : formData
-            setFormData(parsedUserData)
+          // If you need user data
+          const savedUserData = localStorage.getItem("userData");
+          const parsedUserData = savedUserData ? JSON.parse(savedUserData) : formData;
+          setFormData(parsedUserData);
 
-            // Store the current plan ID
-            localStorage.setItem("currentPlanId", planId)
-            return
-          }
-        } catch (error) {
-          console.error("Error fetching specific plan:", error)
-          toast.error("Failed to load the selected plan. Please try again.")
-          // Continue to fallback methods
+          // Load the plan's progress data
+          loadPlan(planId);
+
+          return;
         }
+      } catch (error) {
+        console.error("Error fetching specific plan:", error);
+        toast.error("Failed to load the selected plan. Please try again.");
       }
-      setShowPlansList(true)
-    } catch (error) {
-      console.error("Error loading saved plan:", error)
-      toast.error("Failed to load your saved plan. Please try again.")
     }
+    setShowPlansList(true);
+  } catch (error) {
+    console.error("Error loading saved plan:", error);
+    toast.error("Failed to load your saved plan. Please try again.");
   }
-
+};
   // Function to add study plan tasks to the calendar
-  // Modified function to replace the existing addPlanTasksToCalendar
+  // Modified function to replace the existing add PlanTasksToCalendar
   const addPlanTasksToCalendar = async (planData: StudyPlanResponse) => {
     if (!planData || !planData.plan || !planData.plan.weeklyPlans) return
 
@@ -661,6 +666,25 @@ useEffect(() => {
     }
 
     setIsSubmitting(true)
+   // ADD THESE LINES HERE
+  localStorage.setItem("isNewPlanGeneration", "true");
+  
+  // Also clear any existing performance data
+  const emptyProgressData = {
+    tasks: {},
+    lastUpdated: Date.now(),
+  };
+  localStorage.setItem("studyPlanPerformance", JSON.stringify(emptyProgressData));
+  // IMPORTANT: Also clear ALL plan-specific data
+  // Get all localStorage keys
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    // Check if this is a plan-specific performance data key
+    if (key && key.startsWith("studyPlanPerformance_")) {
+      // Clear this plan's data
+      localStorage.setItem(key, JSON.stringify(emptyProgressData));
+    }
+  }
     setApiError(null)
 
     // Start progress simulation
@@ -793,10 +817,21 @@ useEffect(() => {
   ]
 
   // Handle plan selection from the list
-  const handleSelectPlan = async (planId: string) => {
-    await loadExistingPlan(planId)
-    setShowPlansList(false)
-  }
+  // Handle plan selection from the list
+const handleSelectPlan = async (planId: string) => {
+  // Store the plan ID in localStorage
+  localStorage.setItem("currentPlanId", planId);
+  
+  // Dispatch an event to notify components that the plan has changed
+  const event = new CustomEvent("planChanged", {
+    detail: { planId }
+  });
+  window.dispatchEvent(event);
+  
+  // Continue with loading the plan
+  await loadExistingPlan(planId);
+  setShowPlansList(false);
+};
 
   // If we have a study plan, show the results component
   if (studyPlan) {
@@ -818,15 +853,22 @@ useEffect(() => {
   return (
     <div className="bg-white p-6 rounded-lg shadow-md relative overflow-hidden">
       {hasExistingPlan && !studyPlan && (
-        <ExistingPlanNotice onViewPlans={() => setShowPlansList(true)} hasPlans={hasExistingPlan} />
-      )}
+  <ExistingPlanNotice 
+    onViewPlans={() => {
+      // Save the current plan's progress before showing the plans list
+      saveCurrentPlanProgress();
+      setShowPlansList(true);
+    }} 
+    hasPlans={hasExistingPlan} 
+  />
+)}
 
       {/* Background decoration */}
       <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full opacity-70 -z-10"></div>
       <div className="absolute bottom-0 left-0 w-24 h-24 bg-blue-50 rounded-tr-full opacity-70 -z-10"></div>
 
       {/* Study tip toast notification */}
-      <AnimatePresence>{showTip && <StudyTip tip={currentTip} />}</AnimatePresence>
+      {/* <AnimatePresence>{showTip && <StudyTip tip={currentTip} />}</AnimatePresence> */}
 
       {/* Plans list modal */}
       {showPlansList && (

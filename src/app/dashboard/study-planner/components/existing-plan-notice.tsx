@@ -1,8 +1,9 @@
 "use client"
 
 import type React from "react"
-import { BookMarked, BookOpen } from "lucide-react"
-
+import { BookMarked, BookOpen } from 'lucide-react'
+// import { saveCurrentPlanProgress } from "../path-to/plan-loader" // Adjust the path as needed
+import { saveCurrentPlanProgress } from "../../smart-study/plan-loader"
 interface ExistingPlanNoticeProps {
   onViewPlans: () => void
   hasPlans: boolean
@@ -10,6 +11,15 @@ interface ExistingPlanNoticeProps {
 
 const ExistingPlanNotice: React.FC<ExistingPlanNoticeProps> = ({ onViewPlans, hasPlans }) => {
   if (!hasPlans) return null
+
+  // Create a new handler that saves progress before calling the original onViewPlans
+  const handleViewPlans = () => {
+    // Save the current plan's progress before navigating
+    saveCurrentPlanProgress()
+    
+    // Then call the original onViewPlans function
+    onViewPlans()
+  }
 
   return (
     <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -22,7 +32,7 @@ const ExistingPlanNotice: React.FC<ExistingPlanNoticeProps> = ({ onViewPlans, ha
           </div>
         </div>
         <button
-          onClick={onViewPlans}
+          onClick={handleViewPlans} // Use the new handler instead of onViewPlans directly
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center"
         >
           <BookOpen className="mr-2" size={16} />
