@@ -3,6 +3,7 @@
 import { Award, BarChart3, CheckCircle, Clock, RefreshCw } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useState } from "react"
+import axios from "axios"
 
 // Define proper types for the component props and data structures
 interface Task {
@@ -33,29 +34,29 @@ interface UserData {
   }
 }
 
-interface TaskPerformance {
-  weekNumber: number
-  dayOfWeek: string
-  subject: string
-  activity: string
-  status: "completed" | "incomplete" | "not-understood" | "skipped"
-  taskId: string
-  timestamp: number
-}
-
-interface PerformanceData {
-  tasks: Record<string, TaskPerformance>
-  lastUpdated: number
+interface ProgressApiResponse {
+  success: boolean
+  data: {
+    planId: string
+    overallProgress: number
+    completedTasks: number
+    totalTasks: number
+    daysCompleted: number
+    totalDays: number
+    weeklyProgress: any[]
+  }
 }
 
 interface StudyProgressBarProps {
   weeklyPlans: WeeklyPlan[]
   userData: UserData
+  planId?: string // Optional prop for specific plan ID
 }
 
-// Add this at the module level (outside the component)
+// Keep this at the module level (outside the component)
 let forceUpdateCallback: (() => void) | null = null
 
+// Keep this exported function intact
 export function forceProgressUpdate() {
   console.log("Forcing progress update via direct function call")
 
@@ -74,363 +75,133 @@ export function forceProgressUpdate() {
   window.dispatchEvent(event)
 }
 
-export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans, userData }) => {
+export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ 
+  weeklyPlans, 
+  userData,
+  planId: propPlanId // Renamed to avoid shadowing
+}) => {
   const [progress, setProgress] = useState<number>(0)
   const [completedTasks, setCompletedTasks] = useState<number>(0)
   const [totalTasks, setTotalTasks] = useState<number>(0)
   const [daysCompleted, setDaysCompleted] = useState<number>(0)
   const [totalDays, setTotalDays] = useState<number>(0)
-  // Add a state to force recalculation when localStorage changes
+  const [isLoading, setIsLoading] = useState<boolean>(false)
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now())
+  const [apiError, setApiError] = useState<string | null>(null)
+  const [currentPlanId, setCurrentPlanId] = useState<string | null>(propPlanId || null)
 
-  // Add a function to force refresh from localStorage
-  const forceRefreshFromLocalStorage = useCallback(() => {
-    console.log("Force refreshing progress bar from localStorage")
+  // Function to fetch progress data from the API
+  const fetchProgressFromAPI = useCallback(async () => {
+    console.log("=== FETCHING PROGRESS DATA FROM API ===")
+    setIsLoading(true)
+    setApiError(null)
 
-    // Get the current plan ID
-    const currentPlanId = localStorage.getItem("currentPlanId")
-    console.log("Current plan ID:", currentPlanId)
-
-    if (currentPlanId) {
-      // Check if we have plan-specific data
-      const planKey = `studyPlanPerformance_${currentPlanId}`
-      const planData = localStorage.getItem(planKey)
-
-      if (planData) {
-        console.log("Found plan-specific data, using it")
-        // Use the plan-specific data
-        localStorage.setItem("studyPlanPerformance", planData)
-      }
-    }
-
-    // Force recalculation by updating lastUpdate
-    setLastUpdate(Date.now())
-  }, [])
-
-  // Register the callback when the component mounts
-  // Register the callback when the component mounts
-// Register the callback when the component mounts
-useEffect(() => {
-  // Register the callback for direct updates
-  forceUpdateCallback = () => {
-    console.log("Force update callback triggered")
-    setLastUpdate(Date.now())
-  }
-
-  // Check if this is a new plan generation
-  const isNewPlanGeneration = localStorage.getItem("isNewPlanGeneration") === "true"
-  
-  if (isNewPlanGeneration) {
-    console.log("New plan generation detected - ensuring progress starts at 0%")
-    localStorage.setItem("studyPlanPerformance", JSON.stringify({
-      tasks: {},
-      lastUpdated: Date.now()
-    }))
-    localStorage.removeItem("isNewPlanGeneration")
-  } else {
-    // Load plan-specific data on initial mount (only for existing plans)
-    console.log("Component mounted - checking for plan-specific data")
-    const currentPlanId = localStorage.getItem("currentPlanId")
-    if (currentPlanId) {
-      console.log("Found currentPlanId:", currentPlanId)
-      const planKey = `studyPlanPerformance_${currentPlanId}`
-      const planData = localStorage.getItem(planKey)
+    try {
+      // Use cache-busting parameter
+      const cacheBuster = new Date().getTime()
       
-      if (planData) {
-        console.log("Found plan-specific data on initial mount, loading it")
-        localStorage.setItem("studyPlanPerformance", planData)
+      // Determine which endpoint to use based on whether we have a specific plan ID
+      let url: string
+      
+      if (propPlanId) {
+        console.log("Using provided plan ID:", propPlanId)
+        url = `http://localhost:5000/api/test/study-progress/${propPlanId}?_=${cacheBuster}`
+      } else {
+        console.log("Fetching active study plan progress")
+        url = `http://localhost:5000/api/test/current-study-progress?_=${cacheBuster}`
       }
-    }
-  }
 
-  // Clean up when component unmounts
-  return () => {
-    forceUpdateCallback = null
-  }
-}, [])
+      console.log("Fetching from URL:", url)
 
-  // Add listener for plan changes
-  useEffect(() => {
-    // Listen for plan changes
-    const handlePlanChange = (event: CustomEvent) => {
-      console.log("Plan change detected:", event.detail)
-      forceRefreshFromLocalStorage()
-    }
+      // Fetch progress data from the API
+      const response = await axios.get<ProgressApiResponse>(url)
 
-    window.addEventListener("planChanged", handlePlanChange as EventListener)
+      console.log("API RESPONSE FULL DATA:", JSON.stringify(response.data, null, 2))
 
-    return () => {
-      window.removeEventListener("planChanged", handlePlanChange as EventListener)
-    }
-  }, [forceRefreshFromLocalStorage])
+      if (response.data.success) {
+        const data = response.data.data
 
-  // Wrap calculateProgress in useCallback to prevent it from being recreated on every render
-  const calculateProgress = useCallback(() => {
-    console.log("=== CALCULATING PROGRESS ===")
-    console.log("Current time:", new Date().toISOString())
+        console.log("Progress data received:", {
+          planId: data.planId,
+          overallProgress: data.overallProgress,
+          completedTasks: data.completedTasks,
+          totalTasks: data.totalTasks,
+          daysCompleted: data.daysCompleted,
+          totalDays: data.totalDays,
+          weeklyProgressLength: data.weeklyProgress?.length || 0,
+        })
 
-    // Check if this is a new plan by looking for a specific flag in localStorage
-    // Check if this is a new plan by looking for a specific flag in localStorage
-const isNewPlan = !localStorage.getItem("studyPlanPerformance") || localStorage.getItem("isNewPlanGeneration") === "true"
-    console.log("Is new plan:", isNewPlan)
-
-    // If this is a new plan, force everything to 0
-    if (isNewPlan) {
-      console.log("New plan detected - setting progress to 0%")
-      localStorage.removeItem("isNewPlanGeneration");
-      setProgress(0)
-      setCompletedTasks(0)
-
-      const totalTaskCount = weeklyPlans.reduce((acc, week) => {
-        if (week.days) {
-          week.days.forEach((day) => {
-            if (day.tasks) {
-              acc += day.tasks.length
-            }
-          })
-        }
-        return acc
-      }, 0)
-
-      console.log("Total tasks from weekly plans:", totalTaskCount)
-      setTotalTasks(totalTaskCount)
-
-      setDaysCompleted(0)
-
-      const totalDaysCount = weeklyPlans.reduce((acc, week) => {
-        if (week.days) {
-          acc += week.days.length
-        }
-        return acc
-      }, 0)
-
-      console.log("Total days from weekly plans:", totalDaysCount)
-      setTotalDays(totalDaysCount)
-
-      console.log("Progress set to 0% for new plan")
-      // Clear the flag after using it
-
-      return
-    }
-
-    // Get performance data from localStorage
-    const storedData = localStorage.getItem("studyPlanPerformance")
-    console.log("Raw localStorage data:", storedData)
-
-    const performanceData: PerformanceData = storedData
-      ? JSON.parse(storedData)
-      : { tasks: {}, lastUpdated: Date.now() }
-
-    console.log("Parsed performance data:", performanceData)
-    console.log("Number of tasks in performance data:", Object.keys(performanceData.tasks).length)
-
-    // Log all tasks for debugging
-    if (performanceData && performanceData.tasks) {
-      console.log("All tasks in performance data:")
-      Object.entries(performanceData.tasks).forEach(([id, task]) => {
-        console.log(`Task ${id}:`, task)
-      })
-    }
-
-    // Calculate total tasks and completed tasks
-    let completed = 0
-    let total = 0
-    let completedDays = 0
-    let totalDaysCount = 0
-
-    // Track days that have at least one task
-    const daysWithTasks = new Set<string>()
-    const completedDaysSet = new Set<string>()
-
-    // Count tasks from performance data
-    if (performanceData && performanceData.tasks) {
-      Object.values(performanceData.tasks).forEach((task: TaskPerformance) => {
-        total++
-        if (task.status === "completed" || task.status === "not-understood" || task.status === "skipped") {
-          console.log(`Task marked as ${task.status}: ${task.subject} - ${task.activity}`)
-          completed++
+        // Save the plan ID for reference
+        if (data.planId && !propPlanId) {
+          setCurrentPlanId(data.planId)
+          // Optionally store in localStorage if needed elsewhere in the app
+          localStorage.setItem("currentPlanId", data.planId)
         }
 
-        // Track unique days
-        const dayKey = `${task.weekNumber}-${task.dayOfWeek}`
-        daysWithTasks.add(dayKey)
+        // Update state with data from the API
+        setProgress(data.overallProgress || 0)
+        setCompletedTasks(data.completedTasks || 0)
+        setTotalTasks(data.totalTasks || 0)
+        setDaysCompleted(data.daysCompleted || 0)
+        setTotalDays(data.totalDays || 0)
 
-        // Check if all tasks for this day are completed
-        const dayTasks = Object.values(performanceData.tasks).filter(
-          (t: TaskPerformance) => t.weekNumber === task.weekNumber && t.dayOfWeek === task.dayOfWeek,
-        )
-
-        // Update day completion check to include not-understood and skipped
-        const allDayTasksCompleted = dayTasks.every(
-          (t: TaskPerformance) => t.status === "completed" || t.status === "not-understood" || t.status === "skipped",
-        )
-
-        if (allDayTasksCompleted) {
-          completedDaysSet.add(dayKey)
-          console.log(`Day marked as completed: ${dayKey}`)
-        }
-      })
-    }
-
-    // If no tasks in localStorage yet, count from the study plan
-    if (total === 0 && weeklyPlans) {
-      console.log("No tasks in localStorage, counting from weekly plans")
-      // For a new plan, explicitly set completed tasks and days to 0
-      completed = 0
-      completedDays = 0
-
-      weeklyPlans.forEach((week) => {
-        if (week.days) {
-          week.days.forEach((day: Day) => {
-            if (day.tasks) {
-              total += day.tasks.length
-              console.log(`Adding ${day.tasks.length} tasks from ${day.dayOfWeek} in week ${week.weekNumber}`)
-
-              // Track unique days
-              const dayKey = `${week.weekNumber}-${day.dayOfWeek}`
-              daysWithTasks.add(dayKey)
-            }
-          })
-        }
-      })
-    }
-
-    // Calculate days completed
-    completedDays = completedDaysSet.size
-    totalDaysCount = daysWithTasks.size
-
-    console.log(`Days completed: ${completedDays}/${totalDaysCount}`)
-
-    // Calculate progress percentage
-    let progressPercentage = 0
-    if (total > 0) {
-      progressPercentage = Math.round((completed / total) * 100)
-      console.log(`Raw progress calculation: ${completed}/${total} = ${(completed / total) * 100}%`)
-
-      // Safety check: if no tasks are completed but we have tasks, ensure progress is 0
-      if (completed === 0) {
-        progressPercentage = 0
-        console.log("No completed tasks, setting progress to 0%")
+        console.log("Progress data updated from API")
+      } else {
+        console.error("API returned error:", response.data)
+        setApiError("API returned an error")
       }
+    } catch (error: any) {
+      console.error("Error fetching progress data:", error)
+      setApiError(error.response?.data?.message || "Failed to fetch progress data")
+    } finally {
+      setIsLoading(false)
     }
+  }, [propPlanId])
 
-    // Final safety check - if this is a newly generated plan, force progress to 0
-    if (completed === 0 || Object.keys(performanceData.tasks).length === 0) {
-      progressPercentage = 0
-      console.log("No completed tasks or empty performance data, setting progress to 0%")
-    }
-
-    console.log(
-      `Final progress calculation: ${completed}/${total} tasks, ${completedDays}/${totalDaysCount} days, ${progressPercentage}%`,
-    )
-
-    setProgress(progressPercentage)
-    setCompletedTasks(completed)
-    setTotalTasks(total)
-    setDaysCompleted(completedDays)
-    setTotalDays(totalDaysCount)
-
-    console.log("=== COMPLETED PROGRESS CALCULATION ===")
-  }, [weeklyPlans]) // Remove lastUpdate from here as it creates a circular dependency
-
-  // Add this right after the calculateProgress function in study-progress-bar.tsx
+  // Register the callback when the component mounts
   useEffect(() => {
-    // This will run once when the component mounts
-    console.log("DIRECT CHECK OF LOCALSTORAGE:")
+    console.log("Component mounted - registering force update callback")
 
-    // Get all keys in localStorage
-    const allKeys = []
-    for (let i = 0; i < localStorage.length; i++) {
-      allKeys.push(localStorage.key(i))
-    }
-    console.log("All localStorage keys:", allKeys)
-
-    // Check the exact content of studyPlanPerformance
-    const rawData = localStorage.getItem("studyPlanPerformance")
-    console.log("Raw studyPlanPerformance data:", rawData)
-
-    if (rawData) {
-      try {
-        const parsedData = JSON.parse(rawData)
-        console.log("Parsed studyPlanPerformance:", parsedData)
-        console.log("Tasks in performance data:", Object.keys(parsedData.tasks || {}).length)
-
-        // Log each task
-        if (parsedData.tasks) {
-          Object.entries(parsedData.tasks).forEach(([id, task]) => {
-            console.log(`Task ${id}:`, task)
-          })
-        }
-      } catch (e) {
-        console.error("Error parsing studyPlanPerformance:", e)
-      }
-    }
-
-    // Check for plan-specific data
-    const currentPlanId = localStorage.getItem("currentPlanId")
-    if (currentPlanId) {
-      const planKey = `studyPlanPerformance_${currentPlanId}`
-      const planData = localStorage.getItem(planKey)
-      console.log(`Plan-specific data for ${currentPlanId}:`, planData ? "Found" : "Not found")
-    }
-  }, [])
-
-  // In the useEffect:
-  useEffect(() => {
-    console.log("=== STUDY PROGRESS BAR MOUNTED OR UPDATED ===")
-    console.log("lastUpdate value:", lastUpdate)
-
-    // Initial calculation
-    console.log("Running initial progress calculation")
-    calculateProgress()
-
-    // Set up event listener for custom event
-    const handleProgressUpdate = (event: Event) => {
-      console.log("Received studyPlanProgressUpdated event:", event)
-      console.log("Triggering progress recalculation")
+    // Register the callback for direct updates
+    forceUpdateCallback = () => {
+      console.log("Force update callback triggered")
       setLastUpdate(Date.now())
     }
 
-    console.log("Adding event listener for studyPlanProgressUpdated")
+    // Initial data fetch
+    fetchProgressFromAPI()
+
+    // Clean up when component unmounts
+    return () => {
+      console.log("Component unmounting - clearing callback")
+      forceUpdateCallback = null
+    }
+  }, [fetchProgressFromAPI])
+
+  // Keep the event listener for progress updates
+  useEffect(() => {
+    console.log("Setting up event listener for progress updates")
+
+    const handleProgressUpdate = () => {
+      console.log("Progress update event received")
+      fetchProgressFromAPI()
+    }
+
     window.addEventListener("studyPlanProgressUpdated", handleProgressUpdate)
 
-    // Set up interval to check localStorage every 5 seconds
-    console.log("Setting up polling interval for localStorage changes")
-    const intervalId = setInterval(() => {
-      console.log("Checking for localStorage changes...")
-      const storedData = localStorage.getItem("studyPlanPerformance")
-      if (storedData) {
-        try {
-          const data = JSON.parse(storedData)
-          console.log("Current lastUpdate:", lastUpdate)
-          console.log("localStorage lastUpdated:", data.lastUpdated)
-
-          if (data.lastUpdated > lastUpdate) {
-            console.log("Detected localStorage change, updating progress")
-            setLastUpdate(data.lastUpdated)
-          } else {
-            console.log("No changes detected in localStorage")
-          }
-        } catch (e) {
-          console.error("Error parsing localStorage data:", e)
-        }
-      } else {
-        console.log("No studyPlanPerformance data in localStorage")
-      }
-    }, 5000)
-
     return () => {
-      console.log("Cleaning up StudyProgressBar event listeners and intervals")
+      console.log("Removing event listener for progress updates")
       window.removeEventListener("studyPlanProgressUpdated", handleProgressUpdate)
-      clearInterval(intervalId)
     }
-  }, [calculateProgress, lastUpdate]) // Added lastUpdate to the dependency array
+  }, [fetchProgressFromAPI])
 
-  // Add a separate effect to run calculateProgress when lastUpdate changes
+  // Effect to run fetchProgressFromAPI when lastUpdate changes
   useEffect(() => {
-    console.log("lastUpdate changed, recalculating progress...")
-    calculateProgress()
-  }, [lastUpdate, calculateProgress])
+    if (lastUpdate) {
+      console.log("lastUpdate changed, fetching fresh data...")
+      fetchProgressFromAPI()
+    }
+  }, [lastUpdate, fetchProgressFromAPI])
 
   // Get color based on progress
   const getProgressColor = () => {
@@ -486,30 +257,19 @@ const isNewPlan = !localStorage.getItem("studyPlanPerformance") || localStorage.
         <button
           onClick={() => {
             console.log("Manual refresh clicked")
-
-            // Check localStorage directly
-            const rawData = localStorage.getItem("studyPlanPerformance")
-            console.log("Manual refresh - Raw localStorage data:", rawData)
-
-            if (rawData) {
-              try {
-                const parsedData = JSON.parse(rawData)
-                console.log("Manual refresh - Parsed data:", parsedData)
-                console.log("Manual refresh - Tasks count:", Object.keys(parsedData.tasks || {}).length)
-              } catch (e) {
-                console.error("Manual refresh - Error parsing data:", e)
-              }
-            }
-
-            // Force refresh from localStorage
-            forceRefreshFromLocalStorage()
+            // Only set loading state
+            setIsLoading(true)
+            fetchProgressFromAPI()
           }}
-          className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50"
+          className={`text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-50 transition-all duration-300 ${isLoading ? "bg-blue-50" : ""}`}
           title="Refresh progress"
+          disabled={isLoading}
         >
-          <RefreshCw size={16} />
+          <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
         </button>
       </div>
+
+      {apiError && <div className="mb-4 p-2 bg-red-50 text-red-600 rounded-md text-sm">{apiError}</div>}
 
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">

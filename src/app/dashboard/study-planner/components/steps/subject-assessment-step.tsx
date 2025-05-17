@@ -166,7 +166,7 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
                 )}
 
                 <h4 className="font-medium text-sm text-gray-700 mb-2">
-                  Detected weak topics from your performance data:
+                  Detected weak topics for {formData.targetExam}:
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                   {weakTopics.map((topic, index) => (
@@ -188,7 +188,7 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
 
                 {/* Add a note about how these subjects will be used */}
                 <div className="mt-3 text-xs text-blue-600 italic">
-                  These weak subjects will be prioritized in your study plan.
+                  These weak subjects for {formData.targetExam} will be prioritized in your study plan.
                 </div>
               </motion.div>
             )}
@@ -203,7 +203,8 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
             {formData.usePerformanceData && !isLoadingPerformanceData && weakTopics.length === 0 && (
               <div className="mt-2 text-sm text-amber-600 flex items-center">
                 <AlertCircle size={14} className="mr-1" />
-                No performance data available. Please complete some assessments first.
+                No performance data available for {formData.targetExam}. Please complete some assessments for this exam
+                first.
               </div>
             )}
           </div>
@@ -427,3 +428,4 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
 }
 
 export default SubjectAssessmentStep
+	

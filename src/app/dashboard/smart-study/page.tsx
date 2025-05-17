@@ -1,7 +1,5 @@
 "use client"
-
 import type React from "react"
-
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,9 +29,9 @@ import PerformanceVisualizer from "./performance-visualizer"
 import PlannerSyncScheduler from "./planner-sync-scheduler"
 import PriorityIndicator from "./priority-indicator"
 import TodayDashboard from "./today-dashboard"
-import { updateAIPlannerProgress } from "./integration-utils"
-
+// import { updateAIPlannerProgress } from "./integration-utils"
 // Update the CalendarTest interface to include source and additional information
+import ReschedulePlanDialog from "./reschedule-plan-dialog"
 interface CalendarTest {
   _id?: string
   subjectName: string
@@ -48,7 +46,6 @@ interface CalendarTest {
   source?: "ai-planner" | "manual" | "review_session"
   dayOfWeek?: string
 }
-
 // Define the interface that matches ExamInterface's expected Test type
 interface ExamTest {
   id: string
@@ -59,7 +56,6 @@ interface ExamTest {
   testTopic: string
   color: string
 }
-
 // Define the interface for weekly plan tasks
 interface PlanTask {
   id: string
@@ -70,7 +66,6 @@ interface PlanTask {
   duration: number
   priority: "high" | "medium" | "low"
 }
-
 // Define the interface for synced tests
 interface SyncedTest {
   _id: string
@@ -95,7 +90,6 @@ const SmartStudyCalendar = () => {
     completed: false,
   })
   const [isLoading, setIsLoading] = useState(false)
-  const [isSyncing, setIsSyncing] = useState(false)
   const [isUndoing, setIsUndoing] = useState(false)
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null)
   const [lastSyncedTests, setLastSyncedTests] = useState<SyncedTest[]>([])
@@ -107,7 +101,8 @@ const SmartStudyCalendar = () => {
   const [currentTestId, setCurrentTestId] = useState<string>("")
   const [isCompleting, setIsCompleting] = useState(false)
   const [rescheduleDate, setRescheduleDate] = useState("")
-
+  const [showReschedulePlanDialog, setShowReschedulePlanDialog] = useState(false);
+  const [planToReschedule, setPlanToReschedule] = useState<string | null>(null);
   useEffect(() => {
     if (typeof window !== "undefined") {
       const storedData = localStorage.getItem("Medical_User_Id")
@@ -129,7 +124,6 @@ const SmartStudyCalendar = () => {
           console.error("Error parsing stored tests:", e)
         }
       }
-
       // Load weekly study plan from localStorage
       const storedPlan = localStorage.getItem("weeklyStudyPlan")
       if (storedPlan) {
@@ -199,7 +193,6 @@ useEffect(() => {
       fetchTests()
     }
   }, [userId, fetchTests])
-
   // Convert your calendar tests to ExamInterface's expected format
   const getExamTests = (): ExamTest[] => {
     return tests.map((test) => ({
@@ -219,14 +212,20 @@ useEffect(() => {
   const prevMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))
   }
-
   const nextMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))
   }
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewTest({ ...newTest, [e.target.name]: e.target.value })
   }
+  const handleReschedulePlan = (planId: string | undefined) => {
+  if (planId) {
+    setPlanToReschedule(planId);
+    setShowReschedulePlanDialog(true);
+  } else {
+    toast.error("No plan ID found for this task");
+  }
+};
 
   const validateNewTest = (test: CalendarTest): boolean => {
     if (test.subjectName.trim() === "") {
@@ -309,8 +308,8 @@ useEffect(() => {
     setShowCompletionDialog(true)
   }
 
-  // In the confirmToggleCompletion function:
-const confirmToggleCompletion = async () => {
+  // In the confirm ToggleCompletion function:
+  const confirmToggleCompletion = async () => {
   console.log("=== STARTING TASK COMPLETION ===");
   console.log("Current test ID:", currentTestId);
   console.log("Is completing:", isCompleting);
@@ -331,7 +330,7 @@ const confirmToggleCompletion = async () => {
         completed: isCompleting,
       }
     );
-    
+  
     console.log("API response:", response.data);
     
     if (response.data && response.data._id) {
@@ -345,26 +344,42 @@ const confirmToggleCompletion = async () => {
       console.log("Found test to update:", updatedTest);
       
       // Check if this is an AI Planner task
-      if (updatedTest) {
-        console.log("Test source:", updatedTest.source);
-        console.log("Test planId:", updatedTest.planId);
-        console.log("Test dayOfWeek:", updatedTest.dayOfWeek);
+      if (updatedTest && updatedTest.source === "ai-planner" && updatedTest.planId) {
+        console.log("This is an AI Planner task - updating progress in database...");
         
-        if (updatedTest.source === "ai-planner") {
-          console.log("This is an AI Planner task - updating progress...");
-          updateAIPlannerProgress(
-            currentTestId,
-            updatedTest.subjectName,
-            updatedTest.testTopic,
-            isCompleting,
-            updatedTest.planId || "unknown-plan",
-            updatedTest.dayOfWeek || "unknown-day"
-          );
-        } else {
-          console.log("Not an AI Planner task - skipping progress update");
+        // Extract week number from the test topic if possible
+        let weekNumber = 1;
+        const weekMatch = updatedTest.testTopic.match(/Week\s+(\d+)/i);
+        if (weekMatch && weekMatch[1]) {
+          weekNumber = parseInt(weekMatch[1], 10);
         }
-      } else {
-        console.error("Could not find the updated test in the tests array!");
+        
+        // Call the backend API to update the study plan in the database
+        try {
+          const studyPlanResponse = await axios.post(
+            "http://localhost:5000/api/test/update-task-status",
+            {
+              planId: updatedTest.planId,
+              taskId: currentTestId,
+              subject: updatedTest.subjectName,
+              activity: updatedTest.testTopic,
+              weekNumber: weekNumber,
+              dayOfWeek: updatedTest.dayOfWeek || "unknown-day",
+              completed: isCompleting
+            }
+          );
+        
+          console.log("Study plan database update response:", studyPlanResponse.data);
+          
+          // Trigger a progress update event
+          const event = new CustomEvent("studyPlanProgressUpdated", {
+            detail: { updatedAt: Date.now() },
+          });
+          window.dispatchEvent(event);
+        } catch (studyPlanError) {
+          console.error("Error updating study plan in database:", studyPlanError);
+          toast.error("Failed to update study plan progress.");
+        }
       }
 
       toast.success(`Test marked as ${isCompleting ? "completed" : "incomplete"}`);
@@ -379,7 +394,6 @@ const confirmToggleCompletion = async () => {
     console.log("=== COMPLETED TASK COMPLETION PROCESS ===");
   }
 };
-
   const handleRescheduleTest = (id: string) => {
     const test = tests.find((t) => t._id === id)
     if (test) {
@@ -388,7 +402,6 @@ const confirmToggleCompletion = async () => {
       setShowRescheduleDialog(true)
     }
   }
-
   // Reschedule dialog
   const RescheduleDialog = () => {
     // Use local state for the date input to prevent rerenders of the parent component
@@ -459,7 +472,6 @@ const confirmToggleCompletion = async () => {
   }
 
   // Also update the confirmRescheduleTest function to use the current rescheduleDate state:
-
   const confirmRescheduleTest = async (dateToUse?: string) => {
     setShowRescheduleDialog(false)
 
@@ -474,7 +486,6 @@ const confirmToggleCompletion = async () => {
       toast.error("Cannot reschedule to past dates")
       return
     }
-
     // Update the test date
     setIsLoading(true)
     try {
@@ -497,13 +508,11 @@ const confirmToggleCompletion = async () => {
       setIsLoading(false)
     }
   }
-
   // Handler for when tests are added from the PlannerSyncScheduler
   const handleTestsAdded = (newTests: SyncedTest[]) => {
     // Refresh the tests list
     fetchTests()
   }
-
   // Handler for sync time change
   const handleSyncTimeChange = (time: string) => {
     setLastSyncTime(time)
@@ -513,12 +522,6 @@ const confirmToggleCompletion = async () => {
   const handleLastSyncedTestsChange = (tests: SyncedTest[]) => {
     setLastSyncedTests(tests)
   }
-
-  // Handler for weekly study plan change
-  const handleWeeklyStudyPlanChange = (plan: PlanTask[]) => {
-    setWeeklyStudyPlan(plan)
-  }
-
   const renderCalendarDays = () => {
     const days = []
     for (let i = 0; i < firstDayOfMonth; i++) {
@@ -528,7 +531,6 @@ const confirmToggleCompletion = async () => {
       const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
       const isSelected = date.toDateString() === selectedDate.toDateString()
       const testsOnThisDay = tests.filter((test) => new Date(test.date).toDateString() === date.toDateString())
-
       days.push(
         <div
           key={day}
@@ -590,9 +592,7 @@ const confirmToggleCompletion = async () => {
     }
     return days
   }
-
   const selectedDateTests = tests.filter((test) => new Date(test.date).toDateString() === selectedDate.toDateString())
-
   const completionDialogContent = tests.find((test) => test._id === currentTestId)
 
   // Completion confirmation dialog
@@ -796,14 +796,25 @@ const confirmToggleCompletion = async () => {
                             <Trash2 size={18} />
                           </button>
                           {new Date(test.date) < new Date(new Date().setHours(0, 0, 0, 0)) ? (
-                            <button
-                              onClick={() => test._id && handleRescheduleTest(test._id)}
-                              className="bg-yellow-500 text-white py-1 px-3 rounded hover:bg-yellow-600 transition-colors text-sm"
-                              disabled={isLoading}
-                            >
-                              Reschedule Test
-                            </button>
-                          ) : (
+  <div className="flex gap-2">
+    <button
+      onClick={() => test._id && handleRescheduleTest(test._id)}
+      className="bg-yellow-500 text-white py-1 px-3 rounded hover:bg-yellow-600 transition-colors text-sm"
+      disabled={isLoading}
+    >
+      Reschedule Test
+    </button>
+    {test.source === "ai-planner" && test.planId && (
+      <button
+        onClick={() => handleReschedulePlan(test.planId)}
+        className="bg-blue-500 text-white py-1 px-3 rounded hover:bg-blue-600 transition-colors text-sm"
+        disabled={isLoading}
+      >
+        Reschedule Plan
+      </button>
+    )}
+  </div>
+) : (
                             <button
                               onClick={() => test._id && handleToggleCompletion(test._id, !test.completed)}
                               className={`${
@@ -830,72 +841,6 @@ const confirmToggleCompletion = async () => {
                     </div>
                   )}
                 </div>
-
-                {/* <div className="bg-gray-50 rounded-lg p-4">
-                  <h2 className="text-lg font-semibold mb-4">Upcoming Tests</h2>
-                  {isLoading ? (
-                    <p>Loading tests...</p>
-                  ) : tests.length > 0 ? (
-                    <div className="max-h-60 overflow-y-auto">
-                      <ul className="space-y-2">
-                        // Update the upcoming tests list to show source and additional info
-                        {tests
-                          .filter((test) => new Date(test.date) >= new Date(new Date().setHours(0, 0, 0, 0)))
-                          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                          .slice(0, 5)
-                          .map((test) => (
-                            <li
-                              key={test._id}
-                              className="flex justify-between items-center p-2 hover:bg-gray-100 rounded"
-                            >
-                              <div className="flex items-center">
-                                <div
-                                  className="w-4 h-4 rounded-full mr-2"
-                                  style={{
-                                    backgroundColor: test.completed
-                                      ? "#22c55e" // green for complete
-                                      : new Date(test.date) < new Date(new Date().setHours(0, 0, 0, 0))
-                                        ? "#9ca3af" // gray for missed
-                                        : "#ef4444", // red for incomplete
-                                  }}
-                                ></div>
-                                <div>
-                                  <strong>{test.subjectName}</strong>: {test.testTopic}
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {test.source === "ai-planner" && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                        AI
-                                      </span>
-                                    )}
-                                    {test.taskType && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                                        {test.taskType}
-                                      </span>
-                                    )}
-                                    {test.duration && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                        {test.duration}m
-                                      </span>
-                                    )}
-                                  </div>
-                                  <small>{new Date(test.date).toLocaleDateString()}</small>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => test._id && handleDeleteTest(test._id)}
-                                className="text-red-500 hover:text-red-700"
-                                disabled={isLoading}
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </li>
-                          ))}
-                      </ul>
-                    </div>
-                  ) : (
-                    <p>No upcoming tests.</p>
-                  )}
-                </div> */}
               </div>
             </div>
           )}
@@ -1036,7 +981,6 @@ const confirmToggleCompletion = async () => {
               </div>
             </div>
           )}
-
           {/* Performance Tab */}
           {activeTab === "performance" && (
             <div>
@@ -1056,16 +1000,22 @@ const confirmToggleCompletion = async () => {
           )}
         </div>
       </div>
-
       <div id="exam-simulation">
         <ExamInterface tests={getExamTests()} />
       </div>
-
       {/* Add these lines just before the final closing div */}
       <CompletionDialog />
       <RescheduleDialog />
+      <ReschedulePlanDialog 
+  open={showReschedulePlanDialog} 
+  onOpenChange={setShowReschedulePlanDialog} 
+  planId={planToReschedule} 
+  onSuccess={() => {
+    fetchTests();
+    toast.success("Plan rescheduled successfully");
+  }}
+/>
     </div>
   )
 }
-
 export default SmartStudyCalendar
