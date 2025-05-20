@@ -93,56 +93,6 @@ const {
     return () => clearTimeout(tipTimer)
   }, [])
 
-  // new useeffect
-  // Add this right after the existing useEffect that shows the tip
-useEffect(() => {
-  // Check for plan-specific data before initializing empty data
-  console.log("Checking for plan-specific data on results page load")
-  const currentPlanId = localStorage.getItem("currentPlanId")
-  
-  if (currentPlanId) {
-    console.log("Found currentPlanId:", currentPlanId)
-    const planKey = `studyPlanPerformance_${currentPlanId}`
-    const planData = localStorage.getItem(planKey)
-    
-    if (planData) {
-      console.log("Found plan-specific data, using it")
-      localStorage.setItem("studyPlanPerformance", planData)
-    } else {
-      console.log("No plan-specific data found, initializing empty data")
-      localStorage.setItem("studyPlanPerformance", JSON.stringify({
-        tasks: {},
-        lastUpdated: Date.now()
-      }))
-    }
-  } else {
-    console.log("No current plan ID found, initializing empty data")
-    localStorage.setItem("studyPlanPerformance", JSON.stringify({
-      tasks: {},
-      lastUpdated: Date.now()
-    }))
-  }
-}, [])// Only run once when the component mounts
-// In study-plan-results.tsx, add this useEffect near your other useEffects:
-
-// In study-plan-results.tsx, add this useEffect near your other useEffects:
-
-useEffect(() => {
-  const handleProgressUpdate = (event: CustomEvent) => {
-    console.log("Global progress update event received in study-plan-results", event.type);
-    console.log("Event detail:", event.detail);
-    
-    // If you have a state variable to force updates, you could use it here
-    // For example: setForceUpdate(prev => prev + 1);
-  };
-  
-  window.addEventListener("studyPlanProgressUpdated", handleProgressUpdate as EventListener);
-  
-  return () => {
-    window.removeEventListener("studyPlanProgressUpdated", handleProgressUpdate as EventListener);
-  };
-}, []);
-
 
   const weeklyPlans = studyPlanData.weeklyPlans || []
   const totalWeeks = weeklyPlans.length
@@ -477,7 +427,13 @@ useEffect(() => {
         </div>
       </div>
 
-      <StudyProgressBar weeklyPlans={weeklyPlans} userData={userData} />
+       {plan && plan.plan && plan.plan.weeklyPlans && (
+        <StudyProgressBar 
+          weeklyPlans={plan.plan.weeklyPlans} 
+          userData={userData}
+          planId={plan.planId || ""} // Pass the planId to enable refresh functionality
+        />
+      )}
 
       <div className="bg-white p-4 rounded-lg border shadow-sm mt-6">
         <div className="flex items-center mb-4">
@@ -919,19 +875,17 @@ useEffect(() => {
   }
 
   // Add this wrapper function inside the StudyPlanResults component, before the return statement
- // With this corrected version:
-const handleTaskStatusChangeWrapper = (
-  taskId: string,
-  subject: string,
-  activity: string,
-  weekNumber: number,
-  dayOfWeek: string,
-  status: "completed" | "incomplete" | "not-understood" | "skipped",
-) => {
-  // Format the taskId as expected by handleTaskStatusChange
-  const formattedTaskId = `${weekNumber}-${dayOfWeek}-${subject}-${activity}`
-  handleTaskStatusChange(formattedTaskId, status)
-}
+  const handleTaskStatusChangeWrapper = (
+    taskId: string,
+    subject: string,
+    activity: string,
+    weekNumber: number,
+    dayOfWeek: string,
+    status: "completed" | "incomplete" | "not-understood" | "skipped",
+  ) => {
+    // We only need to pass taskId and status to the actual handler
+    handleTaskStatusChange(taskId, status)
+  }
 
   return (
     <div className="bg-gray-50 p-6 rounded-lg shadow-md relative">

@@ -4,6 +4,7 @@ import { Award, BarChart3, CheckCircle, Clock, RefreshCw } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useState } from "react"
 import axios from "axios"
+import toast from "react-hot-toast"
 
 // Define proper types for the component props and data structures
 interface Task {
@@ -34,174 +35,114 @@ interface UserData {
   }
 }
 
-interface ProgressApiResponse {
-  success: boolean
-  data: {
-    planId: string
-    overallProgress: number
-    completedTasks: number
-    totalTasks: number
-    daysCompleted: number
-    totalDays: number
-    weeklyProgress: any[]
-  }
+interface TaskPerformance {
+  weekNumber: number
+  dayOfWeek: string
+  subject: string
+  activity: string
+  status: "completed" | "incomplete" | "not-understood" | "skipped"
+  taskId: string
+  timestamp: number
+}
+
+interface PerformanceData {
+  tasks: Record<string, TaskPerformance>
+  lastUpdated: number
 }
 
 interface StudyProgressBarProps {
   weeklyPlans: WeeklyPlan[]
   userData: UserData
-  planId?: string // Optional prop for specific plan ID
+  planId?: string // Make planId optional to maintain compatibility
 }
 
-// Keep this at the module level (outside the component)
-let forceUpdateCallback: (() => void) | null = null
-
-// Keep this exported function intact
-export function forceProgressUpdate() {
-  console.log("Forcing progress update via direct function call")
-
-  // First try to use the callback if it's registered
-  if (forceUpdateCallback) {
-    console.log("Using registered callback to update progress")
-    forceUpdateCallback()
-    return
-  }
-
-  // Fallback to dispatching an event
-  console.log("No callback registered, dispatching event instead")
-  const event = new CustomEvent("studyPlanProgressUpdated", {
-    detail: { updatedAt: Date.now() },
-  })
-  window.dispatchEvent(event)
-}
-
-export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ 
-  weeklyPlans, 
-  userData,
-  planId: propPlanId // Renamed to avoid shadowing
-}) => {
+export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans, userData, planId }) => {
   const [progress, setProgress] = useState<number>(0)
   const [completedTasks, setCompletedTasks] = useState<number>(0)
   const [totalTasks, setTotalTasks] = useState<number>(0)
   const [daysCompleted, setDaysCompleted] = useState<number>(0)
   const [totalDays, setTotalDays] = useState<number>(0)
-  const [isLoading, setIsLoading] = useState<boolean>(false)
-  const [lastUpdate, setLastUpdate] = useState<number>(Date.now())
-  const [apiError, setApiError] = useState<string | null>(null)
-  const [currentPlanId, setCurrentPlanId] = useState<string | null>(propPlanId || null)
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
 
-  // Function to fetch progress data from the API
-  const fetchProgressFromAPI = useCallback(async () => {
-    console.log("=== FETCHING PROGRESS DATA FROM API ===")
-    setIsLoading(true)
-    setApiError(null)
+  // Wrap calculateProgress in useCallback to prevent it from being recreated on every render
+  const calculateProgress = useCallback(() => {
+    // Get performance data from localStorage
+    const storedData = localStorage.getItem("studyPlanPerformance")
+    const performanceData: PerformanceData = storedData
+      ? JSON.parse(storedData)
+      : { tasks: {}, lastUpdated: Date.now() }
 
-    try {
-      // Use cache-busting parameter
-      const cacheBuster = new Date().getTime()
-      
-      // Determine which endpoint to use based on whether we have a specific plan ID
-      let url: string
-      
-      if (propPlanId) {
-        console.log("Using provided plan ID:", propPlanId)
-        url = `http://localhost:5000/api/test/study-progress/${propPlanId}?_=${cacheBuster}`
-      } else {
-        console.log("Fetching active study plan progress")
-        url = `http://localhost:5000/api/test/current-study-progress?_=${cacheBuster}`
-      }
+    // Calculate total tasks and completed tasks
+    let completed = 0
+    let total = 0
+    let completedDays = 0
+    let totalDaysCount = 0
 
-      console.log("Fetching from URL:", url)
+    // Track days that have at least one task
+    const daysWithTasks = new Set<string>()
+    const completedDaysSet = new Set<string>()
 
-      // Fetch progress data from the API
-      const response = await axios.get<ProgressApiResponse>(url)
-
-      console.log("API RESPONSE FULL DATA:", JSON.stringify(response.data, null, 2))
-
-      if (response.data.success) {
-        const data = response.data.data
-
-        console.log("Progress data received:", {
-          planId: data.planId,
-          overallProgress: data.overallProgress,
-          completedTasks: data.completedTasks,
-          totalTasks: data.totalTasks,
-          daysCompleted: data.daysCompleted,
-          totalDays: data.totalDays,
-          weeklyProgressLength: data.weeklyProgress?.length || 0,
-        })
-
-        // Save the plan ID for reference
-        if (data.planId && !propPlanId) {
-          setCurrentPlanId(data.planId)
-          // Optionally store in localStorage if needed elsewhere in the app
-          localStorage.setItem("currentPlanId", data.planId)
+    // Count tasks from performance data
+    if (performanceData && performanceData.tasks) {
+      Object.values(performanceData.tasks).forEach((task: TaskPerformance) => {
+        total++
+        if (task.status === "completed") {
+          completed++
         }
 
-        // Update state with data from the API
-        setProgress(data.overallProgress || 0)
-        setCompletedTasks(data.completedTasks || 0)
-        setTotalTasks(data.totalTasks || 0)
-        setDaysCompleted(data.daysCompleted || 0)
-        setTotalDays(data.totalDays || 0)
+        // Track unique days
+        const dayKey = `${task.weekNumber}-${task.dayOfWeek}`
+        daysWithTasks.add(dayKey)
 
-        console.log("Progress data updated from API")
-      } else {
-        console.error("API returned error:", response.data)
-        setApiError("API returned an error")
-      }
-    } catch (error: any) {
-      console.error("Error fetching progress data:", error)
-      setApiError(error.response?.data?.message || "Failed to fetch progress data")
-    } finally {
-      setIsLoading(false)
+        // Check if all tasks for this day are completed
+        const dayTasks = Object.values(performanceData.tasks).filter(
+          (t: TaskPerformance) => t.weekNumber === task.weekNumber && t.dayOfWeek === task.dayOfWeek,
+        )
+
+        const allDayTasksCompleted = dayTasks.every((t: TaskPerformance) => t.status === "completed")
+        if (allDayTasksCompleted) {
+          completedDaysSet.add(dayKey)
+        }
+      })
     }
-  }, [propPlanId])
 
-  // Register the callback when the component mounts
+    // If no tasks in localStorage yet, count from the study plan
+    if (total === 0 && weeklyPlans) {
+      weeklyPlans.forEach((week) => {
+        if (week.days) {
+          week.days.forEach((day: Day) => {
+            if (day.tasks) {
+              total += day.tasks.length
+
+              // Track unique days
+              const dayKey = `${week.weekNumber}-${day.dayOfWeek}`
+              daysWithTasks.add(dayKey)
+            }
+          })
+        }
+      })
+    }
+
+    // Calculate days completed
+    completedDays = completedDaysSet.size
+    totalDaysCount = daysWithTasks.size
+
+    // Calculate progress percentage
+    let progressPercentage = 0
+    if (total > 0) {
+      progressPercentage = Math.round((completed / total) * 100)
+    }
+
+    setProgress(progressPercentage)
+    setCompletedTasks(completed)
+    setTotalTasks(total)
+    setDaysCompleted(completedDays)
+    setTotalDays(totalDaysCount)
+  }, [weeklyPlans])
+
   useEffect(() => {
-    console.log("Component mounted - registering force update callback")
-
-    // Register the callback for direct updates
-    forceUpdateCallback = () => {
-      console.log("Force update callback triggered")
-      setLastUpdate(Date.now())
-    }
-
-    // Initial data fetch
-    fetchProgressFromAPI()
-
-    // Clean up when component unmounts
-    return () => {
-      console.log("Component unmounting - clearing callback")
-      forceUpdateCallback = null
-    }
-  }, [fetchProgressFromAPI])
-
-  // Keep the event listener for progress updates
-  useEffect(() => {
-    console.log("Setting up event listener for progress updates")
-
-    const handleProgressUpdate = () => {
-      console.log("Progress update event received")
-      fetchProgressFromAPI()
-    }
-
-    window.addEventListener("studyPlanProgressUpdated", handleProgressUpdate)
-
-    return () => {
-      console.log("Removing event listener for progress updates")
-      window.removeEventListener("studyPlanProgressUpdated", handleProgressUpdate)
-    }
-  }, [fetchProgressFromAPI])
-
-  // Effect to run fetchProgressFromAPI when lastUpdate changes
-  useEffect(() => {
-    if (lastUpdate) {
-      console.log("lastUpdate changed, fetching fresh data...")
-      fetchProgressFromAPI()
-    }
-  }, [lastUpdate, fetchProgressFromAPI])
+    calculateProgress()
+  }, [calculateProgress])
 
   // Get color based on progress
   const getProgressColor = () => {
@@ -212,20 +153,7 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({
 
   // Calculate estimated completion date
   const getEstimatedCompletionDate = () => {
-    if (totalDays === 0 || daysCompleted === 0) {
-      // For a new plan, provide an estimate based on the total days and user's study schedule
-      const today = new Date()
-      const daysPerWeek = userData.daysPerWeek || 5
-      const totalWeeks = Math.ceil(totalDays / daysPerWeek)
-      const completionDate = new Date(today)
-      completionDate.setDate(today.getDate() + totalWeeks * 7)
-
-      return completionDate.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-    }
+    if (totalDays === 0 || daysCompleted === 0) return "Not available"
 
     const today = new Date()
     const daysLeft = totalDays - daysCompleted
@@ -247,6 +175,35 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({
     })
   }
 
+  // New function to refresh progress from calendar data
+  const refreshFromCalendar = async () => {
+    if (!planId) {
+      toast.error("No plan ID available")
+      return
+    }
+
+    setIsRefreshing(true)
+    try {
+      // Call the backend endpoint to refresh completion status
+      const response = await axios.put(
+        `http://localhost:5000/api/ai-planner/refreshCompletionStatus/${planId}`
+      )
+
+      if (response.data.success) {
+        // Also update the local progress calculation
+        calculateProgress()
+        toast.success("Progress synced with calendar data")
+      } else {
+        toast.error(response.data.message || "Failed to update progress")
+      }
+    } catch (error) {
+      console.error("Error refreshing completion status:", error)
+      toast.error("Failed to sync progress with calendar data")
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
   return (
     <div className="bg-white p-6 rounded-lg border shadow-sm">
       <div className="flex items-center justify-between mb-4">
@@ -254,22 +211,19 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({
           <BarChart3 className="text-blue-500 mr-2" size={20} />
           <h3 className="font-semibold text-gray-800">Study Plan Progress</h3>
         </div>
-        <button
-          onClick={() => {
-            console.log("Manual refresh clicked")
-            // Only set loading state
-            setIsLoading(true)
-            fetchProgressFromAPI()
-          }}
-          className={`text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-50 transition-all duration-300 ${isLoading ? "bg-blue-50" : ""}`}
-          title="Refresh progress"
-          disabled={isLoading}
-        >
-          <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
-        </button>
+        
+        {/* Add refresh button when planId is available */}
+        {planId && (
+          <button
+            onClick={refreshFromCalendar}
+            disabled={isRefreshing}
+            className="flex items-center px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={`mr-1 ${isRefreshing ? "animate-spin" : ""}`} />
+            {isRefreshing ? "Syncing..." : "Sync Progress"}
+          </button>
+        )}
       </div>
-
-      {apiError && <div className="mb-4 p-2 bg-red-50 text-red-600 rounded-md text-sm">{apiError}</div>}
 
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">
@@ -321,10 +275,8 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({
       </div>
 
       <div className="text-xs text-gray-500 italic">
-        Progress is calculated based on completed tasks and study days.
+        Progress is calculated based on completed tasks and study days. Click "Sync Progress" to update from calendar data.
       </div>
     </div>
   )
 }
-
-export default StudyProgressBar

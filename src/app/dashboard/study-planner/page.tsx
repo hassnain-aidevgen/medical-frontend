@@ -29,14 +29,19 @@ import GoalsStep from "./components/steps/goals-step"
 import PersonalDetailsStep from "./components/steps/personal-details-step"
 import StudyPreferencesStep from "./components/steps/study-preferences-step"
 import SubjectAssessmentStep from "./components/steps/subject-assessment-step"
+import StudyTip from "./components/study-tip"
 import SuccessMessage from "./components/success-message"
 import StudyPlanResults from "./study-plan-results"
-import type { FormData, FormErrors, StudyPlanResponse, TopicMasteryData } from "./types/study-plan-types"
+import type {
+  FormData,
+  FormErrors,
+  StudyPlanResponse,
+  TopicMasteryData,
+  UserPerformanceData,
+} from "./types/study-plan-types"
 
 import UserPlansList from "./components/user-plans-list"
-// import { loadPlan, saveCurrentPlanProgress } from "../../smart-study/plan-loader"
-// import { saveCurrentPlanProgress } from "../smart-study/plan-loader"
-// import { loadPlan } from "../smart-study/plan-loader"
+
 // Define the StudyPlan interface for the list
 interface StudyPlanListItem {
   _id: string
@@ -127,9 +132,9 @@ const PlannerForm: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Remove studyTips dependency since it's a constant
 
-  // useEffect(() => {
-  //   fetchPerformanceData()
-  // }, [])
+  useEffect(() => {
+    fetchPerformanceData()
+  }, [])
 
   // Check for existing plans and fetch them
   useEffect(() => {
@@ -159,23 +164,12 @@ const PlannerForm: React.FC = () => {
   }, [])
 
   // Update form data when weak topics change
-  // Update form data when weak topics change
   useEffect(() => {
     if (formData.usePerformanceData && weakTopics.length > 0) {
-      // Extract unique subject names from weak topics
-      const weakSubjectsSet = new Set<string>()
-
-      weakTopics.forEach((topic) => {
-        // Extract the main subject from the topic name (before any colon)
-        const subject = topic.name.split(":")[0].trim()
-        weakSubjectsSet.add(subject)
-      })
-
-      // Update both weakTopics and weakSubjects
+      const topicNames = weakTopics.map((topic) => topic.name)
       setFormData((prev) => ({
         ...prev,
-        weakTopics: weakTopics.map((topic) => topic.name),
-        weakSubjects: Array.from(weakSubjectsSet),
+        weakTopics: topicNames,
       }))
     }
   }, [formData.usePerformanceData, weakTopics])
@@ -252,20 +246,12 @@ const PlannerForm: React.FC = () => {
     setFormData((prev) => {
       const newValue = !prev.usePerformanceData
 
-      // If turning on performance data, fetch the latest data with current target exam
-      if (newValue) {
-        // Use setTimeout to ensure state is updated before fetching
-        setTimeout(() => {
-          fetchPerformanceData(prev.targetExam)
-        }, 0)
-
-        // If we already have weak topics, update them
-        if (weakTopics.length > 0) {
-          return {
-            ...prev,
-            usePerformanceData: newValue,
-            weakTopics: weakTopics.map((topic) => topic.name),
-          }
+      // If turning on performance data and we have weak topics, update them
+      if (newValue && weakTopics.length > 0) {
+        return {
+          ...prev,
+          usePerformanceData: newValue,
+          weakTopics: weakTopics.map((topic) => topic.name),
         }
       }
 
@@ -302,7 +288,7 @@ const PlannerForm: React.FC = () => {
             newErrors.examDate = "Exam date cannot be in the past"
           }
         }
-        break
+        break;
 
       case 3:
         // If not using performance data, require manual subject selection
@@ -340,18 +326,12 @@ const PlannerForm: React.FC = () => {
   const nextStep = (): void => {
     if (validateStep(currentStep)) {
       setAnimateDirection("right")
-
       // Add a small delay to prevent animation glitches
       setTimeout(() => {
-        const newStep = currentStep + 1
-        setCurrentStep(newStep)
-
-        // If moving from step 2 (Exam Details) to step 3 (Subjects)
-        // Fetch performance data with the selected target exam
-        if (currentStep === 2 && newStep === 3 && formData.targetExam) {
-          fetchPerformanceData(formData.targetExam)
-        }
+        setCurrentStep((prev) => prev + 1)
       }, 50)
+
+      // Removed the random tip on next step to prevent excessive tips
     }
   }
 
@@ -360,150 +340,134 @@ const PlannerForm: React.FC = () => {
     setCurrentStep((prev) => prev - 1)
   }
 
-  // The main flow of weak subjects happens in these key functions:
-
-  // 1. The fetchPerformanceData function is where weak subjects are fetched from the API
-  // This function makes the API call and processes the response to extract weak subjects
-  // If you need to modify how weak subjects are fetched or processed, focus on this function:
-
-  const fetchPerformanceData = async (targetExam?: string) => {
+  const fetchPerformanceData = async () => {
     const userId = localStorage.getItem("Medical_User_Id")
     if (!userId) return
 
     setIsLoadingPerformanceData(true)
 
     try {
-      // Use the new v3 route with targetExam parameter
-      console.log("Fetching performance data from topic-mastery-v3 API...")
-      console.log("Target exam:", targetExam || formData.targetExam)
+      // First try to get data from our new endpoint
+      const performanceData = await fetchUserPerformanceData()
 
-      const examToUse = targetExam || formData.targetExam
-
-      const response = await axios.get(
-        `http://localhost:5000/api/test/topic-mastery-v3/${userId}/${encodeURIComponent(examToUse)}`,
-      )
-
-      console.log("Topic mastery API response:", response.data)
-
-      if (response.data) {
-        // Extract weak topics from the API response
-        const extractedWeakTopics = response.data.weakestTopics || []
-
-        // Set weakTopics for UI display
-        setWeakTopics(extractedWeakTopics)
-
-        // Extract unique subject names from topics and systems
-        const weakSubjectsSet = new Set<string>()
-
-        // Process main topics
-        if (response.data.topics) {
-          response.data.topics.forEach((topic: any) => {
-            if (topic.masteryLevel === "Beginner" || topic.masteryScore < 50) {
-              // Extract the main subject from the topic name (before any colon)
-              const subject = topic.name.split(":")[0].trim()
-              weakSubjectsSet.add(subject)
-            }
-          })
+      if (!performanceData || !performanceData.subjects || performanceData.subjects.length === 0) {
+        // Fall back to the legacy endpoint if no data from new one
+        const legacyResponse = await axios.get(
+          `https://medical-backend-loj4.onrender.com/api/test/topic-mastery-v2/${userId}`,
+        )
+        if (legacyResponse.data && legacyResponse.data.weakestTopics) {
+          setWeakTopics(legacyResponse.data.weakestTopics)
         }
+        return
+      }
 
-        // Process systems as subjects
-        if (response.data.systems) {
-          response.data.systems.forEach((system: any) => {
-            if (system.masteryLevel === "Beginner" || system.masteryScore < 50) {
-              weakSubjectsSet.add(system.name)
-            }
-          })
-        }
+      // Process the performance data to identify strong and weak subjects
+      const processedTopics: TopicMasteryData[] = []
+      const strongSubjectsArray: string[] = []
+      const weakSubjectsArray: string[] = []
 
-        // Map to standard subject names if needed
-        const allSubjects = [
-          "Anatomy",
-          "Physiology",
-          "Biochemistry",
-          "Pharmacology",
-          "Pathology",
-          "Microbiology",
-          "Immunology",
-          "Behavioral Science",
-          "Biostatistics",
-          "Genetics",
-          "Nutrition",
-          "Cell Biology",
-        ]
+      // Process subjects
+      performanceData.subjects.forEach((subject) => {
+        let totalCorrect = 0
+        let totalIncorrect = 0
+        let totalQuestions = 0
 
-        const standardizedSubjects = Array.from(weakSubjectsSet).map((subject: string) => {
-          // Try to find a match in standard subjects
-          const matchedSubject = allSubjects.find(
-            (std) =>
-              subject.toLowerCase().includes(std.toLowerCase()) || std.toLowerCase().includes(subject.toLowerCase()),
-          )
-          return matchedSubject || subject
+        // Calculate subject-level totals
+        subject.subsections.forEach((subsection) => {
+          totalCorrect += subsection.performance.correctCount
+          totalIncorrect += subsection.performance.incorrectCount
+          totalQuestions += subsection.performance.totalCount
         })
 
-        // Filter out any duplicates
-        const uniqueWeakSubjects = Array.from(new Set(standardizedSubjects))
+        // Only consider subjects with at least 3 questions
+        if (totalQuestions >= 3) {
+          const accuracyPercent = (totalCorrect / totalQuestions) * 100
 
-        console.log("Extracted weak subjects:", uniqueWeakSubjects)
+          // Determine mastery level
+          let masteryLevel = "Intermediate"
+          if (accuracyPercent >= 70) {
+            masteryLevel = "Advanced"
+            strongSubjectsArray.push(subject.subjectName)
+          } else if (accuracyPercent < 50) {
+            masteryLevel = "Beginner"
+            weakSubjectsArray.push(subject.subjectName)
+          }
 
-        // Update form data with weak subjects and topics
-        setFormData((prev) => ({
-          ...prev,
-          weakSubjects: uniqueWeakSubjects,
-          weakTopics: extractedWeakTopics.map((topic: any) => topic.name),
-        }))
-      } else {
-        console.log("No data found in API response")
-      }
+          // Add to processed topics list
+          processedTopics.push({
+            name: subject.subjectName,
+            masteryScore: accuracyPercent,
+            masteryLevel: masteryLevel,
+            isQuestPriority: accuracyPercent < 50,
+          })
+
+          // Add subsections as topics
+          subject.subsections.forEach((subsection) => {
+            if (subsection.performance.totalCount >= 2) {
+              const subsectionAccuracy = (subsection.performance.correctCount / subsection.performance.totalCount) * 100
+              let subsectionMasteryLevel = "Intermediate"
+
+              if (subsectionAccuracy < 50) {
+                subsectionMasteryLevel = "Beginner"
+                // Add weak subsections to weak topics with proper formatting
+                processedTopics.push({
+                  name: `${subject.subjectName}: ${subsection.subsectionName}`, // Ensure proper formatting with subject name
+                  masteryScore: subsectionAccuracy,
+                  masteryLevel: subsectionMasteryLevel,
+                  isQuestPriority: true,
+                })
+              }
+            }
+          })
+        }
+      })
+
+      // Sort by mastery score (ascending, so weakest first)
+      processedTopics.sort((a, b) => a.masteryScore - b.masteryScore)
+
+      // Update state
+      setWeakTopics(processedTopics.filter((topic) => topic.masteryLevel === "Beginner"))
+
+      // Update form data with strong and weak subjects
+      setFormData((prev) => ({
+        ...prev,
+        strongSubjects: strongSubjectsArray,
+        weakSubjects: weakSubjectsArray,
+        // Ensure we're using the name property, not the ID
+        weakTopics: processedTopics.filter((topic) => topic.masteryLevel === "Beginner").map((topic) => topic.name),
+      }))
     } catch (error) {
       console.error("Error fetching performance data:", error)
-      // Show a toast message for the error
-      toast.error("Failed to fetch performance data for the selected exam")
     } finally {
       setIsLoadingPerformanceData(false)
     }
   }
 
-  // 2. There's also a useEffect that updates the form data when weak topics change:
-  // This effect runs whenever formData.usePerformanceData or weakTopics changes
-  // If you need to modify how weak topics are processed after fetching, focus on this function:
+  // Function to fetch performance data from our new API endpoint
+  const fetchUserPerformanceData = async () => {
+    const userId = localStorage.getItem("Medical_User_Id")
+    if (!userId) return null
 
-  useEffect(() => {
-    if (formData.usePerformanceData && weakTopics.length > 0) {
-      // Extract unique subject names from weak topics
-      const weakSubjectsSet = new Set<string>()
+    try {
+      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/get-performance/${userId}`)
 
-      weakTopics.forEach((topic) => {
-        // Extract the main subject from the topic name (before any colon)
-        const subject = topic.name.split(":")[0].trim()
-        weakSubjectsSet.add(subject)
-      })
-
-      // Update both weakTopics and weakSubjects
-      setFormData((prev) => ({
-        ...prev,
-        weakTopics: weakTopics.map((topic) => topic.name),
-        weakSubjects: Array.from(weakSubjectsSet),
-      }))
-    }
-  }, [formData.usePerformanceData, weakTopics])
-
-  // Clean up interval on unmount
-  useEffect(() => {
-    return () => {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current)
+      if (response.data.success) {
+        return response.data.data as UserPerformanceData
+      } else {
+        console.error("Failed to fetch performance data:", response.data.message)
+        return null
       }
+    } catch (error) {
+      console.error("Error fetching performance data:", error)
+      return null
     }
-  }, [])
+  }
+
   const loadExistingPlan = async (planId?: string) => {
     try {
       // If a specific plan ID is provided, load that plan
       if (planId) {
         try {
-          // First, save the current plan's progress data
-          // saveCurrentPlanProgress()
-
-          // Then load the plan data from the API
           const response = await axios.get(
             `https://medical-backend-loj4.onrender.com/api/ai-planner/getStudyPlan/${planId}`,
           )
@@ -516,14 +480,14 @@ const PlannerForm: React.FC = () => {
             const parsedUserData = savedUserData ? JSON.parse(savedUserData) : formData
             setFormData(parsedUserData)
 
-            // Load the plan's progress data
-            // loadPlan(planId)
-
+            // Store the current plan ID
+            localStorage.setItem("currentPlanId", planId)
             return
           }
         } catch (error) {
           console.error("Error fetching specific plan:", error)
           toast.error("Failed to load the selected plan. Please try again.")
+          // Continue to fallback methods
         }
       }
       setShowPlansList(true)
@@ -532,152 +496,86 @@ const PlannerForm: React.FC = () => {
       toast.error("Failed to load your saved plan. Please try again.")
     }
   }
+
   // Function to add study plan tasks to the calendar
-  // Modified function to replace the existing add PlanTasksToCalendar
+  // Modified function to replace the existing addPlanTasksToCalendar
   const addPlanTasksToCalendar = async (planData: StudyPlanResponse) => {
-  console.log("=== CALENDAR INTEGRATION: Starting to add plan tasks to calendar ===");
-  console.log("Plan data received:", planData);
-  
-  if (!planData || !planData.plan || !planData.plan.weeklyPlans) {
-    console.error("CALENDAR INTEGRATION: Invalid plan data structure:", planData);
-    return;
-  }
+    if (!planData || !planData.plan || !planData.plan.weeklyPlans) return
 
-  const userId = localStorage.getItem("Medical_User_Id");
-  if (!userId) {
-    console.error("CALENDAR INTEGRATION: No user ID found in localStorage");
-    return;
-  }
-  console.log("CALENDAR INTEGRATION: User ID found:", userId);
+    const userId = localStorage.getItem("Medical_User_Id")
+    if (!userId) return
 
-  try {
-    let addedCount = 0;
-    let errorCount = 0;
-    console.log(`CALENDAR INTEGRATION: Total weeks to process: ${planData.plan.weeklyPlans.length}`);
+    try {
+      let addedCount = 0
 
-    // Process each week in the study plan
-    for (const week of planData.plan.weeklyPlans) {
-      console.log(`CALENDAR INTEGRATION: Processing week with theme: ${week.theme}`);
-      
-      if (!week.days) {
-        console.warn("CALENDAR INTEGRATION: Week has no days:", week);
-        continue;
-      }
-      
-      console.log(`CALENDAR INTEGRATION: Days in this week: ${week.days.length}`);
+      // Process each week in the study plan
+      for (const week of planData.plan.weeklyPlans) {
+        if (!week.days) continue
 
-      // Process each day in the week
-      for (const day of week.days) {
-        console.log(`CALENDAR INTEGRATION: Processing day: ${day.dayOfWeek}`);
-        
-        if (!day.tasks) {
-          console.warn("CALENDAR INTEGRATION: Day has no tasks:", day);
-          continue;
-        }
-        
-        console.log(`CALENDAR INTEGRATION: Tasks in this day: ${day.tasks.length}`);
+        // Process each day in the week
+        for (const day of week.days) {
+          if (!day.tasks) continue
 
-        // Get the day of week index (0 = Sunday, 1 = Monday, etc.)
-        const dayIndex = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"].findIndex(
-          (d) => d.toLowerCase() === day.dayOfWeek.toLowerCase(),
-        );
+          // Get the day of week index (0 = Sunday, 1 = Monday, etc.)
+          const dayIndex = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"].findIndex(
+            (d) => d.toLowerCase() === day.dayOfWeek.toLowerCase(),
+          )
 
-        if (dayIndex === -1) {
-          console.warn(`CALENDAR INTEGRATION: Invalid day of week: ${day.dayOfWeek}`);
-          continue;
-        }
-        
-        console.log(`CALENDAR INTEGRATION: Day index for ${day.dayOfWeek}: ${dayIndex}`);
+          if (dayIndex === -1) continue
 
-        // Calculate the date for this day
-        const today = new Date();
-        const taskDate = new Date(today);
-        const currentDay = today.getDay();
-        console.log(`CALENDAR INTEGRATION: Current day: ${currentDay} (${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][currentDay]})`);
+          // Calculate the date for this day
+          const today = new Date()
+          const taskDate = new Date(today)
+          const currentDay = today.getDay()
 
-        // Calculate days to add to get to the target day this week
-        let daysToAdd = (dayIndex - currentDay + 7) % 7;
+          // Calculate days to add to get to the target day this week
+          let daysToAdd = (dayIndex - currentDay + 7) % 7
 
-        // Add week offset (for future weeks)
-        const weekIndex = planData.plan.weeklyPlans.indexOf(week);
-        daysToAdd += weekIndex * 7;
-        
-        console.log(`CALENDAR INTEGRATION: Days to add: ${daysToAdd} (base: ${(dayIndex - currentDay + 7) % 7}, week offset: ${weekIndex * 7})`);
+          // Add week offset (for future weeks)
+          const weekIndex = planData.plan.weeklyPlans.indexOf(week)
+          daysToAdd += weekIndex * 7
 
-        taskDate.setDate(today.getDate() + daysToAdd);
-        console.log(`CALENDAR INTEGRATION: Calculated task date: ${taskDate.toISOString()}`);
+          taskDate.setDate(today.getDate() + daysToAdd)
 
-        // Process each task for this day
-        for (const task of day.tasks) {
-          console.log(`CALENDAR INTEGRATION: Processing task: ${task.activity} (Subject: ${task.subject})`);
-          
-          try {
-            // Create the task data
-            const taskData = {
-              userId: userId,
-              subjectName: task.subject,
-              testTopic: `${week.theme}: ${task.activity}`,
-              date: taskDate.toISOString(),
-              color: getSubjectColor(task.subject),
-              completed: false,
-              planId: planData.planId || null,
-              taskType: "study",
-              duration: 60, // Default duration in minutes
-              priority: "medium", // Default priority
-              resources: [], // Default empty resources array
-              weekNumber: weekIndex + 1, // Week number (1-based)
-              dayOfWeek: day.dayOfWeek, // Day of week from the plan
-              notes: task.details || "", // Use details as notes if available
-              isReviewTask: false, // Default to false
-              originalTaskId: null, // No original task ID for new tasks
-              source: "ai-planner", // Mark as coming from AI planner
-            };
-            
-            console.log("CALENDAR INTEGRATION: Sending task data to API:", taskData);
-            console.log("CALENDAR INTEGRATION: API endpoint:", "https://medical-backend-loj4.onrender.com/api/ai-planner/add_ai_plan_to_calender");
-
-            // Add the task to the calendar using the new endpoint and data structure
-            const response = await axios.post(
-              "https://medical-backend-loj4.onrender.com/api/ai-planner/add_ai_plan_to_calender",
-              taskData
-            );
-            
-            console.log("CALENDAR INTEGRATION: API response:", response.data);
-            console.log("CALENDAR INTEGRATION: API status:", response.status);
-            
-            addedCount++;
-            console.log(`CALENDAR INTEGRATION: Task added successfully. Total added so far: ${addedCount}`);
-          } catch (error) {
-            errorCount++;
-            console.error("CALENDAR INTEGRATION: Failed to add task to calendar:", error);
-            
-            if (axios.isAxiosError(error)) {
-              console.error("CALENDAR INTEGRATION: API Error Response:", error.response?.data);
-              console.error("CALENDAR INTEGRATION: API Error Status:", error.response?.status);
-              console.error("CALENDAR INTEGRATION: API Error Headers:", error.response?.headers);
+          // Process each task for this day
+          for (const task of day.tasks) {
+            try {
+              // Add the task to the calendar using the new endpoint and data structure
+              await axios.post("https://medical-backend-loj4.onrender.com/api/ai-planner/add_ai_plan_to_calender", {
+                userId: userId,
+                subjectName: task.subject,
+                testTopic: `${week.theme}: ${task.activity}`,
+                date: taskDate.toISOString(),
+                color: getSubjectColor(task.subject),
+                completed: false,
+                planId: planData.planId || null,
+                taskType: "study",
+                duration: 60, // Default duration in minutes
+                priority: "medium", // Default priority
+                resources: [], // Default empty resources array
+                weekNumber: weekIndex + 1, // Week number (1-based)
+                dayOfWeek: day.dayOfWeek, // Day of week from the plan
+                notes: task.details || "", // Use details as notes if available
+                isReviewTask: false, // Default to false
+                originalTaskId: null, // No original task ID for new tasks
+                source: "ai-planner", // Mark as coming from AI planner
+              })
+              addedCount++
+            } catch (error) {
+              console.error("Failed to add task to calendar:", error)
             }
           }
         }
       }
-    }
 
-    console.log(`CALENDAR INTEGRATION: Finished adding tasks. Added: ${addedCount}, Errors: ${errorCount}`);
-
-    if (addedCount > 0) {
-      console.log(`CALENDAR INTEGRATION: Showing success toast for ${addedCount} tasks`);
-      toast.success(`Added ${addedCount} study plan tasks to your calendar`);
-    } else if (errorCount > 0) {
-      console.log(`CALENDAR INTEGRATION: Showing error toast for ${errorCount} errors`);
-      toast.error(`Failed to add tasks to calendar (${errorCount} errors)`);
-    } else {
-      console.log("CALENDAR INTEGRATION: Showing warning toast - no tasks added");
-      toast("No tasks were added to the calendar");
+      if (addedCount > 0) {
+        toast.success(`Added ${addedCount} study plan tasks to your calendar`)
+      }
+    } catch (error) {
+      console.error("Error adding plan tasks to calendar:", error)
+      toast.error("Failed to add some tasks to calendar")
     }
-  } catch (error) {
-    console.error("CALENDAR INTEGRATION: Error in overall calendar integration process:", error);
-    toast.error("Failed to add tasks to calendar");
   }
-};
 
   // Helper function to get color based on subject
   const getSubjectColor = (subject: string): string => {
@@ -763,25 +661,6 @@ const PlannerForm: React.FC = () => {
     }
 
     setIsSubmitting(true)
-    // ADD THESE LINES HERE
-    localStorage.setItem("isNewPlanGeneration", "true")
-
-    // Also clear any existing performance data
-    const emptyProgressData = {
-      tasks: {},
-      lastUpdated: Date.now(),
-    }
-    localStorage.setItem("studyPlanPerformance", JSON.stringify(emptyProgressData))
-    // IMPORTANT: Also clear ALL plan-specific data
-    // Get all localStorage keys
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      // Check if this is a plan-specific performance data key
-      if (key && key.startsWith("studyPlanPerformance_")) {
-        // Clear this plan's data
-        localStorage.setItem(key, JSON.stringify(emptyProgressData))
-      }
-    }
     setApiError(null)
 
     // Start progress simulation
@@ -796,9 +675,6 @@ const PlannerForm: React.FC = () => {
       examDate: formData.examDate,
       // Ensure strongSubjects is never empty, use default if empty
       strongSubjects: formData.strongSubjects.length > 0 ? formData.strongSubjects : ["Anatomy"], // Default to Anatomy if no strong subjects selected
-      // 3. The handleSubmit function uses the weak subjects in the API call:
-      // If you need to modify how weak subjects are sent to the API, focus on this part:
-
       weakSubjects: formData.usePerformanceData ? formData.weakTopics : formData.weakSubjects,
       availableHours: formData.availableHours,
       daysPerWeek: formData.daysPerWeek,
@@ -815,16 +691,11 @@ const PlannerForm: React.FC = () => {
     localStorage.setItem("userData", JSON.stringify(formData)) // Save the full data for our UI
     const userId = localStorage.getItem("Medical_User_Id")
 
-    // Log the request for debugging
-    console.log(
-      "Sending request to:",
-      `https://medical-backend-loj4.onrender.com/api/test/generatePlan?userId=${userId}`,
-    )
     console.log("Request data:", submissionData)
 
     try {
       const response = await axios.post(
-        `https://medical-backend-loj4.onrender.com/api/test/generatePlan?userId=${userId}`,
+        `http://localhost:5000/api/test/generatePlan?userId=${userId}`,
         submissionData,
         {
           headers: {
@@ -848,14 +719,10 @@ const PlannerForm: React.FC = () => {
       // Store the study plan data
       const planData = result.data as StudyPlanResponse
       setStudyPlan(planData)
-      console.log("CALENDAR INTEGRATION: About to call add-PlanTasksToCalendar");
+      
+
       // Add study plan tasks to calendar
-      try {
-          await addPlanTasksToCalendar(planData);
-          console.log("CALENDAR INTEGRATION: Successfully completed addPlanTasksToCalendar");
-        } catch (error) {
-          console.error("CALENDAR INTEGRATION: Error in addPlanTasksToCalendar:", error);
-        }
+      await addPlanTasksToCalendar(planData)
 
       // Save only the plan ID to localStorage
       if (result.data && result.data.planId) {
@@ -922,18 +789,7 @@ const PlannerForm: React.FC = () => {
   ]
 
   // Handle plan selection from the list
-  // Handle plan selection from the list
   const handleSelectPlan = async (planId: string) => {
-    // Store the plan ID in localStorage
-    localStorage.setItem("currentPlanId", planId)
-
-    // Dispatch an event to notify components that the plan has changed
-    const event = new CustomEvent("planChanged", {
-      detail: { planId },
-    })
-    window.dispatchEvent(event)
-
-    // Continue with loading the plan
     await loadExistingPlan(planId)
     setShowPlansList(false)
   }
@@ -958,14 +814,7 @@ const PlannerForm: React.FC = () => {
   return (
     <div className="bg-white p-6 rounded-lg shadow-md relative overflow-hidden">
       {hasExistingPlan && !studyPlan && (
-        <ExistingPlanNotice
-          onViewPlans={() => {
-            // Save the current plan's progress before showing the plans list
-            // saveCurrentPlanProgress()
-            setShowPlansList(true)
-          }}
-          hasPlans={hasExistingPlan}
-        />
+        <ExistingPlanNotice onViewPlans={() => setShowPlansList(true)} hasPlans={hasExistingPlan} />
       )}
 
       {/* Background decoration */}
@@ -973,7 +822,7 @@ const PlannerForm: React.FC = () => {
       <div className="absolute bottom-0 left-0 w-24 h-24 bg-blue-50 rounded-tr-full opacity-70 -z-10"></div>
 
       {/* Study tip toast notification */}
-      {/* <AnimatePresence>{showTip && <StudyTip tip={currentTip} />}</AnimatePresence> */}
+      <AnimatePresence>{showTip && <StudyTip tip={currentTip} />}</AnimatePresence>
 
       {/* Plans list modal */}
       {showPlansList && (
@@ -1124,9 +973,8 @@ const PlannerForm: React.FC = () => {
                 }
               }}
               disabled={isSubmitting}
-              className={`px-4 py-2 ${
-                isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
-              } text-white rounded-md transition-colors flex items-center shadow-md`}
+              className={`px-4 py-2 ${isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+                } text-white rounded-md transition-colors flex items-center shadow-md`}
             >
               {isSubmitting ? (
                 <>
