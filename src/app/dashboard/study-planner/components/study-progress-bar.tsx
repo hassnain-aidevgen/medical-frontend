@@ -186,7 +186,7 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
     try {
       // Call the backend endpoint to refresh completion status
       const response = await axios.put(
-        `http://localhost:5000/api/ai-planner/refreshCompletionStatus/${planId}`
+        `https://medical-backend-loj4.onrender.com/api/ai-planner/refreshCompletionStatus/${planId}`
       )
 
       if (response.data.success) {

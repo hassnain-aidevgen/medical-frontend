@@ -16,6 +16,7 @@ interface SubjectAssessmentStepProps {
   setErrors: React.Dispatch<React.SetStateAction<FormErrors>>
   pageVariants: any
   animateDirection: "left" | "right"
+  allSubjects: string[]
 }
 
 const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
@@ -28,22 +29,8 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
   setErrors,
   pageVariants,
   animateDirection,
+  allSubjects,
 }) => {
-  // Lists of subjects for checkboxes
-  const allSubjects = [
-    "Anatomy",
-    "Physiology",
-    "Biochemistry",
-    "Pharmacology",
-    "Pathology",
-    "Microbiology",
-    "Immunology",
-    "Behavioral Science",
-    "Biostatistics",
-    "Genetics",
-    "Nutrition",
-    "Cell Biology",
-  ]
 
   // Handle "Select All" for strong subjects
   const handleSelectAllStrong = () => {
@@ -106,7 +93,7 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
   }
 
   return (
-    <motion.div
+  <motion.div
       className="space-y-4"
       initial="initial"
       animate="animate"
@@ -120,42 +107,34 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
         Subject Assessment
       </h2>
 
-      {/* Performance Data Integration Section */}
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
-        <div className="flex items-start">
-          <button
-            type="button"
-            className={`w-5 h-5 rounded-md mr-3 flex items-center justify-center cursor-pointer ${
-              formData.usePerformanceData ? "bg-blue-600 text-white" : "border border-gray-400"
-            }`}
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              handleTogglePerformanceData()
-            }}
-          >
-            {formData.usePerformanceData && <CheckCircle size={14} />}
-          </button>
-          <div>
-            <div className="flex items-center">
-              <BarChart2 className="text-blue-600 mr-2" size={18} />
-              <h3 className="font-medium text-blue-800">Use performance data to create plan</h3>
-            </div>
-            <p className="text-sm text-blue-700 mt-1">
-              We&apos;ll analyze your performance data to identify weak topics and create a focused study plan.
-            </p>
+      {/* Show info about performance-based selection if data exists */}
+      {weakTopics.length > 0 && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+          <div className="flex items-start">
+            <BarChart2 className="text-blue-600 mr-3 mt-0.5 flex-shrink-0" size={18} />
+            <div className="flex-1">
+              <h3 className="font-medium text-blue-800 mb-2">
+                📊 Performance-Based Recommendations
+              </h3>
+              <p className="text-sm text-blue-700 mb-3">
+                Based on your test performance, we've automatically selected subjects below. You can modify these selections if needed.
+              </p>
+              
+              <div className="text-xs text-blue-600 mb-3">
+                <strong>Selection Criteria:</strong> Subjects with accuracy below {formData.currentLevel === 'beginner' ? '50' : formData.currentLevel === 'intermediate' ? '70' : '85'}% are marked as weak areas.
+              </div>
 
-            {formData.usePerformanceData && weakTopics.length > 0 && (
+              {/* Show detailed weak topics */}
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
-                className="mt-3 bg-white p-3 rounded-md border border-blue-200"
+                className="bg-white p-3 rounded-md border border-blue-200"
               >
                 <h4 className="font-medium text-sm text-gray-700 mb-2">
-                  Detected weak topics from your performance data:
+                  🎯 Specific topics that need attention:
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                  {weakTopics.map((topic, index) => (
+                  {weakTopics.slice(0, 10).map((topic, index) => (
                     <div key={index} className="flex items-center text-sm">
                       <div
                         className={`w-2 h-2 rounded-full mr-2 ${
@@ -170,54 +149,46 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
                       <span className="ml-1 text-xs text-gray-500">({Math.round(topic.masteryScore)}%)</span>
                     </div>
                   ))}
+                  {weakTopics.length > 10 && (
+                    <div className="text-xs text-gray-500 col-span-full">
+                      ... and {weakTopics.length - 10} more topics
+                    </div>
+                  )}
                 </div>
               </motion.div>
-            )}
-
-            {formData.usePerformanceData && isLoadingPerformanceData && (
-              <div className="flex items-center mt-2 text-sm text-blue-600">
-                <Loader2 className="animate-spin mr-2" size={14} />
-                Loading your performance data...
-              </div>
-            )}
-
-            {formData.usePerformanceData && !isLoadingPerformanceData && weakTopics.length === 0 && (
-              <div className="mt-2 text-sm text-amber-600 flex items-center">
-                <AlertCircle size={14} className="mr-1" />
-                No performance data available. Please complete some assessments first.
-              </div>
-            )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Show manual subject selection only if not using performance data */}
-      {!formData.usePerformanceData && (
-        <>
-          <div className="group">
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
-                Strong Subjects <span className="text-red-500">*</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => handleSelectAllStrong()}
-                className="text-xs py-1 px-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded border border-blue-200 transition-colors"
-              >
-                {formData.strongSubjects.length === allSubjects.filter(s => !formData.weakSubjects.includes(s)).length ? "Deselect All" : "Select All"}
-              </button>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {allSubjects.map((subject) => {
-                const isDisabled = formData.weakSubjects.includes(subject);
-                return (
+      {/* Manual Subject Selection - Always Show */}
+      <div className="space-y-4">
+        {/* Strong Subjects Selection */}
+        <div className="group">
+          <div className="flex justify-between items-center mb-2">
+            <label className="block text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
+              Strong Subjects <span className="text-red-500">*</span>
+              {weakTopics.length > 0 && (
+                <span className="text-xs text-gray-500 font-normal ml-2">(Auto-selected based on performance)</span>
+              )}
+            </label>
+            <button
+              type="button"
+              onClick={handleSelectAllStrong}
+              className="text-xs py-1 px-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded border border-blue-200 transition-colors"
+            >
+              {formData.strongSubjects.length === allSubjects.filter(s => !formData.weakSubjects.includes(s)).length ? "Deselect All" : "Select All"}
+            </button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {allSubjects.map((subject) => {
+              const isDisabled = formData.weakSubjects.includes(subject);
+              return (
                 <div
                   key={`strong-${subject}`}
                   onClick={() => {
-                    // Don't do anything if the subject is disabled (already in weak subjects)
                     if (isDisabled) return;
                     
-                    // Simplified approach to toggle selection
                     const isSelected = formData.strongSubjects.includes(subject)
                     const newStrongSubjects = isSelected
                       ? formData.strongSubjects.filter((s) => s !== subject)
@@ -226,13 +197,11 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
                     setFormData((prev) => ({
                       ...prev,
                       strongSubjects: newStrongSubjects,
-                      // Remove this subject from weak subjects if it's being added to strong
                       weakSubjects: isSelected 
                         ? prev.weakSubjects 
                         : prev.weakSubjects.filter(s => s !== subject)
                     }))
 
-                    // Clear error if at least one subject is selected
                     if (errors.strongSubjects && newStrongSubjects.length > 0) {
                       setErrors((prev) => {
                         const newErrors = { ...prev }
@@ -279,40 +248,43 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
                     </span>
                   </div>
                 </div>
-              )})}
-            </div>
-            {errors.strongSubjects && (
-              <p className="mt-1 text-sm text-red-500 flex items-center">
-                <AlertCircle size={12} className="mr-1" />
-                {errors.strongSubjects}
-              </p>
-            )}
+              )
+            })}
           </div>
+          {errors.strongSubjects && (
+            <p className="mt-1 text-sm text-red-500 flex items-center">
+              <AlertCircle size={12} className="mr-1" />
+              {errors.strongSubjects}
+            </p>
+          )}
+        </div>
 
-          <div className="group">
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
-                Weak Subjects <span className="text-red-500">*</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => handleSelectAllWeak()}
-                className="text-xs py-1 px-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded border border-blue-200 transition-colors"
-              >
-                {formData.weakSubjects.length === allSubjects.filter(s => !formData.strongSubjects.includes(s)).length ? "Deselect All" : "Select All"}
-              </button>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {allSubjects.map((subject) => {
-                const isDisabled = formData.strongSubjects.includes(subject);
-                return (
+        {/* Weak Subjects Selection */}
+        <div className="group">
+          <div className="flex justify-between items-center mb-2">
+            <label className="block text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
+              Weak Subjects <span className="text-red-500">*</span>
+              {weakTopics.length > 0 && (
+                <span className="text-xs text-gray-500 font-normal ml-2">(Auto-selected based on performance)</span>
+              )}
+            </label>
+            <button
+              type="button"
+              onClick={handleSelectAllWeak}
+              className="text-xs py-1 px-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded border border-blue-200 transition-colors"
+            >
+              {formData.weakSubjects.length === allSubjects.filter(s => !formData.strongSubjects.includes(s)).length ? "Deselect All" : "Select All"}
+            </button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {allSubjects.map((subject) => {
+              const isDisabled = formData.strongSubjects.includes(subject);
+              return (
                 <div
                   key={`weak-${subject}`}
                   onClick={() => {
-                    // Don't do anything if the subject is disabled (already in strong subjects)
                     if (isDisabled) return;
                     
-                    // Simplified approach to toggle selection
                     const isSelected = formData.weakSubjects.includes(subject)
                     const newWeakSubjects = isSelected
                       ? formData.weakSubjects.filter((s) => s !== subject)
@@ -323,7 +295,6 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
                       weakSubjects: newWeakSubjects,
                     }))
 
-                    // Clear error if at least one subject is selected
                     if (errors.weakSubjects && newWeakSubjects.length > 0) {
                       setErrors((prev) => {
                         const newErrors = { ...prev }
@@ -370,29 +341,35 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
                     </span>
                   </div>
                 </div>
-              )})}
-            </div>
-            {errors.weakSubjects && (
-              <p className="mt-1 text-sm text-red-500 flex items-center">
-                <AlertCircle size={12} className="mr-1" />
-                {errors.weakSubjects}
-              </p>
-            )}
+              )
+            })}
           </div>
-        </>
-      )}
+          {errors.weakSubjects && (
+            <p className="mt-1 text-sm text-red-500 flex items-center">
+              <AlertCircle size={12} className="mr-1" />
+              {errors.weakSubjects}
+            </p>
+          )}
+        </div>
+      </div>
 
-      {((formData.strongSubjects.length > 0 && formData.weakSubjects.length > 0) || formData.usePerformanceData) && (
+      {/* Pro tip section */}
+      {((formData.strongSubjects.length > 0 && formData.weakSubjects.length > 0)) && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-3 bg-blue-50 border border-blue-100 rounded-lg"
+          className="p-3 bg-green-50 border border-green-200 rounded-lg"
         >
           <div className="flex items-start">
-            <Lightbulb className="text-blue-500 mr-2 mt-0.5 flex-shrink-0" size={18} />
-            <div className="text-sm text-blue-700">
-              <span className="font-medium">Pro tip:</span> Your study plan will focus more on your weak subjects while
-              using your strong subjects as foundation for related concepts.
+            <Lightbulb className="text-green-600 mr-2 mt-0.5 flex-shrink-0" size={16} />
+            <div className="text-sm text-green-800">
+              <span className="font-medium">Your personalized study plan will:</span>
+              <ul className="mt-1 list-disc list-inside space-y-1">
+                <li>Focus 70% of study time on your weak subjects</li>
+                <li>Use your strong subjects as building blocks for complex topics</li>
+                {weakTopics.length > 0 && <li>Prioritize the specific topics where you scored lowest</li>}
+                <li>Adapt to your {formData.currentLevel} level proficiency requirements</li>
+              </ul>
             </div>
           </div>
         </motion.div>

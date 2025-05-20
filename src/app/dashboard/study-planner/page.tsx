@@ -71,6 +71,7 @@ const PlannerForm: React.FC = () => {
   const [showPlansList, setShowPlansList] = useState<boolean>(false)
   const [isLoadingPlans, setIsLoadingPlans] = useState<boolean>(false)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const [allSubjects, setAllSubjects] = useState<string[]>([])
 
   const studyTips = [
     "Spaced repetition is more effective than cramming",
@@ -133,8 +134,35 @@ const PlannerForm: React.FC = () => {
   }, []) // Remove studyTips dependency since it's a constant
 
   useEffect(() => {
-    fetchPerformanceData()
+    const fetchSubjects = async () => {
+      console.log("Fetching subjects from API...")
+      try {
+        const response = await axios.get(
+          'https://medical-backend-loj4.onrender.com/api/ai-planner/get-subjects'
+        )
+        if (response.data.success) {
+          setAllSubjects(response.data.data)
+        }
+      } catch (error) {
+        console.error('Error fetching subjects:', error)
+        // Fallback to hardcoded subjects if API fails
+        setAllSubjects([
+          "Anatomy", "Physiology", "Biochemistry", "Pharmacology",
+          "Pathology", "Microbiology", "Immunology", "Behavioral Science",
+          "Biostatistics", "Genetics", "Nutrition", "Cell Biology"
+        ])
+      }
+    }
+
+    fetchSubjects()
   }, [])
+
+  useEffect(() => {
+    console.log("Form data changed:", formData)
+    if (formData.targetExam && formData.currentLevel) {
+      fetchPerformanceData()
+    }
+  }, [formData.targetExam])
 
   // Check for existing plans and fetch them
   useEffect(() => {
@@ -347,119 +375,47 @@ const PlannerForm: React.FC = () => {
     setIsLoadingPerformanceData(true)
 
     try {
-      // First try to get data from our new endpoint
-      const performanceData = await fetchUserPerformanceData()
-
-      if (!performanceData || !performanceData.subjects || performanceData.subjects.length === 0) {
-        // Fall back to the legacy endpoint if no data from new one
-        const legacyResponse = await axios.get(
-          `https://medical-backend-loj4.onrender.com/api/test/topic-mastery-v2/${userId}`,
-        )
-        if (legacyResponse.data && legacyResponse.data.weakestTopics) {
-          setWeakTopics(legacyResponse.data.weakestTopics)
-        }
-        return
-      }
-
-      // Process the performance data to identify strong and weak subjects
-      const processedTopics: TopicMasteryData[] = []
-      const strongSubjectsArray: string[] = []
-      const weakSubjectsArray: string[] = []
-
-      // Process subjects
-      performanceData.subjects.forEach((subject) => {
-        let totalCorrect = 0
-        let totalIncorrect = 0
-        let totalQuestions = 0
-
-        // Calculate subject-level totals
-        subject.subsections.forEach((subsection) => {
-          totalCorrect += subsection.performance.correctCount
-          totalIncorrect += subsection.performance.incorrectCount
-          totalQuestions += subsection.performance.totalCount
-        })
-
-        // Only consider subjects with at least 3 questions
-        if (totalQuestions >= 3) {
-          const accuracyPercent = (totalCorrect / totalQuestions) * 100
-
-          // Determine mastery level
-          let masteryLevel = "Intermediate"
-          if (accuracyPercent >= 70) {
-            masteryLevel = "Advanced"
-            strongSubjectsArray.push(subject.subjectName)
-          } else if (accuracyPercent < 50) {
-            masteryLevel = "Beginner"
-            weakSubjectsArray.push(subject.subjectName)
+      // Use the new AI planner specific endpoint
+      const response = await axios.get(
+        `https://medical-backend-loj4.onrender.com/api/ai-planner/get-performance-for-aiplanner/${userId}`,
+        {
+          params: {
+            targetExam: formData.targetExam,
+            currentLevel: formData.currentLevel
           }
-
-          // Add to processed topics list
-          processedTopics.push({
-            name: subject.subjectName,
-            masteryScore: accuracyPercent,
-            masteryLevel: masteryLevel,
-            isQuestPriority: accuracyPercent < 50,
-          })
-
-          // Add subsections as topics
-          subject.subsections.forEach((subsection) => {
-            if (subsection.performance.totalCount >= 2) {
-              const subsectionAccuracy = (subsection.performance.correctCount / subsection.performance.totalCount) * 100
-              let subsectionMasteryLevel = "Intermediate"
-
-              if (subsectionAccuracy < 50) {
-                subsectionMasteryLevel = "Beginner"
-                // Add weak subsections to weak topics with proper formatting
-                processedTopics.push({
-                  name: `${subject.subjectName}: ${subsection.subsectionName}`, // Ensure proper formatting with subject name
-                  masteryScore: subsectionAccuracy,
-                  masteryLevel: subsectionMasteryLevel,
-                  isQuestPriority: true,
-                })
-              }
-            }
-          })
         }
-      })
+      )
 
-      // Sort by mastery score (ascending, so weakest first)
-      processedTopics.sort((a, b) => a.masteryScore - b.masteryScore)
+      if (response.data.success && response.data.data.weakTopics) {
+        const weakTopicsData = response.data.data.weakTopics
 
-      // Update state
-      setWeakTopics(processedTopics.filter((topic) => topic.masteryLevel === "Beginner"))
+        // Set weak topics
+        console.log("Weak topics data:", weakTopicsData)
+        setWeakTopics(weakTopicsData)
 
-      // Update form data with strong and weak subjects
-      setFormData((prev) => ({
-        ...prev,
-        strongSubjects: strongSubjectsArray,
-        weakSubjects: weakSubjectsArray,
-        // Ensure we're using the name property, not the ID
-        weakTopics: processedTopics.filter((topic) => topic.masteryLevel === "Beginner").map((topic) => topic.name),
-      }))
+        // Extract subject names for weak and strong subjects
+        const subjectNames = weakTopicsData
+          .filter((topic: { name: string | string[] }) => !topic.name.includes(':')) // Only main subjects, not sub-topics
+          .map((topic: { name: any }) => topic.name)
+
+        const strongSubjects = allSubjects.filter(subject =>
+          !subjectNames.includes(subject)
+        )
+
+        // Update form data
+        setFormData(prev => ({
+          ...prev,
+          weakSubjects: subjectNames,
+          strongSubjects: strongSubjects.length > 0 ? strongSubjects : ["Anatomy"],
+          weakTopics: weakTopicsData.map((topic: { name: any }) => topic.name),
+          usePerformanceData: true,
+        }))
+      }
     } catch (error) {
-      console.error("Error fetching performance data:", error)
+      console.error("Error fetching AI planner performance data:", error)
+      // Keep existing fallback logic
     } finally {
       setIsLoadingPerformanceData(false)
-    }
-  }
-
-  // Function to fetch performance data from our new API endpoint
-  const fetchUserPerformanceData = async () => {
-    const userId = localStorage.getItem("Medical_User_Id")
-    if (!userId) return null
-
-    try {
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/get-performance/${userId}`)
-
-      if (response.data.success) {
-        return response.data.data as UserPerformanceData
-      } else {
-        console.error("Failed to fetch performance data:", response.data.message)
-        return null
-      }
-    } catch (error) {
-      console.error("Error fetching performance data:", error)
-      return null
     }
   }
 
@@ -695,7 +651,7 @@ const PlannerForm: React.FC = () => {
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/api/test/generatePlan?userId=${userId}`,
+        `https://medical-backend-loj4.onrender.com/api/test/generatePlan?userId=${userId}`,
         submissionData,
         {
           headers: {
@@ -719,7 +675,7 @@ const PlannerForm: React.FC = () => {
       // Store the study plan data
       const planData = result.data as StudyPlanResponse
       setStudyPlan(planData)
-      
+
 
       // Add study plan tasks to calendar
       await addPlanTasksToCalendar(planData)
@@ -912,6 +868,7 @@ const PlannerForm: React.FC = () => {
               setErrors={setErrors}
               pageVariants={pageVariants}
               animateDirection={animateDirection}
+              allSubjects={allSubjects}
             />
           )}
 

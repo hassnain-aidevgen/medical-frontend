@@ -1,9 +1,10 @@
 "use client"
 
 import type React from "react"
+import { useState, useEffect } from "react"
 
 import { motion } from "framer-motion"
-import { Target, Calendar, AlertCircle } from "lucide-react"
+import { Target, Calendar, AlertCircle, Loader2 } from "lucide-react"
 import type { FormData, FormErrors } from "../../types/study-plan-types"
 
 interface ExamDetailsStepProps {
@@ -21,21 +22,35 @@ const ExamDetailsStep: React.FC<ExamDetailsStepProps> = ({
   pageVariants,
   animateDirection,
 }) => {
-  // Exam options
-  const examOptions = [
-    "USMLE Step 1",
-    "USMLE Step 2",
-    "USMLE Step 3",
-    "COMLEX Level 1",
-    "COMLEX Level 2",
-    "COMLEX Level 3",
-    "NCLEX-RN",
-    "NCLEX-PN",
-    "MCAT",
-    "PANCE",
-    "NEET",
-    "PLAB",
-  ]
+  const [examOptions, setExamOptions] = useState<string[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [fetchError, setFetchError] = useState<string>("")
+
+  // Fetch exam types from API
+  useEffect(() => {
+    const fetchExamTypes = async () => {
+      try {
+        setLoading(true)
+        setFetchError("")
+        
+        const response = await fetch('https://medical-backend-loj4.onrender.com/api/exam-type/exam-types')
+        const data = await response.json()
+        
+        if (data.success) {
+          setExamOptions(data.examTypes)
+        } else {
+          setFetchError(data.message || 'Failed to fetch exam types')
+        }
+      } catch (error) {
+        console.error('Error fetching exam types:', error)
+        setFetchError('Network error while fetching exam types')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchExamTypes()
+  }, [])
 
   const calculateDaysRemaining = (dateString: string): number => {
     const targetDate = new Date(dateString)
@@ -71,23 +86,38 @@ const ExamDetailsStep: React.FC<ExamDetailsStepProps> = ({
         <label className="block text-sm font-medium text-gray-700 mb-1 group-hover:text-blue-600 transition-colors">
           Target Exam <span className="text-red-500">*</span>
         </label>
-        <select
-          name="targetExam"
-          value={formData.targetExam}
-          onChange={handleInputChange}
-          className={`w-full p-2 border ${errors.targetExam ? "border-red-500" : "border-gray-300"} rounded-md focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:border-blue-400`}
-          required
-        >
-          {examOptions.map((exam) => (
-            <option key={exam} value={exam}>
-              {exam}
+        <div className="relative">
+          <select
+            name="targetExam"
+            value={formData.targetExam}
+            onChange={handleInputChange}
+            className={`w-full p-2 border ${errors.targetExam ? "border-red-500" : "border-gray-300"} rounded-md focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:border-blue-400 ${loading ? 'pr-10' : ''}`}
+            required
+            disabled={loading}
+          >
+            <option value="">
+              {loading ? "Loading exams..." : "Select an exam"}
             </option>
-          ))}
-        </select>
+            {examOptions.map((exam) => (
+              <option key={exam} value={exam}>
+                {exam}
+              </option>
+            ))}
+          </select>
+          {loading && (
+            <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 animate-spin" size={18} />
+          )}
+        </div>
         {errors.targetExam && (
           <p className="mt-1 text-sm text-red-500 flex items-center">
             <AlertCircle size={12} className="mr-1" />
             {errors.targetExam}
+          </p>
+        )}
+        {fetchError && (
+          <p className="mt-1 text-sm text-red-500 flex items-center">
+            <AlertCircle size={12} className="mr-1" />
+            {fetchError}
           </p>
         )}
       </div>

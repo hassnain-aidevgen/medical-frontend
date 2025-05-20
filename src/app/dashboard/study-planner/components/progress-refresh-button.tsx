@@ -27,7 +27,7 @@ const ProgressRefreshButton: React.FC<ProgressRefreshButtonProps> = ({
     setIsRefreshing(true)
     try {
       const response = await axios.put(
-        `http://localhost:5000/api/ai-planner/refreshCompletionStatus/${planId}`
+        `https://medical-backend-loj4.onrender.com/api/ai-planner/refreshCompletionStatus/${planId}`
       )
 
       if (response.data.success) {
