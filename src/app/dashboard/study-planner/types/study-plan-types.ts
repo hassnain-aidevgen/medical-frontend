@@ -20,6 +20,7 @@ export interface StudyPlanTask {
 }
 
 export interface StudyPlanDay {
+  date : string;
   dayOfWeek: string;
   focusAreas: string[];
   tasks: StudyPlanTask[];
@@ -68,6 +69,7 @@ export interface StudyPlanExamInfo {
   exam: string;
   targetDate?: string;
   targetScore?: string;
+  lastStudyDate?: string;
 }
 
 export interface StudyPlanData {
@@ -102,7 +104,6 @@ export interface UserData {
   weakSubjects: string[];
   availableHours: number;
   daysPerWeek: number;
-  preferredTimeOfDay: string;
   preferredLearningStyle: string;
   targetScore: string;
   specificGoals: string;
@@ -133,7 +134,6 @@ export interface FormData {
   // Study preferences
   availableHours: number
   daysPerWeek: number
-  preferredTimeOfDay: "morning" | "afternoon" | "evening" | "night" | "mixed"
   preferredLearningStyle: "visual" | "auditory" | "reading" | "kinesthetic" | "mixed"
 
   // Goals and objectives

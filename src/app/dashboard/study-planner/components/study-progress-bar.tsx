@@ -63,15 +63,32 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
   const [daysCompleted, setDaysCompleted] = useState<number>(0)
   const [totalDays, setTotalDays] = useState<number>(0)
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
+  const [performanceData, setPerformanceData] = useState<PerformanceData>({ tasks: {}, lastUpdated: Date.now() })
+
+  // Load performance data from database
+  const loadPerformanceData = useCallback(async () => {
+    try {
+      if (planId) {
+        const response = await fetch(`https://medical-backend-loj4.onrender.com/api/ai-planner/getTaskPerformance/${planId}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            // Convert database format to component format
+            const convertedData: PerformanceData = {
+              tasks: result.taskPerformance || {},
+              lastUpdated: Date.now()
+            };
+            setPerformanceData(convertedData);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error loading performance data:", error);
+    }
+  }, [planId]);
 
   // Wrap calculateProgress in useCallback to prevent it from being recreated on every render
   const calculateProgress = useCallback(() => {
-    // Get performance data from localStorage
-    const storedData = localStorage.getItem("studyPlanPerformance")
-    const performanceData: PerformanceData = storedData
-      ? JSON.parse(storedData)
-      : { tasks: {}, lastUpdated: Date.now() }
-
     // Calculate total tasks and completed tasks
     let completed = 0
     let total = 0
@@ -106,7 +123,7 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
       })
     }
 
-    // If no tasks in localStorage yet, count from the study plan
+    // If no tasks in performance data yet, count from the study plan
     if (total === 0 && weeklyPlans) {
       weeklyPlans.forEach((week) => {
         if (week.days) {
@@ -138,7 +155,11 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
     setTotalTasks(total)
     setDaysCompleted(completedDays)
     setTotalDays(totalDaysCount)
-  }, [weeklyPlans])
+  }, [weeklyPlans, performanceData])
+
+  useEffect(() => {
+    loadPerformanceData();
+  }, [loadPerformanceData]);
 
   useEffect(() => {
     calculateProgress()
@@ -190,8 +211,8 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
       )
 
       if (response.data.success) {
-        // Also update the local progress calculation
-        calculateProgress()
+        // Reload performance data from database
+        await loadPerformanceData()
         toast.success("Progress synced with calendar data")
       } else {
         toast.error(response.data.message || "Failed to update progress")
@@ -275,7 +296,7 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
       </div>
 
       <div className="text-xs text-gray-500 italic">
-        Progress is calculated based on completed tasks and study days. Click "Sync Progress" to update from calendar data.
+        Progress is calculated based on completed tasks and study days. Click &quot;Sync Progress&quot; to update from calendar data.
       </div>
     </div>
   )

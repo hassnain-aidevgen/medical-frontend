@@ -99,7 +99,6 @@ const PlannerForm: React.FC = () => {
     // Study preferences
     availableHours: 2,
     daysPerWeek: 5,
-    preferredTimeOfDay: "morning",
     preferredLearningStyle: "visual",
 
     // Goals and objectives
@@ -618,9 +617,9 @@ const PlannerForm: React.FC = () => {
 
     setIsSubmitting(true)
     setApiError(null)
-
-    // Start progress simulation
     simulateProgress()
+
+    console.log("Form data before submission:", formData)
 
     // Prepare data for submission that's compatible with the existing API
     const submissionData = {
@@ -634,7 +633,6 @@ const PlannerForm: React.FC = () => {
       weakSubjects: formData.usePerformanceData ? formData.weakTopics : formData.weakSubjects,
       availableHours: formData.availableHours,
       daysPerWeek: formData.daysPerWeek,
-      preferredTimeOfDay: formData.preferredTimeOfDay,
       preferredLearningStyle: formData.preferredLearningStyle,
       targetScore: formData.targetScore,
       specificGoals: formData.specificGoals,
@@ -644,14 +642,14 @@ const PlannerForm: React.FC = () => {
     }
 
     // Save user data to localStorage
-    localStorage.setItem("userData", JSON.stringify(formData)) // Save the full data for our UI
+    // localStorage.setItem("userData", JSON.stringify(formData)) // Save the full data for our UI
     const userId = localStorage.getItem("Medical_User_Id")
 
-    console.log("Request data:", submissionData)
+    console.log("Request data to ai planer:", submissionData)
 
     try {
       const response = await axios.post(
-        `https://medical-backend-loj4.onrender.com/api/test/generatePlan?userId=${userId}`,
+        `https://medical-backend-loj4.onrender.com/api/ai-planner/generatePlan?userId=${userId}`,
         submissionData,
         {
           headers: {
@@ -679,10 +677,12 @@ const PlannerForm: React.FC = () => {
 
       // Add study plan tasks to calendar
       await addPlanTasksToCalendar(planData)
+      localStorage.removeItem("currentPlanId");
 
       // Save only the plan ID to localStorage
       if (result.data && result.data.planId) {
         localStorage.setItem("currentPlanId", result.data.planId)
+
       }
 
       // Refresh the user plans list

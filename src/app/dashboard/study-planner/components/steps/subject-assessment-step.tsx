@@ -117,7 +117,7 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
                 📊 Performance-Based Recommendations
               </h3>
               <p className="text-sm text-blue-700 mb-3">
-                Based on your test performance, we've automatically selected subjects below. You can modify these selections if needed.
+                Based on your test performance, we&apos;ve automatically selected subjects below. You can modify these selections if needed.
               </p>
               
               <div className="text-xs text-blue-600 mb-3">

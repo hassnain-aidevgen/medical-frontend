@@ -66,51 +66,43 @@ const StudyPreferencesStep: React.FC<StudyPreferencesStepProps> = ({
         <label className="block text-sm font-medium text-gray-700 mb-1 group-hover:text-blue-600 transition-colors">
           Days Per Week for Study
         </label>
-        <div className="flex flex-wrap gap-2">
-          {[3, 4, 5, 6, 7].map((day) => (
+        <div className="flex gap-4">
+          {[
+            { value: 5, label: "5 Days", description: "Mon to Fri" },
+            { value: 7, label: "7 Days", description: "Including Sat & Sun" }
+          ].map((option) => (
             <div
-              key={day}
-              onClick={() => setFormData((prev) => ({ ...prev, daysPerWeek: day }))}
-              className={`cursor-pointer w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
-                formData.daysPerWeek === day
-                  ? "bg-blue-600 text-white shadow-md"
-                  : "bg-gray-100 text-gray-700 hover:bg-blue-100"
+              key={option.value}
+              onClick={() => setFormData((prev) => ({ ...prev, daysPerWeek: option.value }))}
+              className={`cursor-pointer p-4 rounded-lg border-2 transition-all duration-300 flex-1 ${
+                formData.daysPerWeek === option.value
+                  ? "border-blue-600 bg-blue-50 shadow-md"
+                  : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/50"
               }`}
             >
-              {day}
+              <div className="text-center">
+                <div className={`text-2xl font-bold mb-1 ${
+                  formData.daysPerWeek === option.value ? "text-blue-600" : "text-gray-700"
+                }`}>
+                  {option.value}
+                </div>
+                <div className={`text-sm font-medium mb-1 ${
+                  formData.daysPerWeek === option.value ? "text-blue-700" : "text-gray-700"
+                }`}>
+                  {option.label}
+                </div>
+                <div className={`text-xs ${
+                  formData.daysPerWeek === option.value ? "text-blue-600" : "text-gray-500"
+                }`}>
+                  {option.description}
+                </div>
+              </div>
             </div>
           ))}
         </div>
         <div className="text-sm text-gray-500 mt-2">
           {formData.daysPerWeek} days per week × {formData.availableHours} hours ={" "}
           {formData.daysPerWeek * formData.availableHours} hours total per week
-        </div>
-      </div>
-
-      <div className="group">
-        <label className="block text-sm font-medium text-gray-700 mb-1 group-hover:text-blue-600 transition-colors">
-          Preferred Time of Day
-        </label>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-          {["morning", "afternoon", "evening", "night", "mixed"].map((time) => (
-            <div
-              key={time}
-              onClick={() =>
-                setFormData((prev) => ({ ...prev, preferredTimeOfDay: time as FormData["preferredTimeOfDay"] }))
-              }
-              className={`cursor-pointer p-2 rounded-md border text-center transition-all duration-300 ${
-                formData.preferredTimeOfDay === time
-                  ? "border-blue-500 bg-blue-50 shadow-sm"
-                  : "border-gray-200 hover:border-blue-300 hover:bg-blue-50/50"
-              }`}
-            >
-              <span
-                className={`text-sm ${formData.preferredTimeOfDay === time ? "text-blue-700 font-medium" : "text-gray-700"}`}
-              >
-                {time.charAt(0).toUpperCase() + time.slice(1)}
-              </span>
-            </div>
-          ))}
         </div>
       </div>
 

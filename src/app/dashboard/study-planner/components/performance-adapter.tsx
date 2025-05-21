@@ -77,11 +77,39 @@ export const usePerformanceAdapter = (
     return days[new Date().getDay()]
   }, [])
 
+  // Load task performance from database
+  const loadTaskPerformanceFromDB = useCallback(async () => {
+    try {
+      const planId = localStorage.getItem("currentPlanId");
+      if (planId) {
+        const response = await fetch(`https://medical-backend-loj4.onrender.com/api/ai-planner/getTaskPerformance/${planId}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.taskPerformance) {
+            // Convert database performance to our state format
+            const dbStatuses: { [key: string]: TaskStatus } = {};
+            
+            Object.entries(result.taskPerformance).forEach(([taskId, taskData]: [string, any]) => {
+              dbStatuses[taskId] = taskData.status;
+            });
+            
+            setTaskStatuses(dbStatuses);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error loading task performance:", error);
+    }
+  }, []);
+
   useEffect(() => {
     // Initialize current week number and day of the week
     setCurrentWeekNumber(getWeekNumber())
     setCurrentDayOfWeek(getDayOfWeek())
-  }, [getWeekNumber, getDayOfWeek])
+    
+    // Load task performance from database
+    loadTaskPerformanceFromDB();
+  }, [getWeekNumber, getDayOfWeek, loadTaskPerformanceFromDB])
 
   useEffect(() => {
     if (studyPlan && currentWeekNumber && currentDayOfWeek) {
@@ -189,42 +217,57 @@ export const usePerformanceAdapter = (
     return []
   }
 
-  // Add the missing functions needed by study-plan-results.tsx
-
   // Function to handle task status change
-  const handleTaskStatusChange = (taskId: string | number, status: TaskStatus) => {
-    // Parse the taskId to get the task details
-    // Assuming taskId format is "week-day-subject-activity"
+  const handleTaskStatusChange = async (taskId: string | number, status: TaskStatus) => {
     const parts = String(taskId).split("-")
     if (parts.length >= 4) {
       const weekNumber = Number.parseInt(parts[0])
       const dayOfWeek = parts[1]
       const subject = parts[2]
-      const activity = parts.slice(3).join("-") // In case activity has hyphens
+      const activity = parts.slice(3).join("-")
 
-      // Update the task status
+      // Update local state immediately
       setTaskStatuses((prev) => ({
         ...prev,
         [taskId]: status,
       }))
 
-      // Save to localStorage for persistence
-      const storedData = localStorage.getItem("studyPlanPerformance")
-      const performanceData = storedData ? JSON.parse(storedData) : { tasks: {}, lastUpdated: Date.now() }
+      // Save to database instead of localStorage
+      try {
+        const planId = localStorage.getItem("currentPlanId");
+        if (planId) {
+          const response = await fetch(`https://medical-backend-loj4.onrender.com/api/ai-planner/updateTaskStatus/${planId}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              taskId,
+              status,
+              weekNumber,
+              dayOfWeek,
+              subject,
+              activity
+            }),
+          });
 
-      performanceData.tasks[taskId] = {
-        subject,
-        activity,
-        weekNumber,
-        dayOfWeek,
-        taskId,
-        timestamp: Date.now(),
-        status,
+          if (!response.ok) {
+            throw new Error("Failed to update task status");
+          }
+
+          const result = await response.json();
+          console.log("Task status updated successfully");
+        }
+      } catch (error) {
+        console.error("Error updating task status:", error);
+        // Revert local state on error
+        setTaskStatuses((prev) => ({
+          ...prev,
+          [taskId]: "incomplete" as TaskStatus,
+        }))
       }
 
-      localStorage.setItem("studyPlanPerformance", JSON.stringify(performanceData))
-
-      // Update completion status if completed
+      // Update completion status
       if (status === "completed") {
         updateTaskCompletion(subject, activity, true)
       } else {
@@ -247,82 +290,98 @@ export const usePerformanceAdapter = (
       return taskStatuses[taskId]
     }
 
-    // Check in localStorage
-    const storedData = localStorage.getItem("studyPlanPerformance")
-    if (storedData) {
-      const performanceData = JSON.parse(storedData)
-      if (performanceData.tasks && performanceData.tasks[taskId]) {
-        return performanceData.tasks[taskId].status
-      }
-    }
-
-    // Default to incomplete
+    // Default to incomplete (database data will be loaded separately)
     return "incomplete"
   }
 
   // Function to apply replanning
-  const applyReplanning = () => {
+  const applyReplanning = async () => {
     if (!studyPlan || !currentWeekNumber) return
 
     const updatedPlan = { ...studyPlan }
     const tasksToReplan: TaskPerformance[] = []
 
-    // Get all tasks that need replanning
-    const storedData = localStorage.getItem("studyPlanPerformance")
-    if (storedData) {
-      const performanceData = JSON.parse(storedData)
-
-      // Find all tasks marked as not-understood or skipped
-      Object.values(performanceData.tasks).forEach((task: unknown) => {
-        const taskData = task as TaskPerformance
-        if (taskData.status === "not-understood" || taskData.status === "skipped") {
-          tasksToReplan.push(taskData)
-        }
-      })
-    }
-
-    // Get future weeks
-    const futureWeeks = getFutureWeeks()
-
-    if (futureWeeks.length > 0 && tasksToReplan.length > 0) {
-      // Distribute tasks to replan across future weeks
-      tasksToReplan.forEach((task, index) => {
-        const targetWeekIndex = index % futureWeeks.length
-        const targetWeek = futureWeeks[targetWeekIndex]
-
-        // Find a suitable day to add the task
-        if (targetWeek.days && targetWeek.days.length > 0) {
-          const targetDayIndex = index % targetWeek.days.length
-          const targetDay = targetWeek.days[targetDayIndex]
-
-          // Create a new task based on the one that needs replanning
-          const newTask: Task = {
-            subject: task.subject,
-            activity: `Review: ${task.activity}`,
-            duration: 30, // Default duration for review
-            isReview: true,
+    try {
+      // Get all tasks that need replanning from database
+      const planId = localStorage.getItem("currentPlanId");
+      if (planId) {
+        const response = await fetch(`https://medical-backend-loj4.onrender.com/api/ai-planner/getTaskPerformance/${planId}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.taskPerformance) {
+            // Find all tasks marked as not-understood or skipped
+            Object.entries(result.taskPerformance).forEach(([taskId, taskData]: [string, any]) => {
+              if (taskData.status === "not-understood" || taskData.status === "skipped") {
+                tasksToReplan.push({
+                  subject: taskData.subject,
+                  activity: taskData.activity,
+                  weekNumber: taskData.weekNumber,
+                  dayOfWeek: taskData.dayOfWeek,
+                  taskId: taskId,
+                  timestamp: taskData.timestamp,
+                  status: taskData.status
+                });
+              }
+            });
           }
-
-          // Add the task to the target day
-          targetDay.tasks.push(newTask)
         }
-      })
+      }
 
-      // Update the plan
-      onPlanUpdate(updatedPlan)
+      // Get future weeks
+      const futureWeeks = getFutureWeeks()
 
-      // Reset the needs replanning flag
-      setNeedsReplanning(false)
+      if (futureWeeks.length > 0 && tasksToReplan.length > 0) {
+        // Distribute tasks to replan across future weeks
+        tasksToReplan.forEach((task, index) => {
+          const targetWeekIndex = index % futureWeeks.length
+          const targetWeek = futureWeeks[targetWeekIndex]
 
-      // Clear the not-understood and skipped tasks from localStorage
-      const performanceData = JSON.parse(storedData!)
-      Object.keys(performanceData.tasks).forEach((taskId) => {
-        const task = performanceData.tasks[taskId]
-        if (task.status === "not-understood" || task.status === "skipped") {
-          task.status = "incomplete" // Reset status
+          // Find a suitable day to add the task
+          if (targetWeek.days && targetWeek.days.length > 0) {
+            const targetDayIndex = index % targetWeek.days.length
+            const targetDay = targetWeek.days[targetDayIndex]
+
+            // Create a new task based on the one that needs replanning
+            const newTask: Task = {
+              subject: task.subject,
+              activity: `Review: ${task.activity}`,
+              duration: 30, // Default duration for review
+              isReview: true,
+            }
+
+            // Add the task to the target day
+            targetDay.tasks.push(newTask)
+          }
+        })
+
+        // Update the plan
+        onPlanUpdate(updatedPlan)
+
+        // Reset the needs replanning flag
+        setNeedsReplanning(false)
+
+        // Update the tasks to incomplete status in database
+        for (const task of tasksToReplan) {
+          if (planId) {
+            await fetch(`https://medical-backend-loj4.onrender.com/api/ai-planner/updateTaskStatus/${planId}`, {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                taskId: task.taskId,
+                status: "incomplete",
+                weekNumber: task.weekNumber,
+                dayOfWeek: task.dayOfWeek,
+                subject: task.subject,
+                activity: task.activity
+              }),
+            });
+          }
         }
-      })
-      localStorage.setItem("studyPlanPerformance", JSON.stringify(performanceData))
+      }
+    } catch (error) {
+      console.error("Error during replanning:", error);
     }
   }
 

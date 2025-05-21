@@ -69,18 +69,28 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
   // Initialize our performance adapter with the adapted plan
   const adaptedPlan = useMemo(() => adaptStudyPlanForPerformance(studyPlan), [studyPlan]);
 
-const {
-  handleTaskStatusChange,
-  getTaskStatus,
-  needsReplanning,
-  applyReplanning,
-} = usePerformanceAdapter(
-  adaptedPlan,
-  userData,
-  (updatedPlan) => {
-    setStudyPlan(updatedPlan as unknown as StudyPlanResponse);
-  }
-);
+  const {
+    handleTaskStatusChange,
+    getTaskStatus,
+    needsReplanning,
+    applyReplanning,
+  } = usePerformanceAdapter(
+    adaptedPlan,
+    userData,
+    (updatedPlan) => {
+      setStudyPlan(updatedPlan as unknown as StudyPlanResponse);
+    }
+  );
+
+  const formatDateWithDay = (dateString: string | number | Date, dayOfWeek: any) => {
+    if (!dateString) return dayOfWeek;
+
+    const date = new Date(dateString);
+    const options = { month: 'short' as const, day: 'numeric' as const };
+    const formattedDate = date.toLocaleDateString('en-US', options);
+
+    return `${dayOfWeek}, ${formattedDate}`;
+  };
 
 
   useEffect(() => {
@@ -369,6 +379,13 @@ const {
                 <span className="font-medium">{studyPlanData.examInfo?.targetScore || userData.targetScore}</span>
               </div>
             )}
+            {studyPlanData.examInfo?.lastStudyDate && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Last Study Day:</span>
+                <span className="font-medium">{formatDate(studyPlanData.examInfo.lastStudyDate)}</span>
+              </div>
+            )}
+
             <div className="flex justify-between">
               <span className="text-gray-600">Study Duration:</span>
               <span className="font-medium">{metadata.duration}</span>
@@ -393,10 +410,6 @@ const {
             <div className="flex justify-between">
               <span className="text-gray-600">Weekly study time:</span>
               <span className="font-medium">{userData.availableHours * userData.daysPerWeek} hours</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Preferred time:</span>
-              <span className="font-medium capitalize">{userData.preferredTimeOfDay}</span>
             </div>
           </div>
         </div>
@@ -427,9 +440,9 @@ const {
         </div>
       </div>
 
-       {plan && plan.plan && plan.plan.weeklyPlans && (
-        <StudyProgressBar 
-          weeklyPlans={plan.plan.weeklyPlans} 
+      {plan && plan.plan && plan.plan.weeklyPlans && (
+        <StudyProgressBar
+          weeklyPlans={plan.plan.weeklyPlans}
           userData={userData}
           planId={plan.planId || ""} // Pass the planId to enable refresh functionality
         />
@@ -566,7 +579,9 @@ const {
 
           {currentWeek.days?.map((day, dayIndex) => (
             <div key={dayIndex} className="bg-white p-4 rounded-lg border shadow-sm">
-              <h4 className="font-medium text-blue-700 mb-3">{day.dayOfWeek}</h4>
+              <h4 className="font-medium text-blue-700 mb-3">
+                {formatDateWithDay(day.date, day.dayOfWeek)}
+              </h4>
 
               <div className="space-y-4">
                 {day.tasks?.map((task, taskIndex) => {
@@ -581,14 +596,14 @@ const {
                     <div
                       key={taskIndex}
                       className={`p-3 rounded-lg ${task.isReview
-                          ? "bg-amber-50 border border-amber-100"
-                          : status === "completed"
-                            ? "bg-green-50 border border-green-100"
-                            : status === "not-understood"
-                              ? "bg-amber-50 border border-amber-100"
-                              : status === "skipped"
-                                ? "bg-red-50 border border-red-100"
-                                : "bg-gray-50"
+                        ? "bg-amber-50 border border-amber-100"
+                        : status === "completed"
+                          ? "bg-green-50 border border-green-100"
+                          : status === "not-understood"
+                            ? "bg-amber-50 border border-amber-100"
+                            : status === "skipped"
+                              ? "bg-red-50 border border-red-100"
+                              : "bg-gray-50"
                         }`}
                     >
                       <div className="flex justify-between items-center mb-2">
@@ -626,6 +641,7 @@ const {
                         activity={task.activity}
                         weekNumber={currentWeek.weekNumber}
                         dayOfWeek={day.dayOfWeek}
+                        date={day.date}
                         onStatusChange={handleTaskStatusChangeWrapper}
                         currentStatus={status}
                       />
@@ -943,19 +959,19 @@ const {
             <span className="text-sm hidden sm:inline">Print</span>
           </button>
           <button
-  onClick={() => {
-    // Clear saved plan
-    localStorage.removeItem("studyPlan")
-    localStorage.removeItem("currentPlanId")
-    localStorage.removeItem("studyPlanPerformance")
-    onReset()
-  }}
-  className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors flex items-center"
-  title="Create New Plan"
->
-  <X size={18} className="mr-1" />
-  <span className="text-sm hidden sm:inline">New Plan</span>
-</button>
+            onClick={() => {
+              // Clear saved plan
+              localStorage.removeItem("studyPlan")
+              localStorage.removeItem("currentPlanId")
+              localStorage.removeItem("studyPlanPerformance")
+              onReset()
+            }}
+            className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors flex items-center"
+            title="Create New Plan"
+          >
+            <X size={18} className="mr-1" />
+            <span className="text-sm hidden sm:inline">New Plan</span>
+          </button>
         </div>
       </div>
 
@@ -964,8 +980,8 @@ const {
           <button
             onClick={() => setActiveTab("overview")}
             className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${activeTab === "overview"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-blue-600"
+              ? "text-blue-600 border-b-2 border-blue-600"
+              : "text-gray-600 hover:text-blue-600"
               }`}
           >
             Overview
@@ -980,8 +996,8 @@ const {
           <button
             onClick={() => setActiveTab("resources")}
             className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${activeTab === "resources"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-blue-600"
+              ? "text-blue-600 border-b-2 border-blue-600"
+              : "text-gray-600 hover:text-blue-600"
               }`}
           >
             Resources
@@ -990,8 +1006,8 @@ const {
           <button
             onClick={() => setActiveTab("performance")}
             className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${activeTab === "performance"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-blue-600"
+              ? "text-blue-600 border-b-2 border-blue-600"
+              : "text-gray-600 hover:text-blue-600"
               }`}
           >
             Performance

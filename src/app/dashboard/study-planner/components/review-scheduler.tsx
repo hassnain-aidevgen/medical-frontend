@@ -36,56 +36,70 @@ interface ReviewSchedulerProps {
 
 export const ReviewScheduler: React.FC<ReviewSchedulerProps> = ({ currentWeekNumber, focusAreas = [] }) => {
   const [reviewItems, setReviewItems] = useState<ReviewItem[]>([])
+  const [performanceData, setPerformanceData] = useState<PerformanceData>({ tasks: {}, lastUpdated: Date.now() })
 
-  // Wrap loadReviewItems in useCallback to prevent it from being recreated on every render
-  const loadReviewItems = useCallback(() => {
-    // Get performance data from localStorage
-    const storedData = localStorage.getItem("studyPlanPerformance")
-    if (!storedData) return
-
+  // Load performance data from database
+  const loadPerformanceData = useCallback(async () => {
     try {
-      const performanceData: PerformanceData = JSON.parse(storedData)
-
-      // Find items from the previous week that need review
-      // (marked as "not-understood" or "skipped")
-      const previousWeekNumber = currentWeekNumber - 1
-
-      if (previousWeekNumber < 1) return
-
-      const itemsToReview: ReviewItem[] = []
-
-      Object.values(performanceData.tasks).forEach((task: TaskPerformance) => {
-        if (task.weekNumber === previousWeekNumber && (task.status === "not-understood" || task.status === "skipped")) {
-          itemsToReview.push({
-            subject: task.subject,
-            activity: task.activity,
-            weekNumber: task.weekNumber,
-            dayOfWeek: task.dayOfWeek,
-            taskId: task.taskId,
-            timestamp: task.timestamp,
-          })
+      const planId = localStorage.getItem("currentPlanId");
+      if (planId) {
+        const response = await fetch(`https://medical-backend-loj4.onrender.com/api/ai-planner/getTaskPerformance/${planId}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            setPerformanceData({ tasks: result.taskPerformance || {}, lastUpdated: Date.now() });
+          }
         }
-      })
-
-      // Sort by subject to group related topics
-      itemsToReview.sort((a, b) => a.subject.localeCompare(b.subject))
-
-      // Filter by focus areas if provided and not empty
-      if (focusAreas.length > 0) {
-        const filteredItems = itemsToReview.filter((item) => focusAreas.includes(item.subject))
-        setReviewItems(filteredItems)
-      } else {
-        setReviewItems(itemsToReview)
       }
     } catch (error) {
-      console.error("Error loading review items:", error)
+      console.error("Error loading performance data:", error);
     }
-  }, [currentWeekNumber, focusAreas])
+  }, []);
+
+  // Load review items based on performance data
+  const loadReviewItems = useCallback(() => {
+    if (!performanceData.tasks || Object.keys(performanceData.tasks).length === 0) return;
+
+    // Find items from the previous week that need review
+    // (marked as "not-understood" or "skipped")
+    const previousWeekNumber = currentWeekNumber - 1;
+
+    if (previousWeekNumber < 1) return;
+
+    const itemsToReview: ReviewItem[] = [];
+
+    Object.values(performanceData.tasks).forEach((task: TaskPerformance) => {
+      if (task.weekNumber === previousWeekNumber && (task.status === "not-understood" || task.status === "skipped")) {
+        itemsToReview.push({
+          subject: task.subject,
+          activity: task.activity,
+          weekNumber: task.weekNumber,
+          dayOfWeek: task.dayOfWeek,
+          taskId: task.taskId,
+          timestamp: task.timestamp,
+        });
+      }
+    });
+
+    // Sort by subject to group related topics
+    itemsToReview.sort((a, b) => a.subject.localeCompare(b.subject));
+
+    // Filter by focus areas if provided and not empty
+    if (focusAreas.length > 0) {
+      const filteredItems = itemsToReview.filter((item) => focusAreas.includes(item.subject));
+      setReviewItems(filteredItems);
+    } else {
+      setReviewItems(itemsToReview);
+    }
+  }, [currentWeekNumber, focusAreas, performanceData]);
 
   useEffect(() => {
-    // Load review items from localStorage
-    loadReviewItems()
-  }, [loadReviewItems])
+    loadPerformanceData();
+  }, [loadPerformanceData]);
+
+  useEffect(() => {
+    loadReviewItems();
+  }, [loadReviewItems]);
 
   // If there are no review items, don't render anything
   if (reviewItems.length === 0) {
@@ -104,6 +118,41 @@ export const ReviewScheduler: React.FC<ReviewSchedulerProps> = ({ currentWeekNum
 
   // Calculate estimated review time (10 minutes per item, max 60 minutes)
   const estimatedTime = Math.min(reviewItems.length * 10, 60)
+
+  const handleCompleteReview = async () => {
+    try {
+      const planId = localStorage.getItem("currentPlanId");
+      if (!planId) return;
+
+      // Update all review items to completed status
+      for (const item of reviewItems) {
+        const response = await fetch(`https://medical-backend-loj4.onrender.com/api/ai-planner/updateTaskStatus/${planId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            taskId: item.taskId,
+            status: "completed",
+            weekNumber: item.weekNumber,
+            dayOfWeek: item.dayOfWeek,
+            subject: item.subject,
+            activity: item.activity
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update task status");
+        }
+      }
+
+      // Clear the review items and reload performance data
+      setReviewItems([]);
+      await loadPerformanceData();
+    } catch (error) {
+      console.error("Error completing review:", error);
+    }
+  };
 
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -143,31 +192,7 @@ export const ReviewScheduler: React.FC<ReviewSchedulerProps> = ({ currentWeekNum
 
         <button
           className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center"
-          onClick={() => {
-            // Mark all review items as reviewed in localStorage
-            const storedData = localStorage.getItem("studyPlanPerformance")
-            if (!storedData) return
-
-            try {
-              const performanceData: PerformanceData = JSON.parse(storedData)
-
-              // Update status for all review items
-              reviewItems.forEach((item) => {
-                if (performanceData.tasks[item.taskId]) {
-                  performanceData.tasks[item.taskId].status = "completed"
-                  performanceData.tasks[item.taskId].timestamp = Date.now()
-                }
-              })
-
-              // Save back to localStorage
-              localStorage.setItem("studyPlanPerformance", JSON.stringify(performanceData))
-
-              // Clear the review items
-              setReviewItems([])
-            } catch (error) {
-              console.error("Error updating review items:", error)
-            }
-          }}
+          onClick={handleCompleteReview}
         >
           <CheckCircle size={16} className="mr-1" />
           Complete Review

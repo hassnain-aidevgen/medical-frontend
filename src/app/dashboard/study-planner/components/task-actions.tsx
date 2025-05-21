@@ -17,6 +17,7 @@ interface TaskActionsProps {
   activity: string
   weekNumber: number
   dayOfWeek: string
+  date: string
   onStatusChange: (
     taskId: string,
     subject: string,
