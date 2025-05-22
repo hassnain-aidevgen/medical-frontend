@@ -596,113 +596,111 @@ const PlannerForm: React.FC = () => {
     }, updateInterval)
   }
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault()
+ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+  e.preventDefault()
 
-    // Validate final step
-    if (!validateStep(currentStep)) {
-      return
-    }
-
-    setIsSubmitting(true)
-    setApiError(null)
-    simulateProgress()
-
-    console.log("Form data before submission:", formData)
-
-    // Prepare data for submission that's compatible with the existing API
-    const submissionData = {
-      name: formData.name,
-      email: formData.email,
-      currentLevel: formData.currentLevel,
-      targetExam: formData.targetExam,
-      examDate: formData.examDate,
-      // Ensure strongSubjects is never empty, use default if empty
-      strongSubjects: formData.strongSubjects.length > 0 ? formData.strongSubjects : ["Anatomy"], // Default to Anatomy if no strong subjects selected
-      weakSubjects: formData.usePerformanceData ? formData.weakTopics : formData.weakSubjects,
-      availableHours: formData.availableHours,
-      daysPerWeek: formData.daysPerWeek,
-      preferredLearningStyle: formData.preferredLearningStyle,
-      targetScore: formData.targetScore,
-      specificGoals: formData.specificGoals,
-      additionalInfo:
-        formData.additionalInfo + (formData.usePerformanceData ? "\n[Using performance data for weak topics]" : ""),
-      previousScores: formData.previousScores,
-    }
-
-    // Save user data to localStorage
-    // localStorage.setItem("userData", JSON.stringify(formData)) // Save the full data for our UI
-    const userId = localStorage.getItem("Medical_User_Id")
-
-    console.log("Request data to ai planer:", submissionData)
-
-    try {
-      const response = await axios.post(
-        `https://medical-backend-loj4.onrender.com/api/ai-planner/generatePlan?userId=${userId}`,
-        submissionData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
-      )
-
-      const result = response.data
-
-      if (response.status !== 200) {
-        throw new Error(result.error || "Failed to generate plan")
-      }
-
-      // Set progress to 100% when done
-      setGenerationProgress(100)
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current)
-      }
-
-      // Store the study plan data
-      const planData = result.data as StudyPlanResponse
-
-
-      // Add study plan tasks to calendar
-      await addPlanTasksToCalendar(planData)
-      localStorage.removeItem("currentPlanId");
-
-      // Save only the plan ID to localStorage
-      if (result.data && result.data.planId) {
-        localStorage.setItem("currentPlanId", result.data.planId)
-
-      }
-
-      // Refresh the user plans list
-      fetchUserPlans()
-
-      // Show success message
-      setTimeout(() => {
-        setStudyPlan(planData)
-        setShowSuccess(true)
-      }, 3000);
-
-    } catch (error) {
-      console.error("Error generating plan:", error)
-
-      // Add more detailed error logging
-      if (axios.isAxiosError(error)) {
-        console.error("API Error Response:", error.response?.data)
-        console.error("API Error Status:", error.response?.status)
-        setApiError(`Error ${error.response?.status}: ${error.response?.data?.message || error.message}`)
-      } else {
-        setApiError((error as Error).message || "Failed to generate study plan. Please try again.")
-      }
-
-      // Clear progress interval on error
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current)
-      }
-    } finally {
-      setIsSubmitting(false)
-    }
+  // Validate final step
+  if (!validateStep(currentStep)) {
+    return
   }
 
+  setIsSubmitting(true)
+  setApiError(null)
+  simulateProgress()
+
+  console.log("Form data before submission:", formData)
+
+  // Prepare data for submission that's compatible with the existing API
+  const submissionData = {
+    name: formData.name,
+    email: formData.email,
+    currentLevel: formData.currentLevel,
+    targetExam: formData.targetExam,
+    examDate: formData.examDate,
+    // Ensure strongSubjects is never empty, use default if empty
+    strongSubjects: formData.strongSubjects.length > 0 ? formData.strongSubjects : ["Anatomy"],
+    // FIXED: Always use the current formData.weakSubjects which reflects user's final selection
+    // This includes both performance-based auto-selection AND user modifications
+    weakSubjects: formData.weakSubjects,
+    availableHours: formData.availableHours,
+    daysPerWeek: formData.daysPerWeek,
+    preferredLearningStyle: formData.preferredLearningStyle,
+    targetScore: formData.targetScore,
+    specificGoals: formData.specificGoals,
+    additionalInfo:
+      formData.additionalInfo + (formData.usePerformanceData ? "\n[Performance data was used as initial selection]" : ""),
+    previousScores: formData.previousScores,
+  }
+
+  // Save user data to localStorage
+  const userId = localStorage.getItem("Medical_User_Id")
+
+  console.log("Request data to ai planer:", submissionData)
+
+  try {
+    const response = await axios.post(
+      `https://medical-backend-loj4.onrender.com/api/ai-planner/generatePlan?userId=${userId}`,
+      submissionData,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    )
+
+    const result = response.data
+
+    if (response.status !== 200) {
+      throw new Error(result.error || "Failed to generate plan")
+    }
+
+    // Set progress to 100% when done
+    setGenerationProgress(100)
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current)
+    }
+
+    // Store the study plan data
+    const planData = result.data as StudyPlanResponse
+
+    // Add study plan tasks to calendar
+    await addPlanTasksToCalendar(planData)
+    localStorage.removeItem("currentPlanId");
+
+    // Save only the plan ID to localStorage
+    if (result.data && result.data.planId) {
+      localStorage.setItem("currentPlanId", result.data.planId)
+    }
+
+    // Refresh the user plans list
+    fetchUserPlans()
+
+    // Show success message
+    setTimeout(() => {
+      setStudyPlan(planData)
+      setShowSuccess(true)
+    }, 3000);
+
+  } catch (error) {
+    console.error("Error generating plan:", error)
+
+    // Add more detailed error logging
+    if (axios.isAxiosError(error)) {
+      console.error("API Error Response:", error.response?.data)
+      console.error("API Error Status:", error.response?.status)
+      setApiError(`Error ${error.response?.status}: ${error.response?.data?.message || error.message}`)
+    } else {
+      setApiError((error as Error).message || "Failed to generate study plan. Please try again.")
+    }
+
+    // Clear progress interval on error
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current)
+    }
+  } finally {
+    setIsSubmitting(false)
+  }
+}
   // Animation variants for page transitions
   const pageVariants = {
     initial: (direction: "left" | "right") => ({
