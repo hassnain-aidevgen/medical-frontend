@@ -11,11 +11,16 @@ interface Task {
   subject: string
   duration: number
   activity: string
+  status?: string // Add status field
+  _id?: string
 }
 
 interface Day {
   dayOfWeek: string
   tasks: Task[]
+  status?: string
+  completedTasks?: number
+  totalTasks?: number
 }
 
 interface WeeklyPlan {
@@ -23,6 +28,18 @@ interface WeeklyPlan {
   theme: string
   focusAreas: string[]
   days: Day[]
+}
+
+interface WeeklyProgress {
+  weekNumber: number
+  completed: boolean
+  completedTasks: number
+  totalTasks: number
+}
+
+interface CompletionStatus {
+  weeklyProgress: WeeklyProgress[]
+  overallProgress: number
 }
 
 interface UserData {
@@ -35,135 +52,110 @@ interface UserData {
   }
 }
 
-interface TaskPerformance {
-  weekNumber: number
-  dayOfWeek: string
-  subject: string
-  activity: string
-  status: "completed" | "incomplete" | "not-understood" | "skipped"
-  taskId: string
-  timestamp: number
-}
-
-interface PerformanceData {
-  tasks: Record<string, TaskPerformance>
-  lastUpdated: number
-}
-
 interface StudyProgressBarProps {
   weeklyPlans: WeeklyPlan[]
   userData: UserData
-  planId?: string // Make planId optional to maintain compatibility
+  planId?: string
+  completionStatus?: CompletionStatus // Add completion status prop
 }
 
-export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans, userData, planId }) => {
+export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ 
+  weeklyPlans, 
+  userData, 
+  planId, 
+  completionStatus 
+}) => {
   const [progress, setProgress] = useState<number>(0)
   const [completedTasks, setCompletedTasks] = useState<number>(0)
   const [totalTasks, setTotalTasks] = useState<number>(0)
   const [daysCompleted, setDaysCompleted] = useState<number>(0)
   const [totalDays, setTotalDays] = useState<number>(0)
+  const [weeklyProgress, setWeeklyProgress] = useState<WeeklyProgress[]>([])
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
-  const [performanceData, setPerformanceData] = useState<PerformanceData>({ tasks: {}, lastUpdated: Date.now() })
 
-  // Load performance data from database
-  const loadPerformanceData = useCallback(async () => {
-    try {
-      if (planId) {
-        const response = await fetch(`https://medical-backend-loj4.onrender.com/api/ai-planner/getTaskPerformance/${planId}`);
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success) {
-            // Convert database format to component format
-            const convertedData: PerformanceData = {
-              tasks: result.taskPerformance || {},
-              lastUpdated: Date.now()
-            };
-            setPerformanceData(convertedData);
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error loading performance data:", error);
-    }
-  }, [planId]);
-
-  // Wrap calculateProgress in useCallback to prevent it from being recreated on every render
-  const calculateProgress = useCallback(() => {
-    // Calculate total tasks and completed tasks
-    let completed = 0
-    let total = 0
-    let completedDays = 0
-    let totalDaysCount = 0
-
-    // Track days that have at least one task
-    const daysWithTasks = new Set<string>()
-    const completedDaysSet = new Set<string>()
-
-    // Count tasks from performance data
-    if (performanceData && performanceData.tasks) {
-      Object.values(performanceData.tasks).forEach((task: TaskPerformance) => {
-        total++
-        if (task.status === "completed") {
-          completed++
-        }
-
-        // Track unique days
-        const dayKey = `${task.weekNumber}-${task.dayOfWeek}`
-        daysWithTasks.add(dayKey)
-
-        // Check if all tasks for this day are completed
-        const dayTasks = Object.values(performanceData.tasks).filter(
-          (t: TaskPerformance) => t.weekNumber === task.weekNumber && t.dayOfWeek === task.dayOfWeek,
-        )
-
-        const allDayTasksCompleted = dayTasks.every((t: TaskPerformance) => t.status === "completed")
-        if (allDayTasksCompleted) {
-          completedDaysSet.add(dayKey)
-        }
-      })
-    }
-
-    // If no tasks in performance data yet, count from the study plan
-    if (total === 0 && weeklyPlans) {
-      weeklyPlans.forEach((week) => {
+  // Calculate progress from completion status
+  const calculateProgressFromCompletionStatus = useCallback(() => {
+    if (completionStatus) {
+      console.log("Using completion status from backend:", completionStatus);
+      
+      // Use the backend calculated progress
+      setProgress(completionStatus.overallProgress || 0);
+      
+      // Calculate totals from weekly progress
+      const totalTasksCount = completionStatus.weeklyProgress.reduce((sum, week) => sum + week.totalTasks, 0);
+      const completedTasksCount = completionStatus.weeklyProgress.reduce((sum, week) => sum + week.completedTasks, 0);
+      
+      setTotalTasks(totalTasksCount);
+      setCompletedTasks(completedTasksCount);
+      setWeeklyProgress(completionStatus.weeklyProgress);
+      
+      // Calculate completed days from the actual plan structure
+      let completedDaysCount = 0;
+      let totalDaysCount = 0;
+      
+      weeklyPlans.forEach(week => {
         if (week.days) {
-          week.days.forEach((day: Day) => {
-            if (day.tasks) {
-              total += day.tasks.length
-
-              // Track unique days
-              const dayKey = `${week.weekNumber}-${day.dayOfWeek}`
-              daysWithTasks.add(dayKey)
+          week.days.forEach(day => {
+            totalDaysCount++;
+            // Check if day is completed based on tasks
+            if (day.status === 'completed' || 
+                (day.completedTasks && day.totalTasks && day.completedTasks === day.totalTasks)) {
+              completedDaysCount++;
             }
-          })
+          });
         }
-      })
+      });
+      
+      setDaysCompleted(completedDaysCount);
+      setTotalDays(totalDaysCount);
+      
+    } else {
+      // Fallback to manual calculation if no completion status
+      calculateProgressManually();
     }
+  }, [completionStatus, weeklyPlans]);
 
-    // Calculate days completed
-    completedDays = completedDaysSet.size
-    totalDaysCount = daysWithTasks.size
+  // Fallback manual calculation
+  const calculateProgressManually = useCallback(() => {
+    let completed = 0;
+    let total = 0;
+    let completedDays = 0;
+    let totalDaysCount = 0;
 
-    // Calculate progress percentage
-    let progressPercentage = 0
-    if (total > 0) {
-      progressPercentage = Math.round((completed / total) * 100)
-    }
+    weeklyPlans.forEach((week) => {
+      if (week.days) {
+        week.days.forEach((day: Day) => {
+          totalDaysCount++;
+          
+          if (day.tasks) {
+            total += day.tasks.length;
+            
+            // Count completed tasks in this day
+            const dayCompletedTasks = day.tasks.filter(task => task.status === 'completed').length;
+            completed += dayCompletedTasks;
+            
+            // Check if day is completed
+            if (dayCompletedTasks === day.tasks.length && day.tasks.length > 0) {
+              completedDays++;
+            }
+          }
+        });
+      }
+    });
 
-    setProgress(progressPercentage)
-    setCompletedTasks(completed)
-    setTotalTasks(total)
-    setDaysCompleted(completedDays)
-    setTotalDays(totalDaysCount)
-  }, [weeklyPlans, performanceData])
+    const progressPercentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    
+    setProgress(progressPercentage);
+    setCompletedTasks(completed);
+    setTotalTasks(total);
+    setDaysCompleted(completedDays);
+    setTotalDays(totalDaysCount);
+  }, [weeklyPlans]);
 
+  // Update progress when completion status changes
   useEffect(() => {
-    loadPerformanceData();
-  }, [loadPerformanceData]);
-
-  useEffect(() => {
-    calculateProgress()
-  }, [calculateProgress])
+    calculateProgressFromCompletionStatus();
+  }, [calculateProgressFromCompletionStatus]);
 
   // Get color based on progress
   const getProgressColor = () => {
@@ -178,6 +170,8 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
 
     const today = new Date()
     const daysLeft = totalDays - daysCompleted
+
+    if (daysLeft <= 0) return "Completed!"
 
     // Calculate days per week the user studies
     const daysPerWeek = userData.daysPerWeek || 5
@@ -196,8 +190,8 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
     })
   }
 
-  // New function to refresh progress from calendar data
-  const refreshFromCalendar = async () => {
+  // Refresh progress from backend
+  const refreshFromBackend = async () => {
     if (!planId) {
       toast.error("No plan ID available")
       return
@@ -205,21 +199,20 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
 
     setIsRefreshing(true)
     try {
-      // Call the backend endpoint to refresh completion status
-      const response = await axios.put(
-        `https://medical-backend-loj4.onrender.com/api/ai-planner/refreshCompletionStatus/${planId}`
-      )
-
+      // Get fresh data from backend
+      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/ai-planner/getStudyPlan/${planId}`);
+      
       if (response.data.success) {
-        // Reload performance data from database
-        await loadPerformanceData()
-        toast.success("Progress synced with calendar data")
+        // The parent component should handle this update
+        toast.success("Progress refreshed successfully")
+        // Force recalculation
+        calculateProgressFromCompletionStatus();
       } else {
-        toast.error(response.data.message || "Failed to update progress")
+        toast.error("Failed to refresh progress")
       }
     } catch (error) {
-      console.error("Error refreshing completion status:", error)
-      toast.error("Failed to sync progress with calendar data")
+      console.error("Error refreshing progress:", error)
+      toast.error("Failed to refresh progress")
     } finally {
       setIsRefreshing(false)
     }
@@ -236,12 +229,12 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
         {/* Add refresh button when planId is available */}
         {planId && (
           <button
-            onClick={refreshFromCalendar}
+            onClick={refreshFromBackend}
             disabled={isRefreshing}
             className="flex items-center px-3 py-1.5 text-xs bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors disabled:opacity-50"
           >
             <RefreshCw size={14} className={`mr-1 ${isRefreshing ? "animate-spin" : ""}`} />
-            {isRefreshing ? "Syncing..." : "Sync Progress"}
+            {isRefreshing ? "Refreshing..." : "Refresh"}
           </button>
         )}
       </div>
@@ -258,6 +251,33 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
           ></div>
         </div>
       </div>
+
+      {/* Weekly Progress Breakdown */}
+      {weeklyProgress.length > 0 && (
+        <div className="mb-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Weekly Breakdown</h4>
+          <div className="space-y-2">
+            {weeklyProgress.map((week) => (
+              <div key={week.weekNumber} className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Week {week.weekNumber}</span>
+                <div className="flex items-center">
+                  <span className="text-gray-500 mr-2">
+                    {week.completedTasks}/{week.totalTasks}
+                  </span>
+                  <div className="w-16 bg-gray-100 h-2 rounded-full overflow-hidden">
+                    <div
+                      className={`h-2 ${week.completed ? 'bg-green-500' : 'bg-blue-500'} transition-all duration-300`}
+                      style={{ 
+                        width: `${week.totalTasks > 0 ? (week.completedTasks / week.totalTasks) * 100 : 0}%` 
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div className="bg-blue-50 p-3 rounded-lg">
@@ -296,7 +316,7 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({ weeklyPlans,
       </div>
 
       <div className="text-xs text-gray-500 italic">
-        Progress is calculated based on completed tasks and study days. Click &quot;Sync Progress&quot; to update from calendar data.
+        Progress is calculated based on completed tasks. Last updated: {new Date().toLocaleTimeString()}
       </div>
     </div>
   )

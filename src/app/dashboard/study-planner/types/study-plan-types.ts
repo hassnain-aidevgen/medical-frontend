@@ -11,6 +11,7 @@ export interface StudyPlanResource {
 }
 
 export interface StudyPlanTask {
+  _id: any;
   details: string;
   subject: string;
   duration: number;
@@ -89,6 +90,7 @@ export interface StudyPlanMetadata {
 }
 
 export interface StudyPlanResponse {
+  completionStatus: any;
   planId: null;
   plan: StudyPlanData;
   metadata: StudyPlanMetadata;

@@ -482,7 +482,7 @@ const PlannerForm: React.FC = () => {
           for (const task of day.tasks) {
             try {
               // Add the task to the calendar using the new endpoint and data structure
-              await axios.post("https://medical-backend-loj4.onrender.com/api/ai-planner/add_ai_plan_to_calender", {
+              await axios.post("ttps://medical-backend-loj4.onrender.com/api/ai-planner/add_ai_plan_to_calender", {
                 userId: userId,
                 subjectName: task.subject,
                 testTopic: `${task.activity}`,

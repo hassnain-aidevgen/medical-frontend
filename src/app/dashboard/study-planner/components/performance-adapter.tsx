@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react"
 
 // Add these type definitions after the imports
 interface Task {
+  _id: string
+  status: any
   subject: string
   duration: number
   activity: string
@@ -29,6 +31,7 @@ interface Week {
 }
 
 export interface StudyPlan {
+  taskPerformance: any
   plan: {
     weeklyPlans: Week[]
   }
@@ -218,81 +221,114 @@ export const usePerformanceAdapter = (
   }
 
   // Function to handle task status change
-  const handleTaskStatusChange = async (taskId: string | number, status: TaskStatus) => {
-    const parts = String(taskId).split("-")
-    if (parts.length >= 4) {
-      const weekNumber = Number.parseInt(parts[0])
-      const dayOfWeek = parts[1]
-      const subject = parts[2]
-      const activity = parts.slice(3).join("-")
+ // Update handleTaskStatusChange in performance-adapter.tsx
+// Update handleTaskStatusChange in performance-adapter.tsx
+const handleTaskStatusChange = async (taskId: string | number, status: TaskStatus) => {
+  console.log("Frontend: Updating task status", { taskId, status });
+  
+  // Update local state immediately for instant feedback
+  setTaskStatuses((prev) => ({
+    ...prev,
+    [taskId]: status,
+  }));
 
-      // Update local state immediately
-      setTaskStatuses((prev) => ({
-        ...prev,
-        [taskId]: status,
-      }))
+  // Save to database
+  try {
+    const planId = localStorage.getItem("currentPlanId");
+    if (planId) {
+      const response = await fetch(`https://medical-backend-loj4.onrender.com/api/ai-planner/updateTaskStatus/${planId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          taskId: taskId,
+          status
+        }),
+      });
 
-      // Save to database instead of localStorage
-      try {
-        const planId = localStorage.getItem("currentPlanId");
-        if (planId) {
-          const response = await fetch(`https://medical-backend-loj4.onrender.com/api/ai-planner/updateTaskStatus/${planId}`, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              taskId,
-              status,
-              weekNumber,
-              dayOfWeek,
-              subject,
-              activity
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error("Failed to update task status");
-          }
-
-          const result = await response.json();
-          console.log("Task status updated successfully");
-        }
-      } catch (error) {
-        console.error("Error updating task status:", error);
-        // Revert local state on error
-        setTaskStatuses((prev) => ({
-          ...prev,
-          [taskId]: "incomplete" as TaskStatus,
-        }))
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Backend error:", errorData);
+        throw new Error(`Failed to update task status: ${errorData.message}`);
       }
 
-      // Update completion status
-      if (status === "completed") {
-        updateTaskCompletion(subject, activity, true)
-      } else {
-        updateTaskCompletion(subject, activity, false)
+      const result = await response.json();
+      console.log("Backend response:", result);
+
+      // IMPORTANT: Update the study plan with the latest data from backend
+      if (result.updatedPlan && studyPlan) {
+        console.log("Updating study plan with backend data");
+        const updatedStudyPlan = { 
+          ...studyPlan,
+          plan: result.updatedPlan,
+          completionStatus: result.completionStatus,
+          taskPerformance: result.taskPerformance
+        };
+        onPlanUpdate(updatedStudyPlan);
       }
 
-      // Check if replanning is needed
-      if (status === "not-understood" || status === "skipped") {
-        setNeedsReplanning(true)
+      // Update local task statuses with the backend data
+      if (result.taskPerformance) {
+        const newStatuses: { [key: string]: TaskStatus } = {};
+        Object.entries(result.taskPerformance).forEach(([taskId, taskData]: [string, any]) => {
+          newStatuses[taskId] = taskData.status;
+        });
+        setTaskStatuses(prev => ({ ...prev, ...newStatuses }));
+      }
+
+      // Force a re-render by updating the current week
+      if (currentWeekNumber) {
+        setCurrentWeekNumber(currentWeekNumber);
       }
     }
+  } catch (error) {
+    console.error("Error updating task status:", error);
+    // Revert local state on error
+    setTaskStatuses((prev) => ({
+      ...prev,
+      [taskId]: "incomplete" as TaskStatus,
+    }));
   }
+
+  // Check if replanning is needed
+  if (status === "not-understood" || status === "skipped") {
+    setNeedsReplanning(true);
+  }
+};
 
   // Function to get task status
-  const getTaskStatus = (weekNumber: number, dayOfWeek: string, subject: string, activity: string): TaskStatus => {
-    const taskId = `${weekNumber}-${dayOfWeek}-${subject}-${activity}`
-
-    // Check in our state first
-    if (taskStatuses[taskId]) {
-      return taskStatuses[taskId]
+// Update getTaskStatus in performance-adapter.tsx
+const getTaskStatus = (taskId: string, subject?: string, activity?: string): TaskStatus => {
+  // First, check if the task has a status in the actual plan structure
+  if (studyPlan && studyPlan.plan && studyPlan.plan.weeklyPlans) {
+    for (const week of studyPlan.plan.weeklyPlans) {
+      for (const day of week.days) {
+        const task = day.tasks?.find(t => t._id === taskId);
+        if (task && task.status) {
+          console.log("Found task status in plan:", task.status, "for task:", taskId);
+          return task.status;
+        }
+      }
     }
-
-    // Default to incomplete (database data will be loaded separately)
-    return "incomplete"
   }
+
+  // Then check in our local state
+  if (taskStatuses[taskId]) {
+    console.log("Found task status in local state:", taskStatuses[taskId], "for task:", taskId);
+    return taskStatuses[taskId];
+  }
+
+  // Finally check taskPerformance if available
+  if (studyPlan && studyPlan.taskPerformance && studyPlan.taskPerformance[taskId]) {
+    console.log("Found task status in taskPerformance:", studyPlan.taskPerformance[taskId].status, "for task:", taskId);
+    return studyPlan.taskPerformance[taskId].status;
+  }
+
+  // Default to incomplete
+  console.log("No status found, defaulting to incomplete for task:", taskId);
+  return "incomplete";
+};
 
   // Function to apply replanning
   const applyReplanning = async () => {
@@ -347,6 +383,8 @@ export const usePerformanceAdapter = (
               activity: `Review: ${task.activity}`,
               duration: 30, // Default duration for review
               isReview: true,
+              _id: "",
+              status: undefined
             }
 
             // Add the task to the target day

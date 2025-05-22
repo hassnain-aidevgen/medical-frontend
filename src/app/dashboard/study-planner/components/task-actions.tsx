@@ -2,14 +2,12 @@
 
 import { CheckCircle, HelpCircle, XCircle } from "lucide-react";
 import type React from "react";
-// import type { TaskStatus } from "./performance-adapter"
 
 type TaskStatus =
   | "completed"
   | "incomplete"
   | "not-understood"
   | "skipped";
-
 
 interface TaskActionsProps {
   taskId: string
@@ -38,10 +36,20 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
   onStatusChange,
   currentStatus = "incomplete",
 }) => {
+  
+  // Add debugging
+  console.log("TaskActions - Received taskId:", taskId);
+  console.log("TaskActions - Task subject:", subject);
+  
+  const handleStatusChange = (status: TaskStatus) => {
+    console.log("TaskActions - Calling onStatusChange with taskId:", taskId, "status:", status);
+    onStatusChange(taskId, subject, activity, weekNumber, dayOfWeek, status);
+  };
+
   return (
     <div className="flex justify-end gap-2 mt-3">
       <button
-        onClick={() => onStatusChange(taskId, subject, activity, weekNumber, dayOfWeek, "completed")}
+        onClick={() => handleStatusChange("completed")}
         className={`p-1.5 rounded-full transition-colors ${currentStatus === "completed"
           ? "bg-green-500 text-white"
           : "bg-gray-100 text-gray-500 hover:bg-green-100 hover:text-green-600"
@@ -51,7 +59,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
         <CheckCircle size={16} />
       </button>
       <button
-        onClick={() => onStatusChange(taskId, subject, activity, weekNumber, dayOfWeek, "not-understood")}
+        onClick={() => handleStatusChange("not-understood")}
         className={`p-1.5 rounded-full transition-colors ${currentStatus === "not-understood"
           ? "bg-amber-500 text-white"
           : "bg-gray-100 text-gray-500 hover:bg-amber-100 hover:text-amber-600"
@@ -61,7 +69,7 @@ export const TaskActions: React.FC<TaskActionsProps> = ({
         <HelpCircle size={16} />
       </button>
       <button
-        onClick={() => onStatusChange(taskId, subject, activity, weekNumber, dayOfWeek, "skipped")}
+        onClick={() => handleStatusChange("skipped")}
         className={`p-1.5 rounded-full transition-colors ${currentStatus === "skipped"
           ? "bg-red-500 text-white"
           : "bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600"

@@ -439,13 +439,15 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
         </div>
       </div>
 
-      {plan && plan.plan && plan.plan.weeklyPlans && (
-        <StudyProgressBar
-          weeklyPlans={plan.plan.weeklyPlans}
-          userData={userData}
-          planId={plan.planId || ""} // Pass the planId to enable refresh functionality
-        />
-      )}
+   {plan && plan.plan && plan.plan.weeklyPlans && (
+  <StudyProgressBar
+    key={`progress-${studyPlan.completionStatus?.overallProgress || 0}-${Date.now()}`}
+    weeklyPlans={studyPlan.plan.weeklyPlans}
+    userData={userData}
+    planId={studyPlan.planId || ""}
+    completionStatus={studyPlan.completionStatus} // Pass the actual completion status
+  />
+)}
 
       <div className="bg-white p-4 rounded-lg border shadow-sm mt-6">
         <div className="flex items-center mb-4">
@@ -584,8 +586,8 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
 
               <div className="space-y-4">
                 {day.tasks?.map((task, taskIndex) => {
-                  const taskId = generateTaskId(currentWeek.weekNumber, day.dayOfWeek, task.subject, task.activity)
-                  const status = getTaskStatus(currentWeek.weekNumber, day.dayOfWeek, task.subject, task.activity) as
+                  const taskId = task._id;
+                  const status = getTaskStatus(task._id, task.subject, task.activity) as
                     | "completed"
                     | "incomplete"
                     | "not-understood"
