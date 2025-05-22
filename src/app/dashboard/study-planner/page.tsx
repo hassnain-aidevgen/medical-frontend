@@ -290,54 +290,54 @@ const PlannerForm: React.FC = () => {
     })
   }
 
- const validateStep = (step: number) => {
-  const newErrors: FormErrors = {}
+  const validateStep = (step: number) => {
+    const newErrors: FormErrors = {}
 
-  switch (step) {
-    case 1:
-      if (!formData.name.trim()) newErrors.name = "Name is required"
-      if (!formData.email.trim()) {
-        newErrors.email = "Email is required"
-      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-        newErrors.email = "Email is invalid"
-      }
-      break
-
-    case 2:
-      if (!formData.targetExam) newErrors.targetExam = "Target exam is required"
-      if (!formData.examDate) {
-        newErrors.examDate = "Exam date is required"
-      } else if (formData.examDate) {
-        const examDate = new Date(formData.examDate)
-        const today = new Date()
-        if (examDate < today) {
-          newErrors.examDate = "Exam date cannot be in the past"
+    switch (step) {
+      case 1:
+        if (!formData.name.trim()) newErrors.name = "Name is required"
+        if (!formData.email.trim()) {
+          newErrors.email = "Email is required"
+        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+          newErrors.email = "Email is invalid"
         }
-      }
-      break
+        break
 
-    case 3:
-      // FIXED: Always require at least one strong and one weak subject
-      if (formData.strongSubjects.length === 0) {
-        newErrors.strongSubjects = "Select at least one strong subject"
-      }
-      if (formData.weakSubjects.length === 0) {
-        newErrors.weakSubjects = "Select at least one weak subject"
-      }
-      break
+      case 2:
+        if (!formData.targetExam) newErrors.targetExam = "Target exam is required"
+        if (!formData.examDate) {
+          newErrors.examDate = "Exam date is required"
+        } else if (formData.examDate) {
+          const examDate = new Date(formData.examDate)
+          const today = new Date()
+          if (examDate < today) {
+            newErrors.examDate = "Exam date cannot be in the past"
+          }
+        }
+        break
 
-    case 4:
-      // These fields have default values, so no validation needed
-      break
+      case 3:
+        // FIXED: Always require at least one strong and one weak subject
+        if (formData.strongSubjects.length === 0) {
+          newErrors.strongSubjects = "Select at least one strong subject"
+        }
+        if (formData.weakSubjects.length === 0) {
+          newErrors.weakSubjects = "Select at least one weak subject"
+        }
+        break
 
-    case 5:
-      // Optional fields, no validation needed
-      break
+      case 4:
+        // These fields have default values, so no validation needed
+        break
+
+      case 5:
+        // Optional fields, no validation needed
+        break
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
   }
-
-  setErrors(newErrors)
-  return Object.keys(newErrors).length === 0
-}
   const nextStep = (): void => {
     if (validateStep(currentStep)) {
       setAnimateDirection("right")
@@ -355,50 +355,50 @@ const PlannerForm: React.FC = () => {
     setCurrentStep((prev) => prev - 1)
   }
 
-const fetchPerformanceData = async () => {
-  const userId = localStorage.getItem("Medical_User_Id")
-  if (!userId) return
+  const fetchPerformanceData = async () => {
+    const userId = localStorage.getItem("Medical_User_Id")
+    if (!userId) return
 
-  setIsLoadingPerformanceData(true)
+    setIsLoadingPerformanceData(true)
 
-  try {
-    const response = await axios.get(
-      `https://medical-backend-loj4.onrender.com/api/ai-planner/get-performance-for-aiplanner/${userId}`,
-      {
-        params: {
-          targetExam: formData.targetExam,
-          currentLevel: formData.currentLevel
+    try {
+      const response = await axios.get(
+        `https://medical-backend-loj4.onrender.com/api/ai-planner/get-performance-for-aiplanner/${userId}`,
+        {
+          params: {
+            targetExam: formData.targetExam,
+            currentLevel: formData.currentLevel
+          }
         }
+      )
+
+      if (response.data.success && response.data.data.weakTopics) {
+        const weakTopicsData = response.data.data.weakTopics
+
+        console.log("Weak topics data:", weakTopicsData)
+        setWeakTopics(weakTopicsData)
+
+        // Extract subject names for weak subjects only (don't auto-select strong subjects)
+        const subjectNames = weakTopicsData
+          .filter((topic: { name: string | string[] }) => !topic.name.includes(':')) // Only main subjects, not sub-topics
+          .map((topic: { name: any }) => topic.name)
+
+        // FIXED: Only auto-select weak subjects from performance data
+        // Don't automatically select remaining subjects as strong
+        setFormData(prev => ({
+          ...prev,
+          weakSubjects: subjectNames,
+          // Remove auto-selection of strong subjects - let user choose manually
+          weakTopics: weakTopicsData.map((topic: { name: any }) => topic.name),
+          usePerformanceData: true,
+        }))
       }
-    )
-
-    if (response.data.success && response.data.data.weakTopics) {
-      const weakTopicsData = response.data.data.weakTopics
-
-      console.log("Weak topics data:", weakTopicsData)
-      setWeakTopics(weakTopicsData)
-
-      // Extract subject names for weak subjects only (don't auto-select strong subjects)
-      const subjectNames = weakTopicsData
-        .filter((topic: { name: string | string[] }) => !topic.name.includes(':')) // Only main subjects, not sub-topics
-        .map((topic: { name: any }) => topic.name)
-
-      // FIXED: Only auto-select weak subjects from performance data
-      // Don't automatically select remaining subjects as strong
-      setFormData(prev => ({
-        ...prev,
-        weakSubjects: subjectNames,
-        // Remove auto-selection of strong subjects - let user choose manually
-        weakTopics: weakTopicsData.map((topic: { name: any }) => topic.name),
-        usePerformanceData: true,
-      }))
+    } catch (error) {
+      console.error("Error fetching AI planner performance data:", error)
+    } finally {
+      setIsLoadingPerformanceData(false)
     }
-  } catch (error) {
-    console.error("Error fetching AI planner performance data:", error)
-  } finally {
-    setIsLoadingPerformanceData(false)
   }
-}
 
   const loadExistingPlan = async (planId?: string) => {
     try {
@@ -460,11 +460,16 @@ const fetchPerformanceData = async () => {
             console.warn(`No date found for day: ${day.dayOfWeek}`)
             continue
           }
+
           // Process each task for this day
           for (const task of day.tasks) {
+         
+            console.log("task._id:", task._id);
+     
             try {
+
               // Add the task to the calendar using the new endpoint and data structure
-              await axios.post("ttps://medical-backend-loj4.onrender.com/api/ai-planner/add_ai_plan_to_calender", {
+              await axios.post("https://medical-backend-loj4.onrender.com/api/ai-planner/add_ai_plan_to_calender", {
                 userId: userId,
                 subjectName: task.subject,
                 testTopic: `${task.activity}`,
@@ -472,6 +477,7 @@ const fetchPerformanceData = async () => {
                 color: getSubjectColor(task.subject),
                 completed: false,
                 planId: planData.planId || null,
+                aiPlanTaskId: task._id,
                 taskType: "study",
                 duration: 60, // Default duration in minutes
                 priority: "medium", // Default priority
@@ -578,109 +584,115 @@ const fetchPerformanceData = async () => {
     }, updateInterval)
   }
 
-const handleSubmit = async (e: { preventDefault: () => void }) => {
-  e.preventDefault()
+  const handleSubmit = async (e: { preventDefault: () => void }) => {
+    e.preventDefault()
 
-  // Validate final step
-  if (!validateStep(currentStep)) {
-    return
-  }
+    // Validate final step
+    if (!validateStep(currentStep)) {
+      return
+    }
 
-  setIsSubmitting(true)
-  setApiError(null)
-  simulateProgress()
+    setIsSubmitting(true)
+    setApiError(null)
+    simulateProgress()
 
-  console.log("Form data before submission:", formData)
+    console.log("Form data before submission:", formData)
 
-  // FIXED: Create a deep copy to avoid mutation during submission
-  const submissionData = {
-    name: formData.name,
-    email: formData.email,
-    currentLevel: formData.currentLevel,
-    targetExam: formData.targetExam,
-    examDate: formData.examDate,
-    // FIXED: Use the current formData values directly without modification
-    strongSubjects: [...formData.strongSubjects], // Create copy to avoid reference issues
-    weakSubjects: [...formData.weakSubjects], // Create copy to avoid reference issues
-    availableHours: formData.availableHours,
-    daysPerWeek: formData.daysPerWeek,
-    preferredLearningStyle: formData.preferredLearningStyle,
-    targetScore: formData.targetScore,
-    specificGoals: formData.specificGoals,
-    additionalInfo: formData.additionalInfo + (formData.usePerformanceData ? "\n[Performance data was used as initial selection]" : ""),
-    previousScores: formData.previousScores,
-  }
+    // FIXED: Create a deep copy to avoid mutation during submission
+    const submissionData = {
+      name: formData.name,
+      email: formData.email,
+      currentLevel: formData.currentLevel,
+      targetExam: formData.targetExam,
+      examDate: formData.examDate,
+      // FIXED: Use the current formData values directly without modification
+      strongSubjects: [...formData.strongSubjects], // Create copy to avoid reference issues
+      weakSubjects: [...formData.weakSubjects], // Create copy to avoid reference issues
+      availableHours: formData.availableHours,
+      daysPerWeek: formData.daysPerWeek,
+      preferredLearningStyle: formData.preferredLearningStyle,
+      targetScore: formData.targetScore,
+      specificGoals: formData.specificGoals,
+      additionalInfo: formData.additionalInfo + (formData.usePerformanceData ? "\n[Performance data was used as initial selection]" : ""),
+      previousScores: formData.previousScores,
+    }
 
-  const userId = localStorage.getItem("Medical_User_Id")
+    const userId = localStorage.getItem("Medical_User_Id")
 
-  console.log("Request data to ai planer:", submissionData)
+    console.log("Request data to ai planer:", submissionData)
 
-  try {
-    const response = await axios.post(
-      `https://medical-backend-loj4.onrender.com/api/ai-planner/generatePlan?userId=${userId}`,
-      submissionData,
-      {
-        headers: {
-          "Content-Type": "application/json",
+    try {
+      const response = await axios.post(
+        `https://medical-backend-loj4.onrender.com/api/ai-planner/generatePlan?userId=${userId}`,
+        submissionData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
         },
-      },
-    )
+      )
 
-    const result = response.data
+      const result = response.data
 
-    if (response.status !== 200) {
-      throw new Error(result.error || "Failed to generate plan")
-    }
-
-    // Set progress to 100% when done
-    setGenerationProgress(100)
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current)
-    }
-
-    // Store the study plan data
-    const planData = result.data
-
-    // Add study plan tasks to calendar
-    await addPlanTasksToCalendar(planData)
-    localStorage.removeItem("currentPlanId")
-
-    // Save only the plan ID to localStorage
-    if (result.data && result.data.planId) {
-      localStorage.setItem("currentPlanId", result.data.planId)
-    }
-
-    // Refresh the user plans list
-    fetchUserPlans()
-
-    // Show success message
-    setTimeout(() => {
-      setStudyPlan(planData)
-      setShowSuccess(true)
-    }, 3000)
-
-  } catch (error) {
-    console.error("Error generating plan:", error)
-
-    if (axios.isAxiosError(error)) {
-      console.error("API Error Response:", error.response?.data)
-      console.error("API Error Status:", error.response?.status)
-      setApiError(`Error ${error.response?.status}: ${error.response?.data?.message || error.message}`)
-    } else {
-      if (error instanceof Error) {
-        setApiError(error.message || "Failed to generate study plan. Please try again.")
-      } else {
-        setApiError("Failed to generate study plan. Please try again.")
+      if (response.status !== 200) {
+        throw new Error(result.error || "Failed to generate plan")
       }
-    }
 
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current)
+      // Set progress to 100% when done
+      setGenerationProgress(100)
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+      }
+
+      // Store the study plan data
+      const planData = result.data
+
+      // Add study plan tasks to calendar
+      console.log("Adding tasks to calendar...")
+      try {
+        await addPlanTasksToCalendar(planData)
+      } catch (error) {
+        console.error("Error adding tasks to calendar:", error)
+        toast.error("Failed to add tasks to calendar")
+      }
+      localStorage.removeItem("currentPlanId")
+
+      // Save only the plan ID to localStorage
+      if (result.data && result.data.planId) {
+        localStorage.setItem("currentPlanId", result.data.planId)
+      }
+
+      // Refresh the user plans list
+      fetchUserPlans()
+
+      // Show success message
+      setTimeout(() => {
+        setStudyPlan(planData)
+        setShowSuccess(true)
+      }, 3000)
+
+    } catch (error) {
+      console.error("Error generating plan:", error)
+
+      if (axios.isAxiosError(error)) {
+        console.error("API Error Response:", error.response?.data)
+        console.error("API Error Status:", error.response?.status)
+        setApiError(`Error ${error.response?.status}: ${error.response?.data?.message || error.message}`)
+      } else {
+        if (error instanceof Error) {
+          setApiError(error.message || "Failed to generate study plan. Please try again.")
+        } else {
+          setApiError("Failed to generate study plan. Please try again.")
+        }
+      }
+
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+      }
+    } finally {
+      setIsSubmitting(false)
     }
-  } finally {
-    setIsSubmitting(false)
   }
-}
   // Animation variants for page transitions
   const pageVariants = {
     initial: (direction: "left" | "right") => ({
