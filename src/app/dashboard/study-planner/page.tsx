@@ -290,66 +290,54 @@ const PlannerForm: React.FC = () => {
     })
   }
 
-  const validateStep = (step: number): boolean => {
-    const newErrors: FormErrors = {}
+ const validateStep = (step: number) => {
+  const newErrors: FormErrors = {}
 
-    switch (step) {
-      case 1:
-        if (!formData.name.trim()) newErrors.name = "Name is required"
-        if (!formData.email.trim()) {
-          newErrors.email = "Email is required"
-        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-          newErrors.email = "Email is invalid"
+  switch (step) {
+    case 1:
+      if (!formData.name.trim()) newErrors.name = "Name is required"
+      if (!formData.email.trim()) {
+        newErrors.email = "Email is required"
+      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+        newErrors.email = "Email is invalid"
+      }
+      break
+
+    case 2:
+      if (!formData.targetExam) newErrors.targetExam = "Target exam is required"
+      if (!formData.examDate) {
+        newErrors.examDate = "Exam date is required"
+      } else if (formData.examDate) {
+        const examDate = new Date(formData.examDate)
+        const today = new Date()
+        if (examDate < today) {
+          newErrors.examDate = "Exam date cannot be in the past"
         }
-        break
+      }
+      break
 
-      case 2:
-        if (!formData.targetExam) newErrors.targetExam = "Target exam is required"
-        // Add validation to require exam date
-        if (!formData.examDate) {
-          newErrors.examDate = "Exam date is required"
-        } else if (formData.examDate) {
-          const examDate = new Date(formData.examDate)
-          const today = new Date()
-          if (examDate < today) {
-            newErrors.examDate = "Exam date cannot be in the past"
-          }
-        }
-        break;
+    case 3:
+      // FIXED: Always require at least one strong and one weak subject
+      if (formData.strongSubjects.length === 0) {
+        newErrors.strongSubjects = "Select at least one strong subject"
+      }
+      if (formData.weakSubjects.length === 0) {
+        newErrors.weakSubjects = "Select at least one weak subject"
+      }
+      break
 
-      case 3:
-        // If not using performance data, require manual subject selection
-        if (!formData.usePerformanceData) {
-          if (formData.strongSubjects.length === 0) {
-            newErrors.strongSubjects = "Select at least one strong subject"
-          }
-          if (formData.weakSubjects.length === 0) {
-            newErrors.weakSubjects = "Select at least one weak subject"
-          }
-        } else {
-          // Even when using performance data, we need at least one strong subject
-          if (formData.strongSubjects.length === 0) {
-            setFormData((prev) => ({
-              ...prev,
-              strongSubjects: ["Anatomy"], // Default to Anatomy if no strong subjects selected
-            }))
-          }
-        }
-        break
+    case 4:
+      // These fields have default values, so no validation needed
+      break
 
-      case 4:
-        // These fields have default values, so no validation needed
-        break
-
-      case 5:
-        // Optional fields, no validation needed
-        break
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    case 5:
+      // Optional fields, no validation needed
+      break
   }
 
+  setErrors(newErrors)
+  return Object.keys(newErrors).length === 0
+}
   const nextStep = (): void => {
     if (validateStep(currentStep)) {
       setAnimateDirection("right")
@@ -367,56 +355,50 @@ const PlannerForm: React.FC = () => {
     setCurrentStep((prev) => prev - 1)
   }
 
-  const fetchPerformanceData = async () => {
-    const userId = localStorage.getItem("Medical_User_Id")
-    if (!userId) return
+const fetchPerformanceData = async () => {
+  const userId = localStorage.getItem("Medical_User_Id")
+  if (!userId) return
 
-    setIsLoadingPerformanceData(true)
+  setIsLoadingPerformanceData(true)
 
-    try {
-      // Use the new AI planner specific endpoint
-      const response = await axios.get(
-        `https://medical-backend-loj4.onrender.com/api/ai-planner/get-performance-for-aiplanner/${userId}`,
-        {
-          params: {
-            targetExam: formData.targetExam,
-            currentLevel: formData.currentLevel
-          }
+  try {
+    const response = await axios.get(
+      `https://medical-backend-loj4.onrender.com/api/ai-planner/get-performance-for-aiplanner/${userId}`,
+      {
+        params: {
+          targetExam: formData.targetExam,
+          currentLevel: formData.currentLevel
         }
-      )
-
-      if (response.data.success && response.data.data.weakTopics) {
-        const weakTopicsData = response.data.data.weakTopics
-
-        // Set weak topics
-        console.log("Weak topics data:", weakTopicsData)
-        setWeakTopics(weakTopicsData)
-
-        // Extract subject names for weak and strong subjects
-        const subjectNames = weakTopicsData
-          .filter((topic: { name: string | string[] }) => !topic.name.includes(':')) // Only main subjects, not sub-topics
-          .map((topic: { name: any }) => topic.name)
-
-        const strongSubjects = allSubjects.filter(subject =>
-          !subjectNames.includes(subject)
-        )
-
-        // Update form data
-        setFormData(prev => ({
-          ...prev,
-          weakSubjects: subjectNames,
-          strongSubjects: strongSubjects.length > 0 ? strongSubjects : ["Anatomy"],
-          weakTopics: weakTopicsData.map((topic: { name: any }) => topic.name),
-          usePerformanceData: true,
-        }))
       }
-    } catch (error) {
-      console.error("Error fetching AI planner performance data:", error)
-      // Keep existing fallback logic
-    } finally {
-      setIsLoadingPerformanceData(false)
+    )
+
+    if (response.data.success && response.data.data.weakTopics) {
+      const weakTopicsData = response.data.data.weakTopics
+
+      console.log("Weak topics data:", weakTopicsData)
+      setWeakTopics(weakTopicsData)
+
+      // Extract subject names for weak subjects only (don't auto-select strong subjects)
+      const subjectNames = weakTopicsData
+        .filter((topic: { name: string | string[] }) => !topic.name.includes(':')) // Only main subjects, not sub-topics
+        .map((topic: { name: any }) => topic.name)
+
+      // FIXED: Only auto-select weak subjects from performance data
+      // Don't automatically select remaining subjects as strong
+      setFormData(prev => ({
+        ...prev,
+        weakSubjects: subjectNames,
+        // Remove auto-selection of strong subjects - let user choose manually
+        weakTopics: weakTopicsData.map((topic: { name: any }) => topic.name),
+        usePerformanceData: true,
+      }))
     }
+  } catch (error) {
+    console.error("Error fetching AI planner performance data:", error)
+  } finally {
+    setIsLoadingPerformanceData(false)
   }
+}
 
   const loadExistingPlan = async (planId?: string) => {
     try {
@@ -596,7 +578,7 @@ const PlannerForm: React.FC = () => {
     }, updateInterval)
   }
 
- const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
+const handleSubmit = async (e: { preventDefault: () => void }) => {
   e.preventDefault()
 
   // Validate final step
@@ -610,29 +592,25 @@ const PlannerForm: React.FC = () => {
 
   console.log("Form data before submission:", formData)
 
-  // Prepare data for submission that's compatible with the existing API
+  // FIXED: Create a deep copy to avoid mutation during submission
   const submissionData = {
     name: formData.name,
     email: formData.email,
     currentLevel: formData.currentLevel,
     targetExam: formData.targetExam,
     examDate: formData.examDate,
-    // Ensure strongSubjects is never empty, use default if empty
-    strongSubjects: formData.strongSubjects.length > 0 ? formData.strongSubjects : ["Anatomy"],
-    // FIXED: Always use the current formData.weakSubjects which reflects user's final selection
-    // This includes both performance-based auto-selection AND user modifications
-    weakSubjects: formData.weakSubjects,
+    // FIXED: Use the current formData values directly without modification
+    strongSubjects: [...formData.strongSubjects], // Create copy to avoid reference issues
+    weakSubjects: [...formData.weakSubjects], // Create copy to avoid reference issues
     availableHours: formData.availableHours,
     daysPerWeek: formData.daysPerWeek,
     preferredLearningStyle: formData.preferredLearningStyle,
     targetScore: formData.targetScore,
     specificGoals: formData.specificGoals,
-    additionalInfo:
-      formData.additionalInfo + (formData.usePerformanceData ? "\n[Performance data was used as initial selection]" : ""),
+    additionalInfo: formData.additionalInfo + (formData.usePerformanceData ? "\n[Performance data was used as initial selection]" : ""),
     previousScores: formData.previousScores,
   }
 
-  // Save user data to localStorage
   const userId = localStorage.getItem("Medical_User_Id")
 
   console.log("Request data to ai planer:", submissionData)
@@ -661,11 +639,11 @@ const PlannerForm: React.FC = () => {
     }
 
     // Store the study plan data
-    const planData = result.data as StudyPlanResponse
+    const planData = result.data
 
     // Add study plan tasks to calendar
     await addPlanTasksToCalendar(planData)
-    localStorage.removeItem("currentPlanId");
+    localStorage.removeItem("currentPlanId")
 
     // Save only the plan ID to localStorage
     if (result.data && result.data.planId) {
@@ -679,21 +657,23 @@ const PlannerForm: React.FC = () => {
     setTimeout(() => {
       setStudyPlan(planData)
       setShowSuccess(true)
-    }, 3000);
+    }, 3000)
 
   } catch (error) {
     console.error("Error generating plan:", error)
 
-    // Add more detailed error logging
     if (axios.isAxiosError(error)) {
       console.error("API Error Response:", error.response?.data)
       console.error("API Error Status:", error.response?.status)
       setApiError(`Error ${error.response?.status}: ${error.response?.data?.message || error.message}`)
     } else {
-      setApiError((error as Error).message || "Failed to generate study plan. Please try again.")
+      if (error instanceof Error) {
+        setApiError(error.message || "Failed to generate study plan. Please try again.")
+      } else {
+        setApiError("Failed to generate study plan. Please try again.")
+      }
     }
 
-    // Clear progress interval on error
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current)
     }

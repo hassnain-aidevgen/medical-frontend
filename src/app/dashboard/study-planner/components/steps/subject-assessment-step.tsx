@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { motion } from "framer-motion"
-import { Book, CheckCircle, AlertCircle, Loader2, BarChart2, Lightbulb } from "lucide-react"
+import { Book, CheckCircle, AlertCircle, Loader2, BarChart2, Lightbulb, Info } from "lucide-react"
 import type { FormData, FormErrors, TopicMasteryData } from "../../types/study-plan-types"
 
 interface SubjectAssessmentStepProps {
@@ -117,7 +117,7 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
                 📊 Performance-Based Recommendations
               </h3>
               <p className="text-sm text-blue-700 mb-3">
-                Based on your test performance, we&apos;ve automatically selected subjects below. You can modify these selections if needed.
+                Based on your test performance, we&apos;ve automatically selected weak subjects below. You can modify these selections if needed.
               </p>
               
               <div className="text-xs text-blue-600 mb-3">
@@ -131,7 +131,7 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
                 className="bg-white p-3 rounded-md border border-blue-200"
               >
                 <h4 className="font-medium text-sm text-gray-700 mb-2">
-                  🎯 Specific topics that need attention:
+                  🎯 Subjects that need attention:
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                   {weakTopics.slice(0, 10).map((topic, index) => (
@@ -151,11 +151,31 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
                   ))}
                   {weakTopics.length > 10 && (
                     <div className="text-xs text-gray-500 col-span-full">
-                      ... and {weakTopics.length - 10} more topics
+                      ... and {weakTopics.length - 10} more subjects
                     </div>
                   )}
                 </div>
               </motion.div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Show message when no weak subjects are found from performance data */}
+      {formData.usePerformanceData && weakTopics.length === 0 && !isLoadingPerformanceData && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg mb-4">
+          <div className="flex items-start">
+            <Info className="text-amber-600 mr-3 mt-0.5 flex-shrink-0" size={18} />
+            <div className="flex-1">
+              <h3 className="font-medium text-amber-800 mb-2">
+                📚 No Performance Data Available
+              </h3>
+              <p className="text-sm text-amber-700 mb-2">
+                We couldn&apos;t find sufficient test performance data to automatically identify your weak subjects.
+              </p>
+              <p className="text-sm text-amber-700">
+                <strong>Recommendation:</strong> Complete more practice tests, then return to get personalized recommendations based on your performance. For now, please manually select your strong and weak subjects below.
+              </p>
             </div>
           </div>
         </div>
@@ -169,7 +189,7 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
             <label className="block text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
               Strong Subjects <span className="text-red-500">*</span>
               {weakTopics.length > 0 && (
-                <span className="text-xs text-gray-500 font-normal ml-2">(Auto-selected based on performance)</span>
+                <span className="text-xs text-gray-500 font-normal ml-2">(Based on performance data)</span>
               )}
             </label>
             <button
@@ -197,9 +217,6 @@ const SubjectAssessmentStep: React.FC<SubjectAssessmentStepProps> = ({
                     setFormData((prev) => ({
                       ...prev,
                       strongSubjects: newStrongSubjects,
-                      weakSubjects: isSelected 
-                        ? prev.weakSubjects 
-                        : prev.weakSubjects.filter(s => s !== subject)
                     }))
 
                     if (errors.strongSubjects && newStrongSubjects.length > 0) {
