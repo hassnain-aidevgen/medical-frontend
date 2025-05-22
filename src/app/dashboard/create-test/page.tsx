@@ -1026,7 +1026,7 @@ export default function CreateTest() {
 
   return (
     // <div className="max-h-[85dvh] overflow-y-auto overflow-x-hidden bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8 rounded-md border border-slate-200">
-    <div className="">
+    <div className="h-screen mb-10">
       <Toaster position="top-right" />
       <div className="max-w-full lg:max-w-6xl mx-auto">
         <h1 className=" text-2xl md:text-3xl font-bold mb-8  text-gray-800">Create Your Test</h1>
@@ -1462,7 +1462,7 @@ export default function CreateTest() {
           <ExamSimulation />
         </div>
 
-        <div className="mt-8">
+        <div className="mt-8 pb-60">
           <RecentTests performanceData={performanceData} isLoading={isLoading} />
         </div>
       </div>

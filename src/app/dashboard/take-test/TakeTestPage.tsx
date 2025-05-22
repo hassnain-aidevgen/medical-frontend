@@ -9,6 +9,7 @@ import { useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useState, useRef } from "react"
 import QuestionBox from "./QuestionBox"
 import TestSummary from "./TestSummary"
+import toast from "react-hot-toast";
 
 // Define interfaces for recommended and AI-generated questions
 interface RecommendedQuestion {
@@ -69,6 +70,7 @@ const TakeTestPage = () => {
   const subsectionsParam = searchParams.get("subsections") || ""
   const countParam = searchParams.get("count") || "10"
   const examTypeParam = searchParams.get("exam_type") || "ALL_USMLE_TYPES"
+  const [flashcardIds, setFlashcardIds] = useState<Record<string, string>>({});
 
   // Get target exam parameters from URL
   const targetExamParam = searchParams.get("targetExam") || ""
@@ -491,21 +493,85 @@ const TakeTestPage = () => {
     }
   }, [mode, timeLeft, showResults, isLoading, handleFinishTest])
 
-  const handleAnswerSubmit = useCallback(() => {
-    if (selectedAnswers[currentQuestionIndex]) {
-      const currentTime = Date.now()
-      const timeSpent = startTime ? Math.round((currentTime - startTime) / 1000) : 0
-      setQuestionTimes((prev) => ({
-        ...prev,
-        [currentQuestionIndex]: timeSpent,
-      }))
-      setStartTime(currentTime)
-      setSubmittedAnswers((prev) => ({
-        ...prev,
-        [currentQuestionIndex]: true,
-      }))
+const handleAnswerSubmit = useCallback(async () => {
+  if (selectedAnswers[currentQuestionIndex]) {
+    const currentTime = Date.now();
+    const timeSpent = startTime ? Math.round((currentTime - startTime) / 1000) : 0;
+    
+    // Store the question time
+    setQuestionTimes((prev) => ({
+      ...prev,
+      [currentQuestionIndex]: timeSpent,
+    }));
+    
+    // Mark as submitted
+    setSubmittedAnswers((prev) => ({
+      ...prev,
+      [currentQuestionIndex]: true,
+    }));
+    
+    // Reset start time for next question
+    setStartTime(currentTime);
+    
+    // Check if answer is incorrect and create flashcard if needed
+    const currentQuestion = questions[currentQuestionIndex];
+    const userAnswer = selectedAnswers[currentQuestionIndex];
+    
+    if (userAnswer !== currentQuestion.answer) {
+      try {
+        const userId = localStorage.getItem("Medical_User_Id");
+        if (userId) {
+          // Show a "Processing..." toast
+          toast.loading("Creating flashcard...", { id: `flashcard-${currentQuestion._id}` });
+          
+          // Create flashcard for incorrect answer
+          const response = await axios.post(
+            "http://localhost:5000/api/test/flashcards/add-from-question", 
+            {
+              userId,
+              question: {
+                questionId: currentQuestion._id,
+                questionText: currentQuestion.question,
+                correctAnswer: currentQuestion.answer,
+                userAnswer: userAnswer,
+                timeSpent: timeSpent,
+                subject: currentQuestion.subject,
+                subjectName: currentQuestion.subjectDisplay,
+                subsection: currentQuestion.subsection,
+                subsectionName: currentQuestion.subsectionDisplay,
+                exam_type: currentQuestion.exam_type,
+                difficulty: currentQuestion.difficulty,
+                topic: currentQuestion.topic,
+                explanation: currentQuestion.explanation
+              }
+            }
+          );
+
+           const flashcardId = response.data.flashcardId;
+          setFlashcardIds(prev => ({
+            ...prev,
+            [currentQuestion._id]: flashcardId
+          }));
+          
+          // Check if this was a new flashcard or existing one
+          if (response.data.isNewFlashcard) {
+            // Update the toast to success for new flashcard
+            toast.success("New flashcard created for review", { id: `flashcard-${currentQuestion._id}` });
+          } else {
+            // Update the toast for existing flashcard
+            toast.success("Existing flashcard updated for review", { id: `flashcard-${currentQuestion._id}` });
+          }
+          
+          console.log(`Flashcard processed for question ${currentQuestion._id}`);
+        }
+      } catch (error) {
+        // Update the toast to error
+        toast.error("Error processing flashcard", { id: `flashcard-${currentQuestion._id}` });
+        console.error("Error processing flashcard:", error);
+      }
     }
-  }, [currentQuestionIndex, selectedAnswers, startTime])
+  }
+}, [currentQuestionIndex, questions, selectedAnswers, startTime]);
 
   const handleNextQuestion = () => {
     if (currentQuestionIndex < questions.length - 1) {
@@ -705,6 +771,7 @@ const TakeTestPage = () => {
             totalQuestions={questions.length}
             showCorrectAnswer={submittedAnswers[currentQuestionIndex]}
             onSubmit={handleAnswerSubmit}
+            flashcardId={flashcardIds[questions[currentQuestionIndex]._id]}
           />
         </>
       )}
