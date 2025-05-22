@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { motion } from "framer-motion"
-import { Edit3, AlertCircle, User, Mail, Lock } from "lucide-react"
+import { Edit3, AlertCircle } from "lucide-react"
 import type { FormData, FormErrors } from "../../types/study-plan-types"
 
 interface PersonalDetailsStepProps {
@@ -38,88 +38,50 @@ const PersonalDetailsStep: React.FC<PersonalDetailsStepProps> = ({
         Personal Details
       </h2>
 
-      {/* Read-only personal information section */}
-      {(formData.name.length > 0 || formData.email.length > 0) && (
-        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
-          <div className="text-sm text-gray-500 mb-2 flex items-center">
-            <Lock size={14} className="mr-1" />
-            Your personal information is locked for security
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {formData.name.length > 0 && (
-              <div className="flex items-center">
-                <User className="text-gray-400 mr-2" size={16} />
-                <div>
-                  <div className="text-xs text-gray-500">Full Name</div>
-                  <div className="font-medium text-gray-700">{formData.name}</div>
-                </div>
-              </div>
-            )}
-
-            {formData.email.length > 0 && (
-              <div className="flex items-center">
-                <Mail className="text-gray-400 mr-2" size={16} />
-                <div>
-                  <div className="text-xs text-gray-500">Email Address</div>
-                  <div className="font-medium text-gray-700">{formData.email}</div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Show input fields only if data is not already provided */}
-      {(formData.name.length === 0 || formData.email.length === 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {formData.name.length === 0 && (
-            <div className="group">
-              <label className="block text-sm font-medium text-gray-700 mb-1 group-hover:text-blue-600 transition-colors">
-                Full Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                className={`w-full p-2 border ${errors.name ? "border-red-500" : "border-gray-300"} rounded-md focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:border-blue-400`}
-                required
-                placeholder="Enter your full name"
-              />
-              {errors.name && (
-                <p className="mt-1 text-sm text-red-500 flex items-center">
-                  <AlertCircle size={12} className="mr-1" />
-                  {errors.name}
-                </p>
-              )}
-            </div>
-          )}
-
-          {formData.email.length === 0 && (
-            <div className="group">
-              <label className="block text-sm font-medium text-gray-700 mb-1 group-hover:text-blue-600 transition-colors">
-                Email Address <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                className={`w-full p-2 border ${errors.email ? "border-red-500" : "border-gray-300"} rounded-md focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:border-blue-400`}
-                required
-                placeholder="your.email@example.com"
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-500 flex items-center">
-                  <AlertCircle size={12} className="mr-1" />
-                  {errors.email}
-                </p>
-              )}
-            </div>
+      {/* Editable personal information section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="group">
+          <label className="block text-sm font-medium text-gray-700 mb-1 group-hover:text-blue-600 transition-colors">
+            Full Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleInputChange}
+            className={`w-full p-2 border ${errors.name ? "border-red-500" : "border-gray-300"} rounded-md focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:border-blue-400`}
+            required
+            placeholder="Enter your full name"
+          />
+          {errors.name && (
+            <p className="mt-1 text-sm text-red-500 flex items-center">
+              <AlertCircle size={12} className="mr-1" />
+              {errors.name}
+            </p>
           )}
         </div>
-      )}
+
+        <div className="group">
+          <label className="block text-sm font-medium text-gray-700 mb-1 group-hover:text-blue-600 transition-colors">
+            Email Address <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleInputChange}
+            className={`w-full p-2 border ${errors.email ? "border-red-500" : "border-gray-300"} rounded-md focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 hover:border-blue-400`}
+            required
+            placeholder="your.email@example.com"
+          />
+          {errors.email && (
+            <p className="mt-1 text-sm text-red-500 flex items-center">
+              <AlertCircle size={12} className="mr-1" />
+              {errors.email}
+            </p>
+          )}
+        </div>
+      </div>
 
       <div className="group">
         <label className="block text-sm font-medium text-gray-700 mb-1 group-hover:text-blue-600 transition-colors">
