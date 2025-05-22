@@ -14,7 +14,6 @@ import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
-import axios from "axios"
 import { addDays, addHours, format } from "date-fns"
 import { CalendarIcon, Clock } from "lucide-react"
 import { useState } from "react"
@@ -27,6 +26,7 @@ interface ScheduleReviewDialogProps {
     cardCategory: string
     cardQuestion: string
     cardDifficulty: string
+    onSchedule?: (scheduledFor: string | number | Date) => void // Add this prop
 }
 
 export default function ScheduleReviewDialog({
@@ -36,24 +36,11 @@ export default function ScheduleReviewDialog({
     cardCategory,
     cardQuestion,
     cardDifficulty,
+    onSchedule, // Add this prop
 }: ScheduleReviewDialogProps) {
     const [selectedOption, setSelectedOption] = useState<string>("24hours")
     const [customDate, setCustomDate] = useState<Date | undefined>(addDays(new Date(), 1))
     const [isSubmitting, setIsSubmitting] = useState(false)
-
-    // Get color based on difficulty
-    const getColorFromDifficulty = (difficulty: string): string => {
-        switch (difficulty.toLowerCase()) {
-            case "easy":
-                return "#22c55e" // green-500
-            case "medium":
-                return "#f59e0b" // amber-500
-            case "hard":
-                return "#ef4444" // red-500
-            default:
-                return "#3b82f6" // blue-500
-        }
-    }
 
     // Calculate review date based on selected option
     const getReviewDate = (): Date => {
@@ -78,30 +65,16 @@ export default function ScheduleReviewDialog({
     
         try {
             const reviewDate = getReviewDate();
-    
-            // Original calendar payload
-            const calendarPayload = {
-                userId,
-                subjectName: cardCategory || "Uncategorized",
-                testTopic: cardQuestion.length > 50 ? `${cardQuestion.substring(0, 47)}...` : cardQuestion,
-                date: reviewDate.toISOString(),
-                color: getColorFromDifficulty(cardDifficulty),
-                completed: false,
-            };
-    
-            // Send to calendar endpoint
-            await axios.post("https://medical-backend-loj4.onrender.com/api/test/calender", calendarPayload);
-            
-            // Also send to reviews endpoint to add to upcoming reviews
-            await axios.post("https://medical-backend-loj4.onrender.com/api/reviews/add-to-upcoming", {
-                userId,
-                title: cardQuestion.length > 50 ? `${cardQuestion.substring(0, 47)}...` : cardQuestion,
-                scheduledFor: reviewDate.toISOString(),
-                type: "daily", // You can change this based on the selected option
-                stage: 1
-            });
-    
-            toast.success(`Review scheduled for ${format(reviewDate, "PPP")}`);
+
+            // If onSchedule prop is provided (for rescheduling), use it
+            if (onSchedule) {
+                await onSchedule(reviewDate);
+                onClose();
+                return;
+            }
+
+            // Original logic for creating new reviews (only when not rescheduling)
+            toast.error("This dialog is configured for rescheduling only");
             onClose();
         } catch (error) {
             console.error("Error scheduling review:", error);
@@ -110,12 +83,15 @@ export default function ScheduleReviewDialog({
             setIsSubmitting(false);
         }
     };
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Schedule Review</DialogTitle>
-                    <DialogDescription>Choose when you want to review this card again.</DialogDescription>
+                    <DialogTitle>{onSchedule ? "Reschedule Review" : "Schedule Review"}</DialogTitle>
+                    <DialogDescription>
+                        {onSchedule ? "Choose a new date for this review session." : "Choose when you want to review this card again."}
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="py-4">
@@ -165,7 +141,7 @@ export default function ScheduleReviewDialog({
 
                     <div className="mt-4 text-sm text-slate-500">
                         <Clock className="inline-block mr-1 h-4 w-4" />
-                        You&apos;ll review this card on {format(getReviewDate(), "PPPP")}
+                        {onSchedule ? "Session will be rescheduled for" : "You'll review this card on"} {format(getReviewDate(), "PPPP")}
                     </div>
                 </div>
 
@@ -174,7 +150,7 @@ export default function ScheduleReviewDialog({
                         Cancel
                     </Button>
                     <Button onClick={handleSubmit} disabled={isSubmitting}>
-                        {isSubmitting ? "Scheduling..." : "Schedule Review"}
+                        {isSubmitting ? (onSchedule ? "Rescheduling..." : "Scheduling...") : (onSchedule ? "Reschedule" : "Schedule Review")}
                     </Button>
                 </DialogFooter>
             </DialogContent>

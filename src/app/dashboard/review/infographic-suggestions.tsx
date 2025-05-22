@@ -106,7 +106,7 @@ export function StatisticalVisualSummaries() {
       }
     } catch (error) {
       console.error("Error fetching weak topics:", error)
-      toast.error("Failed to load weak topics")
+      // toast.error("Failed to load weak topics")
       
       // Set some mock data if the API fails for development purposes
       const mockTopics = [

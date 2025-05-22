@@ -131,7 +131,7 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
 
           // Call your backend API that will use OpenAI
           const response = await axios.post(
-            `http://localhost:5000/api/test/ai-explain`,
+            `https://medical-backend-loj4.onrender.com/api/test/ai-explain`,
             {
               question: question.question,
               options: safeOptions,

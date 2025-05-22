@@ -471,27 +471,13 @@ const PlannerForm: React.FC = () => {
         for (const day of week.days) {
           if (!day.tasks) continue
 
-          // Get the day of week index (0 = Sunday, 1 = Monday, etc.)
-          const dayIndex = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"].findIndex(
-            (d) => d.toLowerCase() === day.dayOfWeek.toLowerCase(),
-          )
+          // Use the date directly from the AI response instead of calculating it
+          const taskDate = day.date ? new Date(day.date) : null
 
-          if (dayIndex === -1) continue
-
-          // Calculate the date for this day
-          const today = new Date()
-          const taskDate = new Date(today)
-          const currentDay = today.getDay()
-
-          // Calculate days to add to get to the target day this week
-          let daysToAdd = (dayIndex - currentDay + 7) % 7
-
-          // Add week offset (for future weeks)
-          const weekIndex = planData.plan.weeklyPlans.indexOf(week)
-          daysToAdd += weekIndex * 7
-
-          taskDate.setDate(today.getDate() + daysToAdd)
-
+          if (!taskDate) {
+            console.warn(`No date found for day: ${day.dayOfWeek}`)
+            continue
+          }
           // Process each task for this day
           for (const task of day.tasks) {
             try {
@@ -499,7 +485,7 @@ const PlannerForm: React.FC = () => {
               await axios.post("https://medical-backend-loj4.onrender.com/api/ai-planner/add_ai_plan_to_calender", {
                 userId: userId,
                 subjectName: task.subject,
-                testTopic: `${week.theme}: ${task.activity}`,
+                testTopic: `${task.activity}`,
                 date: taskDate.toISOString(),
                 color: getSubjectColor(task.subject),
                 completed: false,
@@ -508,7 +494,7 @@ const PlannerForm: React.FC = () => {
                 duration: 60, // Default duration in minutes
                 priority: "medium", // Default priority
                 resources: [], // Default empty resources array
-                weekNumber: weekIndex + 1, // Week number (1-based)
+                weekNumber: week.weekNumber, // Week number (1-based)
                 dayOfWeek: day.dayOfWeek, // Day of week from the plan
                 notes: task.details || "", // Use details as notes if available
                 isReviewTask: false, // Default to false
@@ -523,8 +509,11 @@ const PlannerForm: React.FC = () => {
         }
       }
 
+
+
       if (addedCount > 0) {
         toast.success(`Added ${addedCount} study plan tasks to your calendar`)
+        console.log(`Added ${addedCount} study plan tasks to your calendar`)
       }
     } catch (error) {
       console.error("Error adding plan tasks to calendar:", error)
@@ -672,7 +661,6 @@ const PlannerForm: React.FC = () => {
 
       // Store the study plan data
       const planData = result.data as StudyPlanResponse
-      setStudyPlan(planData)
 
 
       // Add study plan tasks to calendar
@@ -689,7 +677,11 @@ const PlannerForm: React.FC = () => {
       fetchUserPlans()
 
       // Show success message
-      setShowSuccess(true)
+      setTimeout(() => {
+        setStudyPlan(planData)
+        setShowSuccess(true)
+      }, 3000);
+
     } catch (error) {
       console.error("Error generating plan:", error)
 

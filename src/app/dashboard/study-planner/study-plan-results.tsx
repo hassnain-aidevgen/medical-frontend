@@ -32,7 +32,6 @@ import { jsPDF } from "jspdf"
 // Import our new components
 import { MockExamBlock } from "./components/mock-exam-block"
 import { usePerformanceAdapter } from "./components/performance-adapter"
-import { PerformanceSummary } from "./components/performance-summary"
 import { ReplanAlert } from "./components/replan-alert"
 import { StudyProgressBar } from "./components/study-progress-bar"
 import { TaskActions } from "./components/task-actions"
@@ -58,7 +57,7 @@ interface TaskPerformance {
 
 
 const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onReset }) => {
-  const [activeTab, setActiveTab] = useState<"overview" | "weekly" | "resources" | "performance">("overview")
+  const [activeTab, setActiveTab] = useState<"overview" | "weekly" | "resources">("overview")
   const [activeWeek, setActiveWeek] = useState<number>(1)
   const [showTip, setShowTip] = useState<boolean>(false)
   const [studyPlan, setStudyPlan] = useState<StudyPlanResponse>(plan)
@@ -778,117 +777,6 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
     </div>
   )
 
-  // Add a new tab for performance tracking
-  const renderPerformance = () => {
-    // Get performance data from localStorage
-    const storedData = localStorage.getItem("studyPlanPerformance")
-    const performanceData = storedData ? JSON.parse(storedData) : { tasks: {}, lastUpdated: Date.now() }
-
-    return (
-      <div className="space-y-6">
-        {needsReplanning && <ReplanAlert onReplan={applyReplanning} />}
-
-        <PerformanceSummary performanceData={performanceData} />
-
-        <div className="bg-white p-4 rounded-lg border shadow-sm">
-          <div className="flex items-center mb-4">
-            <BarChart3 className="text-blue-500 mr-2" size={20} />
-            <h3 className="font-semibold text-gray-800">Performance Tracking</h3>
-          </div>
-          <p className="text-gray-700 mb-4">
-            Track your progress by marking tasks as completed, not understood, or skipped. The system will automatically
-            adjust your study plan based on your performance.
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div className="p-3 bg-green-50 border border-green-100 rounded-lg">
-              <div className="flex items-center">
-                <CheckCircle className="text-green-500 mr-2" size={18} />
-                <div>
-                  <div className="font-medium text-green-700">Completed</div>
-                  <div className="text-sm text-green-600">Tasks you&apos;ve successfully completed</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg">
-              <div className="flex items-center">
-                <HelpCircle className="text-amber-500 mr-2" size={18} />
-                <div>
-                  <div className="font-medium text-amber-700">Not Understood</div>
-                  <div className="text-sm text-amber-600">Tasks you need more help with</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-3 bg-red-50 border border-red-100 rounded-lg">
-              <div className="flex items-center">
-                <XCircle className="text-red-500 mr-2" size={18} />
-                <div>
-                  <div className="font-medium text-red-700">Skipped</div>
-                  <div className="text-sm text-red-600">Tasks you missed or skipped</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
-            <div className="flex items-start">
-              <Lightbulb className="text-blue-500 mr-2 mt-0.5 flex-shrink-0" size={18} />
-              <div>
-                <div className="font-medium text-blue-700 mb-1">Intelligent Replanning</div>
-                <div className="text-sm text-blue-600">
-                  When you mark tasks as &quot;Not Understood&quot; or &quot;Skipped&quot;, the system will
-                  automatically redistribute these topics into future weeks to ensure you master all the material. Click
-                  the &quot;Adjust Plan&quot; button when it appears to update your study schedule.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Add a section for subject-specific performance */}
-        <div className="bg-white p-4 rounded-lg border shadow-sm">
-          <div className="flex items-center mb-4">
-            <Book className="text-blue-500 mr-2" size={20} />
-            <h3 className="font-semibold text-gray-800">Subject Performance</h3>
-          </div>
-
-          <div className="space-y-4">
-            {userData.weakSubjects.map((subject) => {
-              // Calculate performance for this subject
-              const subjectTasks = Object.values(performanceData.tasks as Record<string, TaskPerformance>).filter(
-                (task) => task.subject === subject,
-              )
-
-              const totalTasks = subjectTasks.length
-              if (totalTasks === 0) return null
-
-              const completedTasks = subjectTasks.filter((task) => task.status === "completed").length
-
-              const completionRate = Math.round((completedTasks / totalTasks) * 100)
-
-              return (
-                <div key={subject} className="p-3 bg-gray-50 rounded-lg">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-medium text-gray-800">{subject}</span>
-                    <span className="text-sm text-gray-600">{completionRate}% complete</span>
-                  </div>
-                  <div className="w-full bg-gray-200 h-2 rounded-full">
-                    <div
-                      className={`h-2 rounded-full ${completionRate < 30 ? "bg-red-500" : completionRate < 70 ? "bg-amber-500" : "bg-green-500"
-                        }`}
-                      style={{ width: `${completionRate}%` }}
-                    ></div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // Add this wrapper function inside the StudyPlanResults component, before the return statement
   const handleTaskStatusChangeWrapper = (
@@ -1002,16 +890,6 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
           >
             Resources
           </button>
-          {/* Add new Performance tab */}
-          <button
-            onClick={() => setActiveTab("performance")}
-            className={`px-4 py-2 font-medium text-sm whitespace-nowrap ${activeTab === "performance"
-              ? "text-blue-600 border-b-2 border-blue-600"
-              : "text-gray-600 hover:text-blue-600"
-              }`}
-          >
-            Performance
-          </button>
         </div>
       </div>
 
@@ -1029,7 +907,6 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
             {activeTab === "overview" && renderOverview()}
             {activeTab === "weekly" && renderWeeklyPlan()}
             {activeTab === "resources" && renderResources()}
-            {activeTab === "performance" && renderPerformance()}
           </motion.div>
         </AnimatePresence>
       </div>

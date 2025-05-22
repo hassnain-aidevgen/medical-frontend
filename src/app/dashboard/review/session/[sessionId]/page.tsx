@@ -218,6 +218,7 @@ export default function ReviewSessionPage() {
       toast.success(`Session rescheduled for ${new Date(scheduledFor).toLocaleDateString()}`)
       
       // Redirect to dashboard
+      // await fetchDashboardData()
       router.push('/dashboard/review')
     } catch (error) {
       console.error("Error rescheduling session:", error)
@@ -494,6 +495,7 @@ export default function ReviewSessionPage() {
         cardCategory={session?.title || "Review Session"}
         cardQuestion={`Review Session: ${session?.title}`}
         cardDifficulty="medium"
+         onSchedule={rescheduleSession} 
       />
 
       <Toaster position="top-right" />

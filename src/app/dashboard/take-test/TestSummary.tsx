@@ -218,7 +218,7 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
 
         // Call the new AI feedback endpoint
         const response = await axios.post(
-          "http://localhost:5000/api/test/ai-report-feedback",
+          "https://medical-backend-loj4.onrender.com/api/test/ai-report-feedback",
           feedbackData,
         )
 
@@ -329,7 +329,7 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
     try {
       console.log("Submitting test data to API...");
       const response = await axios.post(
-        "http://localhost:5000/api/test/take-test/submit-test/v2", 
+        "https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test/v2", 
         testData, 
         {
           headers: { "Content-Type": "application/json" },
