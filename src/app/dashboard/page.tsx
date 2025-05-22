@@ -431,7 +431,7 @@ export default function DashboardPage() {
   }
 
   const navigateToWeeklyGoals = () => {
-    router.push("/dashboard/custom-weekly-goals")
+    router.push("/dashboard/study-planner")
   }
 
   // Add a navigation function for flashcards after the navigateToWeeklyGoals function
