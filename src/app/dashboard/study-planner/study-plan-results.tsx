@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React, { useState } from "react";
 
 import { AnimatePresence, motion } from "framer-motion"
 import {
@@ -26,7 +26,7 @@ import {
   XCircle,
   Check,
 } from "lucide-react"
-import { useEffect, useState, useRef, useMemo } from "react"
+import { useEffect, useRef, useMemo } from "react"
 // Add this import at the top
 import { jsPDF } from "jspdf"
 
@@ -42,6 +42,7 @@ import { ReviewScheduler } from "./components/review-scheduler"
 
 import type { StudyPlanResponse, StudyPlanResultsProps } from "./types/study-plan-types"
 import { adaptStudyPlanForPerformance } from "./utils/adapter-utils"
+import toast from "react-hot-toast"
 
 // Define type for task performance data
 interface TaskPerformance {
@@ -77,39 +78,121 @@ const SimpleTaskActions: React.FC<{
   activity,
   weekNumber,
   dayOfWeek,
+  date,
   onStatusChange,
   currentStatus,
 }) => {
+ const [isRescheduling, setIsRescheduling] = useState(false);
+
+  // Check if task is overdue
+  const isTaskOverdue = () => {
+    if (!date || currentStatus === "completed") return false;
+    
+    const today = new Date();
+    const taskDate = new Date(date);
+    
+    // Format both dates as YYYY-MM-DD for comparison
+    const formatDate = (d: any) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    return formatDate(taskDate) < formatDate(today);
+  };
+
   const handleToggleComplete = () => {
     const newStatus = currentStatus === "completed" ? "incomplete" : "completed"
     onStatusChange(taskId, subject, activity, weekNumber, dayOfWeek, newStatus)
   }
 
+   const handleReschedule = async () => {
+    setIsRescheduling(true);
+    
+    try {
+      const planId = localStorage.getItem("currentPlanId");
+      const response = await fetch(`https://medical-backend-loj4.onrender.com/api/ai-planner/rescheduleTask/${planId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          taskId: taskId,
+          currentWeekNumber: weekNumber,
+          currentDayOfWeek: dayOfWeek
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        // Show success toast
+        toast.success(`Task rescheduled to ${result.newDate}`);
+        // Refresh the page to show updated plan
+        window.location.reload();
+      } else {
+        toast.error('Failed to reschedule task');
+      }
+    } catch (error) {
+      toast.error('Failed to reschedule task');
+    } finally {
+      setIsRescheduling(false);
+    }
+  };
+
+   const overdue = isTaskOverdue();
+
   return (
     <div className="flex items-center justify-end mt-3">
-      <button
-        onClick={handleToggleComplete}
-        className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
-          currentStatus === "completed"
-            ? "bg-green-100 text-green-700 hover:bg-green-200"
-            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-        }`}
-      >
-        {currentStatus === "completed" ? (
-          <>
-            <CheckCircle size={16} className="mr-1.5" />
-            Completed
-          </>
-        ) : (
-          <>
-            <div className="w-4 h-4 border-2 border-gray-400 rounded mr-1.5"></div>
-            Mark Complete
-          </>
-        )}
-      </button>
+      {overdue ? (
+        <button
+          onClick={handleReschedule}
+          disabled={isRescheduling}
+          className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+            isRescheduling
+              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+              : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+          }`}
+        >
+          {isRescheduling ? (
+            <>
+              <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin mr-1.5"></div>
+              Rescheduling...
+            </>
+          ) : (
+            <>
+              <Calendar size={16} className="mr-1.5" />
+              Reschedule
+            </>
+          )}
+        </button>
+      ) : (
+        <button
+          onClick={handleToggleComplete}
+          className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+            currentStatus === "completed"
+              ? "bg-green-100 text-green-700 hover:bg-green-200"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+          }`}
+        >
+          {currentStatus === "completed" ? (
+            <>
+              <CheckCircle size={16} className="mr-1.5" />
+              Completed
+            </>
+          ) : (
+            <>
+              <div className="w-4 h-4 border-2 border-gray-400 rounded mr-1.5"></div>
+              Mark Complete
+            </>
+          )}
+        </button>
+      )}
     </div>
   )
 }
+
 
 const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onReset }) => {
   const [activeTab, setActiveTab] = useState<"overview" | "weekly" | "resources">("overview")
@@ -126,8 +209,6 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
   const {
     handleTaskStatusChange,
     getTaskStatus,
-    needsReplanning,
-    applyReplanning,
   } = usePerformanceAdapter(
     adaptedPlan,
     userData,
@@ -403,7 +484,6 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
 
   const renderOverview = () => (
     <div className="space-y-6">
-      {needsReplanning && <ReplanAlert onReplan={applyReplanning} />}
 
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-100">
         <h2 className="text-2xl font-bold text-blue-800 mb-3">{studyPlanData.title}</h2>
@@ -568,7 +648,6 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
 
     return (
       <div className="space-y-6">
-        {needsReplanning && <ReplanAlert onReplan={applyReplanning} />}
 
         <div className="flex justify-between items-center">
           <button
@@ -719,7 +798,6 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
 
   const renderResources = () => (
     <div className="space-y-6">
-      {needsReplanning && <ReplanAlert onReplan={applyReplanning} />}
 
       <div className="bg-white p-4 rounded-lg border shadow-sm">
         <div className="flex items-center mb-4">
