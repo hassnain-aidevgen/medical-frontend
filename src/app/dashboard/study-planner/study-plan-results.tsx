@@ -24,6 +24,7 @@ import {
   Printer,
   X,
   XCircle,
+  Check,
 } from "lucide-react"
 import { useEffect, useState, useRef, useMemo } from "react"
 // Add this import at the top
@@ -34,7 +35,6 @@ import { MockExamBlock } from "./components/mock-exam-block"
 import { usePerformanceAdapter } from "./components/performance-adapter"
 import { ReplanAlert } from "./components/replan-alert"
 import { StudyProgressBar } from "./components/study-progress-bar"
-import { TaskActions } from "./components/task-actions"
 import { getExamNumber, shouldPlaceMockExam } from "./utils/mock-exam-utils"
 import { generateTaskId } from "./utils/task-utils"
 // Add this import at the top with the other component imports
@@ -51,10 +51,65 @@ interface TaskPerformance {
   dayOfWeek: string
   taskId: string
   timestamp: number
-  status: "completed" | "incomplete" | "not-understood" | "skipped"
+  status: "completed" | "incomplete"
 }
 
+// Simple Task Actions Component
+const SimpleTaskActions: React.FC<{
+  taskId: string
+  subject: string
+  activity: string
+  weekNumber: number
+  dayOfWeek: string
+  date: string | number | Date
+  onStatusChange: (
+    taskId: string,
+    subject: string,
+    activity: string,
+    weekNumber: number,
+    dayOfWeek: string,
+    status: "completed" | "incomplete"
+  ) => void
+  currentStatus: "completed" | "incomplete"
+}> = ({
+  taskId,
+  subject,
+  activity,
+  weekNumber,
+  dayOfWeek,
+  onStatusChange,
+  currentStatus,
+}) => {
+  const handleToggleComplete = () => {
+    const newStatus = currentStatus === "completed" ? "incomplete" : "completed"
+    onStatusChange(taskId, subject, activity, weekNumber, dayOfWeek, newStatus)
+  }
 
+  return (
+    <div className="flex items-center justify-end mt-3">
+      <button
+        onClick={handleToggleComplete}
+        className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+          currentStatus === "completed"
+            ? "bg-green-100 text-green-700 hover:bg-green-200"
+            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+        }`}
+      >
+        {currentStatus === "completed" ? (
+          <>
+            <CheckCircle size={16} className="mr-1.5" />
+            Completed
+          </>
+        ) : (
+          <>
+            <div className="w-4 h-4 border-2 border-gray-400 rounded mr-1.5"></div>
+            Mark Complete
+          </>
+        )}
+      </button>
+    </div>
+  )
+}
 
 const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onReset }) => {
   const [activeTab, setActiveTab] = useState<"overview" | "weekly" | "resources">("overview")
@@ -91,7 +146,6 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
     return `${dayOfWeek}, ${formattedDate}`;
   };
 
-
   useEffect(() => {
     // Show a tip when the results first load
     setShowTip(true)
@@ -101,7 +155,6 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
 
     return () => clearTimeout(tipTimer)
   }, [])
-
 
   const weeklyPlans = studyPlanData.weeklyPlans || []
   const totalWeeks = weeklyPlans.length
@@ -587,11 +640,7 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
               <div className="space-y-4">
                 {day.tasks?.map((task, taskIndex) => {
                   const taskId = task._id;
-                  const status = getTaskStatus(task._id, task.subject, task.activity) as
-                    | "completed"
-                    | "incomplete"
-                    | "not-understood"
-                    | "skipped"
+                  const status = getTaskStatus(task._id, task.subject, task.activity) as "completed" | "incomplete"
 
                   return (
                     <div
@@ -600,11 +649,7 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
                         ? "bg-amber-50 border border-amber-100"
                         : status === "completed"
                           ? "bg-green-50 border border-green-100"
-                          : status === "not-understood"
-                            ? "bg-amber-50 border border-amber-100"
-                            : status === "skipped"
-                              ? "bg-red-50 border border-red-100"
-                              : "bg-gray-50"
+                          : "bg-gray-50"
                         }`}
                     >
                       <div className="flex justify-between items-center mb-2">
@@ -635,8 +680,8 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
                         </div>
                       )}
 
-                      {/* Add task action buttons */}
-                      <TaskActions
+                      {/* Add simplified task action buttons */}
+                      <SimpleTaskActions
                         taskId={taskId}
                         subject={task.subject}
                         activity={task.activity}
@@ -779,7 +824,6 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
     </div>
   )
 
-
   // Add this wrapper function inside the StudyPlanResults component, before the return statement
   const handleTaskStatusChangeWrapper = (
     taskId: string,
@@ -787,7 +831,7 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
     activity: string,
     weekNumber: number,
     dayOfWeek: string,
-    status: "completed" | "incomplete" | "not-understood" | "skipped",
+    status: "completed" | "incomplete",
   ) => {
     // We only need to pass taskId and status to the actual handler
     handleTaskStatusChange(taskId, status)
@@ -813,7 +857,7 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
               <div>
                 <div className="font-medium text-sm mb-1">Study Tip</div>
                 <div className="text-xs">
-                  Track your progress by marking tasks as completed, not understood, or skipped.
+                  Mark tasks as completed to track your progress through the study plan.
                 </div>
               </div>
             </div>
