@@ -6,6 +6,7 @@ import {
     AlertCircle,
     ArrowLeft,
     BarChart,
+    BookOpenCheck,
     Brain,
     CheckCircle,
     Clock,
@@ -23,6 +24,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
+import FlashcardView from "../../take-test/FlashcardView" // Add this import
 
 interface Question {
     _id: string
@@ -82,6 +84,7 @@ interface SubmitAnswerResponse {
     sessionComplete: boolean
     flashcardCreated?: boolean
     flashcardCategory?: string
+    flashcardId?: string // Add this field
     metrics?: {
         totalCorrect: number
         totalQuestions: number
@@ -139,6 +142,8 @@ export default function ChallengePage() {
     const [sessionComplete, setSessionComplete] = useState(false)
     const [flashcardCreated, setFlashcardCreated] = useState<boolean>(false)
     const [flashcardCategory, setFlashcardCategory] = useState<string | null>(null)
+    const [flashcardId, setFlashcardId] = useState<string | null>(null) // Add this state
+    const [showFlashcard, setShowFlashcard] = useState(false) // Add this state
     const [results, setResults] = useState<ChallengeResults>({
         correct: 0,
         total: 0,
@@ -361,9 +366,11 @@ Note: A more detailed explanation will be available when our explanation service
 
                 // Fetch question analytics and AI explanation
                 // Make sure these are called immediately and not conditionally
-                if (response.data.flashcardCreated) {
+                if (response.data.success) {
+                    console.log("flashcard created", response.data)
                     setFlashcardCreated(true)
                     setFlashcardCategory(response.data.flashcardCategory || "Mistakes")
+                    setFlashcardId(response.data.flashcardId || null) // Set flashcard ID
                 } else {
                     setFlashcardCreated(false)
                 }
@@ -445,6 +452,9 @@ Note: A more detailed explanation will be available when our explanation service
             setQuestionAnalytics(null)
             setAiExplanation(null)
             setIsExplanationVisible(false) // Reset explanation visibility
+            setFlashcardCreated(false) // Reset flashcard states
+            setFlashcardId(null)
+            setFlashcardCategory(null)
 
             toast(`Question ${currentQuestionIndex + 2} of ${questions.length}`, {
                 duration: 2000,
@@ -630,37 +640,24 @@ Note: A more detailed explanation will be available when our explanation service
         )
     }
 
+    // Check if current answer is correct
+    const isCorrect = selectedAnswer === answerResult?.correctAnswer
 
-    const FlashcardNotification = () => {
-        if (!flashcardCreated) return null
+    const FlashcardButton = () => {
+        if (!flashcardCreated || !flashcardId) return null
 
         return (
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                            className="h-5 w-5 text-blue-500 mr-2">
-                            <rect x="2" y="4" width="20" height="16" rx="2" />
-                            <path d="M2 10h20" />
-                        </svg>
-                        <h4 className="text-base font-medium text-blue-700">Flashcard Created</h4>
-                    </div>
-                    <div className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs">
-                        Category: {flashcardCategory}
-                    </div>
+            <div className="mt-4 pt-4 border-t border-slate-200">
+                <div className="flex justify-end">
+                    <Button
+                        onClick={() => setShowFlashcard(true)}
+                        variant="outline"
+                        className="gap-2 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                    >
+                        <BookOpenCheck className="h-4 w-4" />
+                        View Flashcard
+                    </Button>
                 </div>
-                <p className="text-sm text-blue-600 mb-3">
-                    This question has been added to your flashcards for later review.
-                </p>
-                {/* <Button
-                    onClick={goToFlashcards}
-                    variant="outline"
-                    className="w-full border-blue-300 text-blue-700 hover:bg-blue-100"
-                >
-                    Review Your Flashcards
-                </Button> */}
             </div>
         )
     }
@@ -674,10 +671,6 @@ Note: A more detailed explanation will be available when our explanation service
 
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                 <div>
-                    {/* <h1 className="text-2xl font-bold flex items-center">
-                        <Trophy className="h-5 w-5 mr-2 text-orange-500" />
-                        Hard Challenge
-                    </h1> */}
                     <p className="text-muted-foreground mt-1">
                         Question {currentQuestionIndex + 1} of {questions.length}
                     </p>
@@ -979,9 +972,8 @@ Note: A more detailed explanation will be available when our explanation service
                                             </div>
                                         )}
 
-                                        {answerResult && !answerResult.isCorrect && <FlashcardNotification />}
-
-
+                                        {/* Flashcard Button */}
+                                        {answerResult && !isCorrect && <FlashcardButton />}
 
                                         {/* Toggle Explanation Button (only visible on mobile) */}
                                         {answerResult && (
@@ -1106,6 +1098,19 @@ Note: A more detailed explanation will be available when our explanation service
                     </div>
                 </div>
             </div>
+
+            {/* Flashcard Modal */}
+            {showFlashcard && flashcardId && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl max-w-md w-full p-0 shadow-xl">
+                        <FlashcardView 
+                            flashcardId={flashcardId} 
+                            onClose={() => setShowFlashcard(false)} 
+                        />
+                    </div>
+                </div>
+            )}
+
             <Toaster position="top-center" />
         </div>
     )
