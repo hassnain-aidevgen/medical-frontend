@@ -85,7 +85,6 @@ const PlannerForm: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     // Personal details
     name: "",
-    email: "",
     currentLevel: "beginner",
 
     // Exam details
@@ -173,7 +172,6 @@ const PlannerForm: React.FC = () => {
   // Load user data from localStorage
   useEffect(() => {
     const name = localStorage.getItem("name")
-    const email = localStorage.getItem("email")
 
     if (name) {
       setFormData((prev) => ({
@@ -182,12 +180,6 @@ const PlannerForm: React.FC = () => {
       }))
     }
 
-    if (email) {
-      setFormData((prev) => ({
-        ...prev,
-        email: email,
-      }))
-    }
   }, [])
 
   // Update form data when weak topics change
@@ -296,11 +288,6 @@ const PlannerForm: React.FC = () => {
     switch (step) {
       case 1:
         if (!formData.name.trim()) newErrors.name = "Name is required"
-        if (!formData.email.trim()) {
-          newErrors.email = "Email is required"
-        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-          newErrors.email = "Email is invalid"
-        }
         break
 
       case 2:
@@ -601,7 +588,6 @@ const PlannerForm: React.FC = () => {
     // FIXED: Create a deep copy to avoid mutation during submission
     const submissionData = {
       name: formData.name,
-      email: formData.email,
       currentLevel: formData.currentLevel,
       targetExam: formData.targetExam,
       examDate: formData.examDate,

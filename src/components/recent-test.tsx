@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import axios from "axios"
-import { Book, ChevronDown, ChevronUp, Clock, Tag } from "lucide-react"
+import { Book, ChevronDown, ChevronUp, Clock, Tag, FileQuestion } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 
 interface RecentTest {
   _id: string
@@ -25,6 +26,7 @@ interface RecentTest {
 }
 
 export default function RecentTest() {
+  const router = useRouter()
   const [userId, setUserId] = useState<string | null>(null)
   const [recentTest, setRecentTest] = useState<RecentTest | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -43,6 +45,7 @@ export default function RecentTest() {
       if (!userId) return
 
       setIsLoading(true)
+      setError(null) // Reset error state
       try {
         // Use localhost for testing, change to production URL for deployment
         const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recent-test/${userId}`)
@@ -52,10 +55,16 @@ export default function RecentTest() {
         } else {
           console.error("Invalid recent test data format:", response.data)
           setError("No recent test data available")
+          setRecentTest(null)
         }
       } catch (error) {
         console.error("Error fetching recent test:", error)
-        setError("Failed to fetch recent test")
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+          setError("No recent test found")
+        } else {
+          setError("Failed to fetch recent test data")
+        }
+        setRecentTest(null)
       } finally {
         setIsLoading(false)
       }
@@ -63,6 +72,9 @@ export default function RecentTest() {
 
     if (userId) {
       fetchRecentTest()
+    } else {
+      setIsLoading(false)
+      setError("User not found")
     }
   }, [userId])
 
@@ -87,6 +99,11 @@ export default function RecentTest() {
     setShowDetails(!showDetails)
   }
 
+  // Don't render anything if loading and no userId
+  if (isLoading && !userId) {
+    return null
+  }
+
   return (
     <Card className="overflow-hidden w-full mb-4">
       <CardHeader className="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3">
@@ -103,17 +120,31 @@ export default function RecentTest() {
           )}
         </div>
       </CardHeader>
-      <CardContent className="p-4">
+      <CardContent className="p-6">
         {isLoading ? (
-          <div className="flex justify-center py-6">
+          <div className="flex justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
           </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <div className="text-gray-400 mb-2">No recent test data available</div>
-            <div className="text-sm text-gray-500">Take a test to see your results here</div>
+        ) : error || !recentTest ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="bg-gray-100 rounded-full p-4 mb-4">
+              <FileQuestion className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Recent Tests</h3>
+            <p className="text-gray-500 mb-4 max-w-sm">
+              You haven't taken any tests yet. Start with your first test to see your progress here.
+            </p>
+            <Button 
+              className="bg-green-500 hover:bg-green-600 text-white"
+              onClick={() => {
+                // Add navigation to test page or trigger test start
+                router.push("/dashboard/create-test")
+              }}
+            >
+              Take Your First Test
+            </Button>
           </div>
-        ) : recentTest ? (
+        ) : (
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <div>
@@ -187,7 +218,7 @@ export default function RecentTest() {
               </div>
             )}
           </div>
-        ) : null}
+        )}
       </CardContent>
     </Card>
   )

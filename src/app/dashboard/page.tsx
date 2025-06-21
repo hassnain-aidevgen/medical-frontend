@@ -35,6 +35,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import WeeklyPerformance from "@/components/weekly-performance"
 import NextTaskCard from "@/components/next-task-card"
 import { FileQuestion } from "lucide-react"
+
+// Timer state type definitions (same as in standalone Pomodoro component)
+type TimerMode = "work" | "shortBreak" | "longBreak"
+
+// Keys for localStorage (same as in standalone Pomodoro component)
+const TIMER_STATE_KEY = "pomodoroTimerState"
+const SETTINGS_KEY = "pomodoroSettings"
+
+// Interface for saved timer state (same as in standalone Pomodoro component)
+interface SavedTimerState {
+  startTimestamp: number
+  totalDuration: number
+  mode: TimerMode
+  isActive: boolean
+  cycles: number
+}
+
+// Default timer settings (same as in standalone Pomodoro component)
+const DEFAULT_SETTINGS = {
+  work: 25,
+  shortBreak: 5,
+  longBreak: 15,
+  longBreakInterval: 4,
+}
+
 const featureCards = [
   { name: "Create Test", icon: BookOpen, href: "/dashboard/create-test", color: "bg-blue-500" },
   { name: "Flash Cards", icon: Users, href: "/dashboard/flash-cards", color: "bg-green-500" },
@@ -58,7 +83,6 @@ interface Goal {
   level: number
 }
 
-// Add this interface after the Goal interface and before the TimeFrame type
 interface Flashcard {
   _id: string
   question: string
@@ -76,7 +100,6 @@ interface Flashcard {
   updatedAt: Date
 }
 
-// Add new interface for exam type stats
 interface ExamTypeStat {
   totalQuestions: number
   correctAnswers: number
@@ -114,11 +137,15 @@ export default function DashboardPage() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [goalsLoading, setGoalsLoading] = useState(true)
 
-  // Pomodoro timer states
+  // Enhanced Pomodoro timer states
   const [time, setTime] = useState(25 * 60)
   const [isActive, setIsActive] = useState(false)
+  const [mode, setMode] = useState<TimerMode>("work")
+  const [cycles, setCycles] = useState(0)
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS)
   const audioContextRef = useRef<AudioContext | null>(null)
   const tickIntervalRef = useRef<number | null>(null)
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Add a new state for daily questions stats
   const [dailyStats, setDailyStats] = useState({ completedQuestions: 0, totalQuestions: 0 })
@@ -132,6 +159,7 @@ export default function DashboardPage() {
   const [examTypeStats, setExamTypeStats] = useState<ExamTypeStat[]>([])
   const [examTypeStatsLoading, setExamTypeStatsLoading] = useState(true)
   const [activeExamStatsTab, setActiveExamStatsTab] = useState<"accuracy" | "questions" | "time">("accuracy")
+  
   interface RecommendedCourse {
     _id: string
     title: string
@@ -150,8 +178,180 @@ export default function DashboardPage() {
       setUserId(storedUserId)
     }
   }, [])
-  console.log(activeExamStatsTab)
-  // Add new useEffect to fetch exam type stats
+
+  // POMODORO TIMER RELATED CODE - BEGIN
+  // Load timer settings from localStorage on initial mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem(SETTINGS_KEY)
+    if (savedSettings) {
+      try {
+        setSettings(JSON.parse(savedSettings))
+      } catch (e) {
+        console.error("Error loading saved settings:", e)
+      }
+    }
+  }, [])
+  
+  // Load timer state from localStorage on initial mount
+  useEffect(() => {
+    const savedTimerState = localStorage.getItem(TIMER_STATE_KEY)
+    if (savedTimerState) {
+      try {
+        const parsedState = JSON.parse(savedTimerState) as SavedTimerState
+        
+        // Calculate elapsed time
+        const now = Date.now()
+        const elapsedSeconds = Math.floor((now - parsedState.startTimestamp) / 1000)
+        const remainingTime = Math.max(0, parsedState.totalDuration - elapsedSeconds)
+        
+        // Set the timer state
+        setMode(parsedState.mode)
+        setCycles(parsedState.cycles)
+        setTime(remainingTime)
+        
+        // Only resume if the timer was active and hasn't completed
+        if (parsedState.isActive && remainingTime > 0) {
+          setIsActive(true)
+        } else if (remainingTime === 0) {
+          // If timer completed while away, reset to next mode
+          handleTimerComplete()
+        }
+      } catch (e) {
+        console.error("Error loading saved timer state:", e)
+      }
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save timer state to localStorage when active
+  useEffect(() => {
+    if (isActive) {
+      const timerState: SavedTimerState = {
+        startTimestamp: Date.now() - ((settings[mode] * 60) - time) * 1000,
+        totalDuration: settings[mode] * 60,
+        mode,
+        isActive,
+        cycles
+      }
+      localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(timerState))
+    }
+  }, [isActive, time, mode, cycles, settings])
+
+  const playTick = useCallback(() => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (
+        window.AudioContext ||
+        (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      )()
+    }
+
+    const audioContext = audioContextRef.current
+    const oscillator = audioContext.createOscillator()
+    const gainNode = audioContext.createGain()
+
+    oscillator.connect(gainNode)
+    gainNode.connect(audioContext.destination)
+
+    oscillator.type = "sine"
+    oscillator.frequency.setValueAtTime(1000, audioContext.currentTime)
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime)
+    gainNode.gain.linearRampToValueAtTime(0.03, audioContext.currentTime + 0.01)
+    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.05)
+
+    oscillator.start()
+    oscillator.stop(audioContext.currentTime + 0.05)
+  }, [])
+
+  const startTickingSound = useCallback(() => {
+    if (tickIntervalRef.current) return
+
+    tickIntervalRef.current = window.setInterval(() => {
+      playTick()
+    }, 1000)
+  }, [playTick])
+
+  const stopTickingSound = useCallback(() => {
+    if (tickIntervalRef.current) {
+      clearInterval(tickIntervalRef.current)
+      tickIntervalRef.current = null
+    }
+  }, [])
+
+  const handleTimerComplete = useCallback(() => {
+    // Play notification sound
+    try {
+      new Audio("/notification.mp3").play()
+    } catch (e) {
+      console.error("Error playing notification sound:", e)
+    }
+    
+    // Stop the timer
+    setIsActive(false)
+    
+    // Remove from localStorage
+    localStorage.removeItem(TIMER_STATE_KEY)
+    
+    // Keep the timer at 00:00 without auto-transitioning to the next mode
+    // The user will need to manually select the next mode or restart
+  }, [])
+
+  // Update timer every second and handle completion
+  useEffect(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current)
+      timerIntervalRef.current = null
+    }
+
+    if (isActive && time > 0) {
+      timerIntervalRef.current = setInterval(() => {
+        setTime((prevTime) => prevTime - 1)
+      }, 1000)
+      startTickingSound()
+    } else if (time === 0) {
+      handleTimerComplete()
+      stopTickingSound()
+    } else {
+      stopTickingSound()
+    }
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+      }
+      stopTickingSound()
+    }
+  }, [isActive, time, handleTimerComplete, startTickingSound, stopTickingSound])
+
+  const toggleTimer = () => {
+    const newActiveState = !isActive
+    setIsActive(newActiveState)
+    
+    if (newActiveState) {
+      // Save timer state when starting
+      const timerState: SavedTimerState = {
+        startTimestamp: Date.now() - ((settings[mode] * 60) - time) * 1000,
+        totalDuration: settings[mode] * 60,
+        mode,
+        isActive: true,
+        cycles
+      }
+      localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(timerState))
+    } else {
+      // Remove from localStorage when pausing
+      localStorage.removeItem(TIMER_STATE_KEY)
+    }
+  }
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+  }
+
+  const navigateToPomodoro = () => {
+    router.push("/dashboard/pomodoro-timer")
+  }
+  // POMODORO TIMER RELATED CODE - END
+
   useEffect(() => {
     const fetchExamTypeStats = async () => {
       if (!userId) return
@@ -176,7 +376,7 @@ export default function DashboardPage() {
       fetchExamTypeStats()
     }
   }, [userId])
-  // Add this useEffect after your examTypeStats useEffect
+  
   useEffect(() => {
     const fetchRecommendedCourses = async () => {
       if (!userId || examTypeStatsLoading || examTypeStats.length === 0) return
@@ -209,7 +409,6 @@ export default function DashboardPage() {
 
       setIsLoading(true)
       try {
-        // const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/streak/${userId}`)
         const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/streak/${userId}`)
 
         if (response.data && typeof response.data.currentStreak === "number") {
@@ -345,87 +544,6 @@ export default function DashboardPage() {
     }
   }, [userId])
 
-  // Pomodoro timer functions
-  const playTick = useCallback(() => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (
-        window.AudioContext ||
-        (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-      )()
-    }
-
-    const audioContext = audioContextRef.current
-    const oscillator = audioContext.createOscillator()
-    const gainNode = audioContext.createGain()
-
-    oscillator.connect(gainNode)
-    gainNode.connect(audioContext.destination)
-
-    oscillator.type = "sine"
-    oscillator.frequency.setValueAtTime(1000, audioContext.currentTime)
-    gainNode.gain.setValueAtTime(0, audioContext.currentTime)
-    gainNode.gain.linearRampToValueAtTime(0.03, audioContext.currentTime + 0.01)
-    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.05)
-
-    oscillator.start()
-    oscillator.stop(audioContext.currentTime + 0.05)
-  }, [])
-
-  const startTickingSound = useCallback(() => {
-    if (tickIntervalRef.current) return
-
-    tickIntervalRef.current = window.setInterval(() => {
-      playTick()
-    }, 1000)
-  }, [playTick])
-
-  const stopTickingSound = useCallback(() => {
-    if (tickIntervalRef.current) {
-      clearInterval(tickIntervalRef.current)
-      tickIntervalRef.current = null
-    }
-  }, [])
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
-
-    if (isActive && time > 0) {
-      interval = setInterval(() => {
-        setTime((prevTime) => prevTime - 1)
-      }, 1000)
-      startTickingSound()
-    } else if (time === 0) {
-      setIsActive(false)
-      stopTickingSound()
-      try {
-        new Audio("/notification.mp3").play()
-      } catch (error) {
-        console.error("Error playing notification sound:", error)
-      }
-    } else {
-      stopTickingSound()
-    }
-
-    return () => {
-      if (interval) clearInterval(interval)
-      stopTickingSound()
-    }
-  }, [isActive, time, startTickingSound, stopTickingSound])
-
-  const toggleTimer = () => {
-    setIsActive(!isActive)
-  }
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-  }
-
-  const navigateToPomodoro = () => {
-    router.push("/dashboard/pomodoro-timer")
-  }
-
   const navigateToLeaderboard = () => {
     router.push(`/dashboard/leaderboard?tab=${activeTab}`)
   }
@@ -559,7 +677,11 @@ export default function DashboardPage() {
                 {isActive ? <Pause size={16} /> : <Play size={16} />}
               </button>
             </div>
-            <p className="text-xs text-muted-foreground">{isActive ? "Timer running" : "Click to start"}</p>
+            <p className="text-xs text-muted-foreground">
+              {isActive 
+                ? `${mode === "work" ? "Working" : mode === "shortBreak" ? "Short Break" : "Long Break"}`
+                : "Click to start"}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -586,7 +708,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Recent Test Component */}
-          <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
+          <div>
             <RecentTest />
           </div>
 
@@ -878,13 +1000,6 @@ export default function DashboardPage() {
                       className="flex gap-4 p-3 border rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
                       onClick={() => router.push(`/dashboard/courses/${course._id}`)}
                     >
-                      {/* <div className="relative h-20 w-32 rounded-md overflow-hidden flex-shrink-0">
-              <img 
-                src={course.thumbnail || "/placeholder.svg?height=80&width=128&query=medical course"} 
-                alt={course.title}
-                className="object-cover w-full h-full"
-              />
-            </div> */}
                       <div className="flex-1">
                         <h4 className="font-medium">{course.title}</h4>
                         <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{course.description}</p>

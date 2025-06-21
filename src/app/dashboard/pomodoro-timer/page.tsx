@@ -5,6 +5,18 @@ import { useCallback, useEffect, useState, useRef } from "react"
 
 type TimerMode = "work" | "shortBreak" | "longBreak"
 
+// Keys for localStorage
+const TIMER_STATE_KEY = "pomodoroTimerState"
+
+// Interface for saved timer state
+interface SavedTimerState {
+  startTimestamp: number
+  totalDuration: number
+  mode: TimerMode
+  isActive: boolean
+  cycles: number
+}
+
 const PomodoroTimer = () => {
   const [time, setTime] = useState(25 * 60)
   const [isActive, setIsActive] = useState(false)
@@ -20,6 +32,70 @@ const PomodoroTimer = () => {
 
   const audioContextRef = useRef<AudioContext | null>(null)
   const tickIntervalRef = useRef<number | null>(null)
+  
+  // Load settings from localStorage on initial mount
+  useEffect(() => {
+    const savedSettings = localStorage.getItem("pomodoroSettings")
+    if (savedSettings) {
+      try {
+        setSettings(JSON.parse(savedSettings))
+      } catch (e) {
+        console.error("Error loading saved settings:", e)
+      }
+    }
+  }, [])
+  
+  // Load timer state from localStorage on initial mount
+  useEffect(() => {
+    const savedTimerState = localStorage.getItem(TIMER_STATE_KEY)
+    if (savedTimerState) {
+      try {
+        const parsedState = JSON.parse(savedTimerState) as SavedTimerState
+        
+        // Calculate elapsed time
+        const now = Date.now()
+        const elapsedSeconds = Math.floor((now - parsedState.startTimestamp) / 1000)
+        const remainingTime = Math.max(0, parsedState.totalDuration - elapsedSeconds)
+        
+        // Set the timer state
+        setMode(parsedState.mode)
+        setCycles(parsedState.cycles)
+        setTime(remainingTime)
+        
+        // Only resume if the timer was active and hasn't completed
+        if (parsedState.isActive && remainingTime > 0) {
+          setIsActive(true)
+        } else if (remainingTime === 0) {
+          // If timer completed while away, reset to next mode
+          handleTimerComplete()
+        }
+      } catch (e) {
+        console.error("Error loading saved timer state:", e)
+      }
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save settings to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("pomodoroSettings", JSON.stringify(settings))
+  }, [settings])
+
+  // Save timer state to localStorage when active
+  useEffect(() => {
+    if (isActive) {
+      const timerState: SavedTimerState = {
+        startTimestamp: Date.now() - ((settings[mode] * 60) - time) * 1000,
+        totalDuration: settings[mode] * 60,
+        mode,
+        isActive,
+        cycles
+      }
+      localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(timerState))
+    } else {
+      // Clear saved state when timer is stopped
+      localStorage.removeItem(TIMER_STATE_KEY)
+    }
+  }, [isActive, time, mode, cycles, settings])
 
   const playTick = useCallback(() => {
     if (!audioContextRef.current) {
@@ -59,28 +135,47 @@ const PomodoroTimer = () => {
   }, [])
 
   const handleTimerComplete = useCallback(() => {
-    let nextMode: TimerMode
-    let nextTime: number
-
-    if (mode === "work") {
-      setCycles((prevCycles) => prevCycles + 1)
-      if (cycles + 1 >= settings.longBreakInterval) {
-        nextMode = "longBreak"
-        nextTime = settings.longBreak * 60
-        setCycles(0)
-      } else {
-        nextMode = "shortBreak"
-        nextTime = settings.shortBreak * 60
-      }
-    } else {
-      nextMode = "work"
-      nextTime = settings.work * 60
+    // Play notification sound
+    try {
+      new Audio("/notification.mp3").play()
+    } catch (e) {
+      console.error("Error playing notification sound:", e)
     }
-
-    setMode(nextMode)
-    setTime(nextTime)
-    new Audio("/notification.mp3").play()
-  }, [mode, cycles, settings])
+    
+    // Stop the timer
+    setIsActive(false)
+    
+    // Remove from localStorage
+    localStorage.removeItem(TIMER_STATE_KEY)
+    
+    // Keep the timer at 00:00 without auto-transitioning to the next mode
+    // The user will need to manually select the next mode or restart
+  }, [])
+  
+  // New function to manually change modes
+  const changeMode = (newMode: TimerMode) => {
+    setIsActive(false) // Stop the timer
+    setMode(newMode)
+    
+    // Set time based on the selected mode
+    switch (newMode) {
+      case "work":
+        setTime(settings.work * 60)
+        break
+      case "shortBreak":
+        setTime(settings.shortBreak * 60)
+        break
+      case "longBreak":
+        if (mode === "work") {
+          setCycles((prevCycles) => prevCycles + 1)
+        }
+        setTime(settings.longBreak * 60)
+        break
+    }
+    
+    // Clear any saved timer state
+    localStorage.removeItem(TIMER_STATE_KEY)
+  }
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
@@ -104,7 +199,23 @@ const PomodoroTimer = () => {
   }, [isActive, time, handleTimerComplete, startTickingSound, stopTickingSound])
 
   const toggleTimer = () => {
-    setIsActive(!isActive)
+    const newActiveState = !isActive
+    setIsActive(newActiveState)
+    
+    if (newActiveState) {
+      // Save timer state when starting
+      const timerState: SavedTimerState = {
+        startTimestamp: Date.now() - ((settings[mode] * 60) - time) * 1000,
+        totalDuration: settings[mode] * 60,
+        mode,
+        isActive: true,
+        cycles
+      }
+      localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(timerState))
+    } else {
+      // Remove from localStorage when pausing
+      localStorage.removeItem(TIMER_STATE_KEY)
+    }
   }
 
   const resetTimer = () => {
@@ -113,6 +224,9 @@ const PomodoroTimer = () => {
     setMode("work")
     setCycles(0)
     stopTickingSound()
+    
+    // Clear saved state when resetting
+    localStorage.removeItem(TIMER_STATE_KEY)
   }
 
   const formatTime = (seconds: number) => {
@@ -169,30 +283,21 @@ const PomodoroTimer = () => {
         <div className="flex justify-center space-x-4 mb-6">
           <button
             className={`px-4 py-2 rounded ${mode === "work" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
-            onClick={() => {
-              setMode("work")
-              setTime(settings.work * 60)
-            }}
+            onClick={() => changeMode("work")}
           >
             <Book size={20} className="inline-block mr-2" />
             Work
           </button>
           <button
             className={`px-4 py-2 rounded ${mode === "shortBreak" ? "bg-green-500 text-white" : "bg-gray-200"}`}
-            onClick={() => {
-              setMode("shortBreak")
-              setTime(settings.shortBreak * 60)
-            }}
+            onClick={() => changeMode("shortBreak")}
           >
             <Coffee size={20} className="inline-block mr-2" />
             Short Break
           </button>
           <button
             className={`px-4 py-2 rounded ${mode === "longBreak" ? "bg-indigo-500 text-white" : "bg-gray-200"}`}
-            onClick={() => {
-              setMode("longBreak")
-              setTime(settings.longBreak * 60)
-            }}
+            onClick={() => changeMode("longBreak")}
           >
             <Coffee size={20} className="inline-block mr-2" />
             Long Break
@@ -268,4 +373,3 @@ const PomodoroTimer = () => {
 }
 
 export default PomodoroTimer
-

@@ -3,6 +3,7 @@
 import axios from "axios"
 import { BookOpen, ChevronLeft, ChevronRight, Clock, TrendingUp } from "lucide-react"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation" // Import useRouter
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -67,6 +68,7 @@ interface WeeklyProgress {
 }
 
 export default function NextTaskCard({ userId, onNavigate }: { userId: string | null; onNavigate?: () => void }) {
+  const router = useRouter() // Initialize router
   const [dialogOpen, setDialogOpen] = useState(false)
   const [currentWeek, setCurrentWeek] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
@@ -112,6 +114,11 @@ export default function NextTaskCard({ userId, onNavigate }: { userId: string | 
   const noActiveMessage = !studyPlan && data?.success ? data.message : null
   const errorMessage = error || (!data?.success && data?.message ? data.message : null)
 
+  // Navigate to AI plan page
+  const navigateToAIPlan = () => {
+    router.push('/dashboard/study-planner') // Adjust the path as needed
+  }
+
   // Format duration to hours and minutes
   const formatDuration = (minutes: number): string => {
     const hours = Math.floor(minutes / 60)
@@ -153,7 +160,13 @@ export default function NextTaskCard({ userId, onNavigate }: { userId: string | 
             <div className="text-sm text-red-500">{errorMessage}</div>
           ) : noActiveMessage ? (
             <div className="text-sm">
-              <span className="font-medium">📚 {noActiveMessage}</span>
+              <span className="font-medium">📚 {noActiveMessage} </span>
+              <span 
+                className="text-blue-600 hover:text-blue-800 cursor-pointer font-medium underline"
+                onClick={navigateToAIPlan}
+              >
+                here
+              </span>
             </div>
           ) : studyPlan ? (
             <div className="space-y-3">

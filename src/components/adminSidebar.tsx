@@ -14,11 +14,6 @@ const sidebarItems = [
     { name: "Inquiries", href: "/admin/inquiries", icon: Info },
     { name: "Courses", href: "/admin/courses", icon: LaptopMinimalCheck },
     { name: "Mentors", href: "/admin/mentor", icon: GraduationCap }
-    // { name: "Leaderboard", href: "/admin/leaderboard", icon: PiRankingDuotone },
-    // { name: "Performance Tracking", href: "/admin/performance-tracking", icon: BarChart2 },
-    // { name: "Smart Study Calendar", href: "/admin/smart-study", icon: BookOpen },
-    // { name: "Custom Weekly Goals", href: "/admin/custom-weekly-goals", icon: Settings },
-    // { name: "Pomodoro Timer", href: "/admin/pomodoro-timer", icon: Clock },
 ]
 
 interface SidebarProps {

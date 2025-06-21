@@ -98,7 +98,6 @@ export interface StudyPlanResponse {
 
 export interface UserData {
   name: string;
-  email: string;
   currentLevel: string;
   targetExam: string;
   examDate: string;
@@ -122,7 +121,7 @@ export interface StudyPlanResultsProps {
 export interface FormData {
   // Personal details
   name: string
-  email: string
+  // email: string
   currentLevel: "beginner" | "intermediate" | "advanced" | "expert"
 
   // Exam details
