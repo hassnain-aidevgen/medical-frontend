@@ -132,7 +132,7 @@ export default function RecentTest() {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No Recent Tests</h3>
             <p className="text-gray-500 mb-4 max-w-sm">
-              You haven't taken any tests yet. Start with your first test to see your progress here.
+              You haven&apos;t taken any tests yet. Start with your first test to see your progress here.
             </p>
             <Button 
               className="bg-green-500 hover:bg-green-600 text-white"
