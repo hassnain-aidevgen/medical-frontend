@@ -68,7 +68,7 @@ export default function AutoFlashcardGenerator({ userId, onFlashcardsGenerated }
     setIsLoading(true)
     try {
       // Use the recommendations2 endpoint to get wrongly answered questions
-      const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/recommendations2/${userId}`)
+      const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/recommendations4/${userId}`)
 
       // Transform the recommendations data into the format needed for missed questions
       const wrongQuestions = response.data.recommendations.map((item: { questionText: string; correctAnswer: string; topic?: string }, index: number) => ({

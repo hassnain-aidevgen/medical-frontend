@@ -401,7 +401,7 @@ export default function CreateTest() {
         }
 
         const performanceResponse = await axios.get<PerformanceResponse>(
-          "https://medical-backend-3eek.onrender.com/api/test/performance2",
+          "https://medical-backend-3eek.onrender.com/api/performanceTracking/performance2",
           {
             params: { userId },
           },

@@ -29,7 +29,7 @@ import HistoryTimeline from "../history-timeline"
 import StreakTracker from "../streak-tracker"
 import FlashcardSuggestions from "../flashcard-suggestions"
 import ExamAlignment from "../exam-alignment"
-import ExamCoverageReport from "@/components/ExamCoverageReport"
+import ExamCoverageReport from "@/app/dashboard/performance-tracking/components/ExamCoverageReport"
 
 import type { StatsData, TestResult, ComparativeAnalytics, TopicMasteryMetrics } from "../types"
 
@@ -43,6 +43,12 @@ interface OverviewTabProps {
     stats: boolean
     comparative: boolean
     topicMastery: boolean
+  }
+  error?: {
+    performance: string | null
+    stats: string | null
+    comparative: string | null
+    topicMastery: string | null
   }
   viewAllTests: boolean
   setViewAllTests: (value: boolean) => void
@@ -61,6 +67,7 @@ export default function OverviewTab({
   comparativeData,
   topicMasteryData,
   loading,
+  error,
   viewAllTests,
   setViewAllTests,
   viewAllQuestions,
@@ -74,19 +81,87 @@ export default function OverviewTab({
   const [chartType, setChartType] = useState("bar")
   const router = useRouter()
 
-  // Prepare chart data
+  // Prepare chart data with error handling
   const accuracyChartData = performanceData.map((test, index) => ({
     name: `Test ${index + 1}`,
     accuracy: test.percentage,
     date: formatDate(test.createdAt),
   }))
 
-  const subjectPerformanceData =
-    comparativeData?.userPerformance.subjectPerformance.map((subject) => ({
-      name: subject.name,
-      accuracy: subject.percentage,
-      questions: subject.total,
-    })) || []
+  // Render the subject performance chart with proper error handling
+  const renderSubjectPerformanceChart = () => {
+    // Check if we have valid data
+    if (!comparativeData || 
+        !comparativeData.userPerformance || 
+        !comparativeData.userPerformance.subjectPerformance ||
+        !Array.isArray(comparativeData.userPerformance.subjectPerformance) ||
+        comparativeData.userPerformance.subjectPerformance.length === 0) {
+      return (
+        <div className="h-full flex flex-col items-center justify-center">
+          <p className="text-muted-foreground">No subject data available</p>
+          {error?.comparative && (
+            <p className="text-sm text-red-500 mt-2">{error.comparative}</p>
+          )}
+        </div>
+      );
+    }
+    
+    // Safe data processing
+    const safeSubjectData = comparativeData.userPerformance.subjectPerformance
+      .filter(subject => subject && typeof subject === 'object')
+      .map(subject => ({
+        name: subject.name || "Unknown Subject",
+        accuracy: typeof subject.percentage === 'number' ? subject.percentage : 0,
+        questions: typeof subject.total === 'number' ? subject.total : 0
+      }));
+    
+    if (safeSubjectData.length === 0) {
+      return (
+        <div className="h-full flex items-center justify-center">
+          <p className="text-muted-foreground">No valid subject data available</p>
+        </div>
+      );
+    }
+    
+    return (
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={safeSubjectData}
+            cx="50%"
+            cy="50%"
+            labelLine={false}
+            outerRadius={100}
+            fill="#8884d8"
+            dataKey="accuracy"
+            nameKey="name"
+            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+            animationDuration={1500}
+          >
+            {safeSubjectData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip formatter={(value) => [`${value}%`, "Accuracy"]} />
+        </PieChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  // Safe best subject getter
+  const getBestSubject = () => {
+    if (!comparativeData?.userPerformance?.subjectPerformance?.length) return "N/A";
+    
+    try {
+      const sortedSubjects = [...comparativeData.userPerformance.subjectPerformance]
+        .sort((a, b) => (b?.percentage || 0) - (a?.percentage || 0));
+      
+      return sortedSubjects[0]?.name || "N/A";
+    } catch (err) {
+      console.error("Error getting best subject:", err);
+      return "N/A";
+    }
+  };
 
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d", "#ffc658", "#8dd1e1"]
 
@@ -117,7 +192,7 @@ export default function OverviewTab({
               ? (performanceData[performanceData.length - 1].percentage - performanceData[0].percentage).toFixed(3)
               : "0.0"
           }%`}
-          subtitle={`${comparativeData?.userPerformance.overallPercentile || 0}th percentile`}
+          subtitle={`${comparativeData?.userPerformance?.overallPercentile || 0}th percentile`}
           color="purple"
         />
 
@@ -125,7 +200,7 @@ export default function OverviewTab({
           icon={<BookOpen className="h-6 w-6 text-white" />}
           title="Tests Taken"
           value={statsData?.totalTestsTaken || 0}
-          subtitle={`${topicMasteryData?.overallMastery.topicsStarted || 0} topics explored`}
+          subtitle={`${topicMasteryData?.overallMastery?.topicsStarted || 0} topics explored`}
           color="amber"
         />
       </div>
@@ -194,43 +269,49 @@ export default function OverviewTab({
             </CardHeader>
             <CardContent>
               <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  {chartType === "bar" ? (
-                    <BarChart data={accuracyChartData}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                      <XAxis dataKey="name" />
-                      <YAxis domain={[0, 100]} />
-                      <Tooltip
-                        formatter={(value) => [`${value}%`, "Accuracy"]}
-                        labelFormatter={(label) => `${label}`}
-                      />
-                      <Bar dataKey="accuracy" fill="var(--primary)" radius={[4, 4, 0, 0]} animationDuration={1500}>
-                        {accuracyChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={`hsl(${210 + index * 10}, 80%, 55%)`} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  ) : (
-                    <LineChart data={accuracyChartData}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                      <XAxis dataKey="name" />
-                      <YAxis domain={[0, 100]} />
-                      <Tooltip
-                        formatter={(value) => [`${value}%`, "Accuracy"]}
-                        labelFormatter={(label) => `${label}`}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="accuracy"
-                        stroke="#555"
-                        strokeWidth={3}
-                        dot={{ r: 6, strokeWidth: 2 }}
-                        activeDot={{ r: 8 }}
-                        animationDuration={1500}
-                      />
-                    </LineChart>
-                  )}
-                </ResponsiveContainer>
+                {performanceData.length === 0 ? (
+                  <div className="h-full flex items-center justify-center">
+                    <p className="text-muted-foreground">No performance data available</p>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    {chartType === "bar" ? (
+                      <BarChart data={accuracyChartData}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                        <XAxis dataKey="name" />
+                        <YAxis domain={[0, 100]} />
+                        <Tooltip
+                          formatter={(value) => [`${value}%`, "Accuracy"]}
+                          labelFormatter={(label) => `${label}`}
+                        />
+                        <Bar dataKey="accuracy" fill="var(--primary)" radius={[4, 4, 0, 0]} animationDuration={1500}>
+                          {accuracyChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={`hsl(${210 + index * 10}, 80%, 55%)`} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    ) : (
+                      <LineChart data={accuracyChartData}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                        <XAxis dataKey="name" />
+                        <YAxis domain={[0, 100]} />
+                        <Tooltip
+                          formatter={(value) => [`${value}%`, "Accuracy"]}
+                          labelFormatter={(label) => `${label}`}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="accuracy"
+                          stroke="#555"
+                          strokeWidth={3}
+                          dot={{ r: 6, strokeWidth: 2 }}
+                          activeDot={{ r: 8 }}
+                          animationDuration={1500}
+                        />
+                      </LineChart>
+                    )}
+                  </ResponsiveContainer>
+                )}
               </div>
             </CardContent>
             <CardFooter className="border-t bg-muted/50 px-6 py-3">
@@ -266,47 +347,25 @@ export default function OverviewTab({
             </CardHeader>
             <CardContent>
               <div className="h-[300px]">
-                {subjectPerformanceData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={subjectPerformanceData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        dataKey="accuracy"
-                        nameKey="name"
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        animationDuration={1500}
-                      >
-                        {subjectPerformanceData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => [`${value}%`, "Accuracy"]} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
+                {loading.comparative ? (
                   <div className="h-full flex items-center justify-center">
-                    <p className="text-muted-foreground">No subject data available</p>
+                    <p className="text-muted-foreground">Loading subject data...</p>
                   </div>
+                ) : (
+                  renderSubjectPerformanceChart()
                 )}
               </div>
             </CardContent>
             <CardFooter className="border-t bg-muted/50 px-6 py-3">
               <div className="flex items-center justify-between w-full text-sm text-muted-foreground">
                 <div>
-                  Subjects: <span className="font-medium text-foreground">{subjectPerformanceData.length}</span>
+                  Subjects: <span className="font-medium text-foreground">
+                    {comparativeData?.userPerformance?.subjectPerformance?.length || 0}
+                  </span>
                 </div>
                 <div>
                   Best Subject:{" "}
-                  <span className="font-medium text-foreground">
-                    {subjectPerformanceData.length > 0
-                      ? subjectPerformanceData.sort((a, b) => b.accuracy - a.accuracy)[0].name
-                      : "N/A"}
-                  </span>
+                  <span className="font-medium text-foreground">{getBestSubject()}</span>
                 </div>
               </div>
             </CardFooter>

@@ -225,7 +225,7 @@ export default function AnalyticsDashboard() {
   const fetchWeakSubjects = async (userId: string) => {
     try {
       // Fetch performance data from your new endpoint
-      const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/get-performance/${userId}`)
+      const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/performanceTracking/get-performance/${userId}`)
 
       if (response.data.success && response.data.data) {
         setUserPerformanceData(response.data.data)
@@ -298,7 +298,7 @@ export default function AnalyticsDashboard() {
       console.error("Error fetching weak subjects:", error)
     }
   }
-  // ye wali
+
   useEffect(() => {
     const fetchData = async () => {
       const userId = localStorage.getItem("Medical_User_Id")
@@ -313,71 +313,205 @@ export default function AnalyticsDashboard() {
         return
       }
 
+      // Fetch performance data
       try {
-        // Fetch performance data
-        const performanceResponse = await axios.get("https://medical-backend-3eek.onrender.com/api/test/performance2", {
-          params: { userId },
-        })
+        const performanceResponse = await axios.get(
+          "https://medical-backend-3eek.onrender.com/api/performanceTracking/performance2",
+          { params: { userId } }
+        )
         if (performanceResponse.data.success) {
-          setPerformanceData(performanceResponse.data.results) // ✅ Correct
+          setPerformanceData(performanceResponse.data.results)
         } else {
           console.error("Failed to load performance data")
+          setError((prev) => ({ ...prev, performance: "Could not load performance data" }))
         }
+      } catch (err) {
+        console.error("Error fetching performance data:", err)
+        setError((prev) => ({ ...prev, performance: "Could not load performance data" }))
+      } finally {
         setLoading((prev) => ({ ...prev, performance: false }))
+      }
 
-        // Fetch stats data
+      // Fetch stats data
+      try {
         const statsResponse = await axios.get<StatsData>(
-          `https://medical-backend-3eek.onrender.com/api/test/user/${userId}/stats`,
+          `https://medical-backend-3eek.onrender.com/api/performanceTracking/user/${userId}/stats`
         )
         setStatsData(statsResponse.data)
-        setLoading((prev) => ({ ...prev, stats: false }))
-
-        // Fetch comparative analytics
-        try {
-          const comparativeResponse = await axios.get<ComparativeAnalytics>(
-            `https://medical-backend-3eek.onrender.com/api/test/comparative/${userId}`,
-          )
-          setComparativeData(comparativeResponse.data)
-        } catch (err) {
-          console.error("Error fetching comparative data:", err)
-          setError((prev) => ({ ...prev, comparative: "Could not load comparative data" }))
-        } finally {
-          setLoading((prev) => ({ ...prev, comparative: false }))
-        }
-
-        // Fetch topic mastery data
-        try {
-          const topicMasteryResponse = await axios.get<TopicMasteryMetrics>(
-            `https://medical-backend-3eek.onrender.com/api/test/topic-mastery-v2/${userId}`,
-          )
-          setTopicMasteryData(topicMasteryResponse.data)
-        } catch (err) {
-          console.error("Error fetching topic mastery data:", err)
-          setError((prev) => ({ ...prev, topicMastery: "Could not load topic mastery data" }))
-        } finally {
-          setLoading((prev) => ({ ...prev, topicMastery: false }))
-        }
-        await fetchWeakSubjects(userId)
-        setShareUrl("")
       } catch (err) {
-        console.error("Error fetching data:", err)
-        setError((prev) => ({
-          ...prev,
-          performance: "Could not load performance data",
-          stats: "Could not load stats data",
-        }))
-        setLoading({
-          performance: false,
-          stats: false,
-          comparative: false,
-          topicMastery: false,
-        })
+        console.error("Error fetching stats data:", err)
+        setError((prev) => ({ ...prev, stats: "Could not load stats data" }))
+      } finally {
+        setLoading((prev) => ({ ...prev, stats: false }))
       }
+
+      // Generate local comparative data from test data if API fails
+      let localComparativeData: ComparativeAnalytics | null = null;
+
+      // Fetch comparative data with proper error handling and fallback
+      try {
+        const comparativeResponse = await axios.get<ComparativeAnalytics>(
+          `https://medical-backend-3eek.onrender.com/api/performanceTracking/comparative/${userId}`
+        )
+        setComparativeData(comparativeResponse.data)
+      } catch (err) {
+        console.error("Error fetching comparative data:", err)
+
+        // Check if we already have performance data to create a local fallback
+        if (performanceData.length > 0) {
+          try {
+            // Create basic comparative data from existing performance data
+            localComparativeData = createLocalComparativeData(performanceData);
+            setComparativeData(localComparativeData);
+            setError((prev) => ({ ...prev, comparative: "Using locally calculated data" }))
+          } catch (localErr) {
+            console.error("Error creating local comparative data:", localErr);
+            setComparativeData(createEmptyComparativeData());
+            setError((prev) => ({ ...prev, comparative: "Could not load comparative data" }))
+          }
+        } else {
+          // Use empty data structure
+          setComparativeData(createEmptyComparativeData());
+          setError((prev) => ({ ...prev, comparative: "Could not load comparative data" }))
+        }
+      } finally {
+        setLoading((prev) => ({ ...prev, comparative: false }))
+      }
+
+      // Fetch topic mastery data
+      try {
+        const topicMasteryResponse = await axios.get<TopicMasteryMetrics>(
+          `https://medical-backend-3eek.onrender.com/api/performanceTracking/topic-mastery-v2/${userId}`
+        )
+        setTopicMasteryData(topicMasteryResponse.data)
+      } catch (err) {
+        console.error("Error fetching topic mastery data:", err)
+        setError((prev) => ({ ...prev, topicMastery: "Could not load topic mastery data" }))
+      } finally {
+        setLoading((prev) => ({ ...prev, topicMastery: false }))
+      }
+
+      // Fetch weak subjects
+      try {
+        await fetchWeakSubjects(userId)
+      } catch (err) {
+        console.error("Error fetching weak subjects:", err)
+      }
+
+      setShareUrl("")
     }
 
     fetchData()
   }, [])
 
+  const createLocalComparativeData = (tests: TestResult[]): ComparativeAnalytics => {
+    if (!tests.length) return createEmptyComparativeData();
+
+    // Group questions by subject and calculate performance
+    const subjectMap: Record<string, { name: string, correct: number, total: number }> = {};
+    const topicMap: Record<string, { name: string, correct: number, total: number }> = {};
+
+    // Process all questions from all tests
+    tests.forEach(test => {
+      test.questions.forEach(q => {
+        // Handle subject data
+        const subjectName = q.subjectName || "Unknown Subject";
+        if (!subjectMap[subjectName]) {
+          subjectMap[subjectName] = { name: subjectName, correct: 0, total: 0 };
+        }
+        subjectMap[subjectName].total++;
+        if (q.userAnswer === q.correctAnswer) {
+          subjectMap[subjectName].correct++;
+        }
+
+        // Handle topic data
+        const topicName = q.topic || "Unknown Topic";
+        if (!topicMap[topicName]) {
+          topicMap[topicName] = { name: topicName, correct: 0, total: 0 };
+        }
+        topicMap[topicName].total++;
+        if (q.userAnswer === q.correctAnswer) {
+          topicMap[topicName].correct++;
+        }
+      });
+    });
+
+    // Calculate percentages
+    const subjectPerformance = Object.values(subjectMap).map(subject => ({
+      name: subject.name,
+      correct: subject.correct,
+      total: subject.total,
+      percentage: Math.round((subject.correct / subject.total) * 100)
+    }));
+
+    const topicPerformance = Object.values(topicMap).map(topic => ({
+      name: topic.name,
+      correct: topic.correct,
+      total: topic.total,
+      percentage: Math.round((topic.correct / topic.total) * 100)
+    }));
+
+    // Calculate overall metrics
+    const totalQuestions = tests.reduce((sum, test) => sum + test.questions.length, 0);
+    const totalCorrect = tests.reduce((sum, test) => sum + test.score, 0);
+    const overallAccuracy = Math.round((totalCorrect / totalQuestions) * 100) || 0;
+
+    // Calculate average time per question
+    const totalTime = tests.reduce((sum, test) => sum + test.totalTime, 0);
+    const avgTimePerQuestion = Math.round(totalTime / totalQuestions) || 0;
+
+    // Calculate improvement if multiple tests
+    let improvement = null;
+    if (tests.length > 1) {
+      const firstTest = tests[tests.length - 1]; // Oldest test
+      const latestTest = tests[0]; // Newest test
+
+      improvement = {
+        percentage: latestTest.percentage - firstTest.percentage,
+        scoreChange: latestTest.score - firstTest.score,
+        timeEfficiency: firstTest.totalTime - latestTest.totalTime
+      };
+    }
+
+    return {
+      userPerformance: {
+        subjectPerformance,
+        subsectionPerformance: [], // We don't have subsection data in this fallback
+        topicPerformance,
+        overallPercentile: 50, // Default to 50th percentile without comparative data
+        averageTimePerQuestion: avgTimePerQuestion,
+        totalTestsTaken: tests.length
+      },
+      globalPerformance: {
+        average: {
+          score: totalCorrect,
+          percentage: overallAccuracy,
+          totalTests: tests.length
+        }
+      },
+      improvement
+    };
+  };
+  const createEmptyComparativeData = (): ComparativeAnalytics => {
+    return {
+      userPerformance: {
+        subjectPerformance: [],
+        subsectionPerformance: [],
+        topicPerformance: [],
+        overallPercentile: 0,
+        averageTimePerQuestion: 0,
+        totalTestsTaken: 0
+      },
+      globalPerformance: {
+        average: {
+          score: 0,
+          percentage: 0,
+          totalTests: 0
+        }
+      },
+      improvement: null
+    };
+  };
   const generatePDF = async () => {
     if (!dashboardRef.current) return
 
@@ -612,11 +746,11 @@ export default function AnalyticsDashboard() {
     selectedSystem === "all"
       ? topicMasteryData?.topics || []
       : (topicMasteryData?.topics || []).filter((topic) =>
-          topicMasteryData?.subtopics.some(
-            (subtopic) =>
-              subtopic.parentTopic === topic.name && subtopic.name.toLowerCase().includes(selectedSystem.toLowerCase()),
-          ),
-        )
+        topicMasteryData?.subtopics.some(
+          (subtopic) =>
+            subtopic.parentTopic === topic.name && subtopic.name.toLowerCase().includes(selectedSystem.toLowerCase()),
+        ),
+      )
 
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d", "#ffc658", "#8dd1e1"]
 
@@ -748,6 +882,7 @@ export default function AnalyticsDashboard() {
               comparativeData={comparativeData}
               topicMasteryData={topicMasteryData}
               loading={loading}
+              error={error}
               viewAllTests={viewAllTests}
               setViewAllTests={setViewAllTests}
               viewAllQuestions={viewAllQuestions}

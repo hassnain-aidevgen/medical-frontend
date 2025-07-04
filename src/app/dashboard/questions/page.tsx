@@ -63,7 +63,7 @@ export default function QuestionsPage() {
         return
       }
 
-      const { data } = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/recommendations3/${userId}`)
+      const { data } = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/recommendations4/${userId}`)
 
       console.log("Recommendation data received:", data)
 
@@ -94,7 +94,7 @@ export default function QuestionsPage() {
         }
 
         const { data } = await axios.get(
-          `https://medical-backend-3eek.onrender.com/api/test/recommendations3/${userId}`,
+          `https://medical-backend-3eek.onrender.com/api/test/recommendations4/${userId}`,
         )
 
         if (data.recommendations && data.recommendations.length > 0) {
@@ -143,7 +143,7 @@ export default function QuestionsPage() {
         }
 
         const response = await axios.get<StatsData>(
-          `https://medical-backend-3eek.onrender.com/api/test/user/${userId}/stats`,
+          `https://medical-backend-3eek.onrender.com/api/performanceTracking/user/${userId}/stats`,
         )
         setStatsData(response.data)
       } catch (error) {
@@ -160,7 +160,7 @@ export default function QuestionsPage() {
           return
         }
 
-        const performanceResponse = await axios.get("https://medical-backend-3eek.onrender.com/api/test/performance2", {
+        const performanceResponse = await axios.get("https://medical-backend-3eek.onrender.com/api/performanceTracking/performance2", {
           params: { userId },
         })
 
@@ -384,8 +384,8 @@ export default function QuestionsPage() {
 
         {/* Main Content */}
         <div className="space-y-8">
-          {/* Study Mode Tabs */}
-          <motion.div
+        
+          {/* <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
@@ -422,9 +422,9 @@ export default function QuestionsPage() {
                 </Tabs>
               </CardContent>
             </Card>
-          </motion.div>
+          </motion.div> */}
 
-          {/* Recommended Questions Section */}
+       
           {showRecommendations && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}

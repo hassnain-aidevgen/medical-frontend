@@ -96,7 +96,7 @@ export default function ExamAlignment({
 
         try {
           // Use the native fetch API to avoid NextAuth issues
-          const response = await fetch(`${baseUrl}/api/test/user-exam-stats/${userId}`, {
+          const response = await fetch(`${baseUrl}/api/performanceTracking/user-exam-stats/${userId}`, {
             method: "GET",
             headers: {
               Accept: "application/json",

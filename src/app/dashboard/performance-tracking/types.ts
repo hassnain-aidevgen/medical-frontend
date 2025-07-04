@@ -3,6 +3,8 @@ import React from "react"
 export interface TestResult {
   userId: string
   questions: {
+    subjectName: string
+    topic: string
     questionId: string
     questionText: string
     userAnswer: string
