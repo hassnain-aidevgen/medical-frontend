@@ -61,7 +61,7 @@ export default function MentorsPage() {
 
     const fetchMentors = async () => {
         try {
-            const response = await axios.get("https://medical-backend-loj4.onrender.com/api/mentor", {
+            const response = await axios.get("https://medical-backend-3eek.onrender.com/api/mentor", {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
@@ -90,7 +90,7 @@ export default function MentorsPage() {
         if (!mentorToDelete) return
 
         try {
-            await axios.delete(`https://medical-backend-loj4.onrender.com/api/mentor/${mentorToDelete._id}`, {
+            await axios.delete(`https://medical-backend-3eek.onrender.com/api/mentor/${mentorToDelete._id}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },

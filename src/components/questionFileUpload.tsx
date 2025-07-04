@@ -10,7 +10,7 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import { toast, Toaster } from "react-hot-toast"
 
-const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test"
+const API_BASE_URL = "https://medical-backend-3eek.onrender.com/api/test"
 
 interface UploadError {
     row: number
@@ -27,7 +27,7 @@ const QuestionFileUpload: React.FC = () => {
         // Fetch exam types when component mounts
         const fetchExamTypes = async () => {
           try {
-            const response = await axios.get("https://medical-backend-loj4.onrender.com/api/test/exam-types")
+            const response = await axios.get("https://medical-backend-3eek.onrender.com/api/test/exam-types")
             if (response.data && Array.isArray(response.data.examTypes)) {
               setExamTypes(response.data.examTypes)
             }

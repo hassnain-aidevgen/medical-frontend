@@ -357,7 +357,7 @@ const TakeTestPage = () => {
         exam_type: targetExamParam || examTypeParam,
       })
 
-      const response = await axios.get("https://medical-backend-loj4.onrender.com/api/test/take-test/questions", {
+      const response = await axios.get("https://medical-backend-3eek.onrender.com/api/test/take-test/questions", {
         params: {
           subjects: subjectsParam,
           subsections: subsectionsParam,
@@ -526,7 +526,7 @@ const handleAnswerSubmit = useCallback(async () => {
           
           // Create flashcard for incorrect answer
           const response = await axios.post(
-            "https://medical-backend-loj4.onrender.com/api/test/flashcards/add-from-question", 
+            "https://medical-backend-3eek.onrender.com/api/test/flashcards/add-from-question", 
             {
               userId,
               question: {

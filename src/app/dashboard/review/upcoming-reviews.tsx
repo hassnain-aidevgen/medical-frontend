@@ -98,7 +98,7 @@ export function UpcomingReviews({ reviews = [] }: { reviews: Review[] }) {
 
       // Call the API with the exact route structure
       const response = await fetch(
-        `https://medical-backend-loj4.onrender.com/api/reviews/${reviewId}/complete?userId=${userId}`,
+        `https://medical-backend-3eek.onrender.com/api/reviews/${reviewId}/complete?userId=${userId}`,
         {
           method: "POST",
           headers: {

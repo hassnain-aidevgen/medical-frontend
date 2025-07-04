@@ -32,7 +32,7 @@ export default function DashboardToday() {
 
       setIsLoading(true)
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`)
+        const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/calender/${userId}`)
         if (Array.isArray(response.data)) {
           setTests(response.data)
         } else {
@@ -56,7 +56,7 @@ export default function DashboardToday() {
     setIsLoading(true)
     try {
       const response = await axios.patch(
-        `https://medical-backend-loj4.onrender.com/api/test/calender/completion/${testId}`,
+        `https://medical-backend-3eek.onrender.com/api/test/calender/completion/${testId}`,
         { completed },
       )
       if (response.data && response.data._id) {
@@ -74,7 +74,7 @@ export default function DashboardToday() {
 
     setIsLoading(true)
     try {
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`)
+      const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/calender/${userId}`)
       if (Array.isArray(response.data)) {
         setTests(response.data)
       }

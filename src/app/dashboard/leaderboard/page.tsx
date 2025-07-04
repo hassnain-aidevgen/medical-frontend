@@ -33,7 +33,7 @@ export default function LeaderboardPage() {
 
         // Fetch all-time leaderboard
         const allTimeRes = await fetch(
-          `https://medical-backend-loj4.onrender.com/api/test/leaderboard2?timeFrame=all-time`,
+          `https://medical-backend-3eek.onrender.com/api/test/leaderboard2?timeFrame=all-time`,
         )
 
         if (allTimeRes.ok) {
@@ -57,7 +57,7 @@ export default function LeaderboardPage() {
 
         // Fetch weekly leaderboard
         const weeklyRes = await fetch(
-          `https://medical-backend-loj4.onrender.com/api/test/leaderboard2?timeFrame=weekly`,
+          `https://medical-backend-3eek.onrender.com/api/test/leaderboard2?timeFrame=weekly`,
         )
 
         if (weeklyRes.ok) {
@@ -72,7 +72,7 @@ export default function LeaderboardPage() {
 
         // Fetch monthly leaderboard
         const monthlyRes = await fetch(
-          `https://medical-backend-loj4.onrender.com/api/test/leaderboard2?timeFrame=monthly`,
+          `https://medical-backend-3eek.onrender.com/api/test/leaderboard2?timeFrame=monthly`,
         )
 
         if (monthlyRes.ok) {

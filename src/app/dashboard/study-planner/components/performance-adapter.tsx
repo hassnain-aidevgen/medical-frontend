@@ -84,7 +84,7 @@ export const usePerformanceAdapter = (
     try {
       const planId = localStorage.getItem("currentPlanId");
       if (planId) {
-        const response = await fetch(`https://medical-backend-loj4.onrender.com/api/ai-planner/getTaskPerformance/${planId}`);
+        const response = await fetch(`https://medical-backend-3eek.onrender.com/api/ai-planner/getTaskPerformance/${planId}`);
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.taskPerformance) {
@@ -235,7 +235,7 @@ const handleTaskStatusChange = async (taskId: string | number, status: TaskStatu
   try {
     const planId = localStorage.getItem("currentPlanId");
     if (planId) {
-      const response = await fetch(`https://medical-backend-loj4.onrender.com/api/ai-planner/updateTaskStatus/${planId}`, {
+      const response = await fetch(`https://medical-backend-3eek.onrender.com/api/ai-planner/updateTaskStatus/${planId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

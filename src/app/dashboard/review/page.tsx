@@ -56,7 +56,7 @@ export default function ReviewDashboard() {
       else setLoading(true)
 
       // Get all review sessions, including test-specific ones
-      const sessionsResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/reviews/sessions?userId=${userId}`)
+      const sessionsResponse = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/reviews/sessions?userId=${userId}`)
 
       // Process review sessions data
       const allReviews = sessionsResponse.data.map(
@@ -93,11 +93,11 @@ export default function ReviewDashboard() {
 
       // Get other review metrics with timeFrame
       const reviewLaterResponse = await axios.get(
-        `https://medical-backend-loj4.onrender.com/api/reviews/review-later-count?userId=${userId}&timeFrame=${timeFrame}`,
+        `https://medical-backend-3eek.onrender.com/api/reviews/review-later-count?userId=${userId}&timeFrame=${timeFrame}`,
       )
 
       const completedResponse = await axios.get(
-        `https://medical-backend-loj4.onrender.com/api/reviews/completed-count?userId=${userId}&timeFrame=${timeFrame}`,
+        `https://medical-backend-3eek.onrender.com/api/reviews/completed-count?userId=${userId}&timeFrame=${timeFrame}`,
       )
 
       // Extract values

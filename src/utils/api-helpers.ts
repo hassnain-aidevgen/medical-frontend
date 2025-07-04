@@ -11,7 +11,7 @@ export function getUserId(): string | null {
 }
 
 // Base URL for API calls
-export const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/v3";
+export const API_BASE_URL = "https://medical-backend-3eek.onrender.com/api/v3";
 
 // Flashcards endpoint
 export const FLASHCARDS_ENDPOINT = `${API_BASE_URL}/flashcards`;

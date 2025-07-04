@@ -128,7 +128,7 @@ export default function EditCoursePage() {
     const fetchExamTypes = async () => {
       setIsLoadingExamTypes(true)
       try {
-        const response = await axios.get("https://medical-backend-loj4.onrender.com/api/exam-type/exam-types")
+        const response = await axios.get("https://medical-backend-3eek.onrender.com/api/exam-type/exam-types")
         if (response.data.success) {
           // Check the structure of the response data
           console.log("Exam types response:", response.data)
@@ -166,7 +166,7 @@ export default function EditCoursePage() {
           return
         }
 
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/courses/${params.id}`, {
+        const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/courses/${params.id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -321,7 +321,7 @@ export default function EditCoursePage() {
 
         // Send the update with the new file
         const response = await axios.put(
-          `https://medical-backend-loj4.onrender.com/api/courses/${course._id}`,
+          `https://medical-backend-3eek.onrender.com/api/courses/${course._id}`,
           formData,
           {
             headers: {
@@ -347,7 +347,7 @@ export default function EditCoursePage() {
         console.log("Sending update without changing thumbnail...")
 
         const response = await axios.put(
-          `https://medical-backend-loj4.onrender.com/api/courses/${course._id}`,
+          `https://medical-backend-3eek.onrender.com/api/courses/${course._id}`,
           updateData,
           {
             headers: {

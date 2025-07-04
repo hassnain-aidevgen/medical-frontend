@@ -24,7 +24,7 @@ export default function ChallengeButton() {
 
             // Start a new challenge session
             const response = await axios.post(
-                `https://medical-backend-loj4.onrender.com/api/challenge/start?userId=${userId}`,
+                `https://medical-backend-3eek.onrender.com/api/challenge/start?userId=${userId}`,
                 { questionCount: 10 }
             )
 

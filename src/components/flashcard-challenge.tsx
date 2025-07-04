@@ -74,7 +74,7 @@ export function FlashcardChallenge({ isOpen, onClose }: FlashcardChallengeProps)
         async (completed = false) => {
             setIsLoading(true)
             try {
-                const response = await fetch(`https://medical-backend-loj4.onrender.com/api/flashcards-daily?userId=${medicalUserId}`)
+                const response = await fetch(`https://medical-backend-3eek.onrender.com/api/flashcards-daily?userId=${medicalUserId}`)
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`)
@@ -107,7 +107,7 @@ export function FlashcardChallenge({ isOpen, onClose }: FlashcardChallengeProps)
         if (!medicalUserId) return
 
         try {
-            const response = await fetch(`https://medical-backend-loj4.onrender.com/api/flashcards-daily/progress?userId=${medicalUserId}`)
+            const response = await fetch(`https://medical-backend-3eek.onrender.com/api/flashcards-daily/progress?userId=${medicalUserId}`)
 
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`)
@@ -144,7 +144,7 @@ export function FlashcardChallenge({ isOpen, onClose }: FlashcardChallengeProps)
             const currentFlashcard = challenge.flashcards[currentIndex]
 
             try {
-                const response = await fetch("https://medical-backend-loj4.onrender.com/api/flashcards-daily/submit", {
+                const response = await fetch("https://medical-backend-3eek.onrender.com/api/flashcards-daily/submit", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

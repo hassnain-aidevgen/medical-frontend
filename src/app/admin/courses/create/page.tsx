@@ -132,7 +132,7 @@ export default function CreateCoursePage() {
     const fetchExamTypes = async () => {
       setIsLoadingExamTypes(true)
       try {
-        const response = await axios.get("https://medical-backend-loj4.onrender.com/api/exam-type/exam-types")
+        const response = await axios.get("https://medical-backend-3eek.onrender.com/api/exam-type/exam-types")
         if (response.data.success) {
           // Check the structure of the response data
           console.log("Exam types response:", response.data)
@@ -261,7 +261,7 @@ export default function CreateCoursePage() {
 
 
       // Send the course data as JSON
-      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/courses", courseData, {
+      const response = await axios.post("https://medical-backend-3eek.onrender.com/api/courses", courseData, {
         headers: {
           "Content-Type": "application/json",
         },

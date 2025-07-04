@@ -46,7 +46,7 @@ export function SuggestedMentorships({
         setLoading(true)
         setError(null)
 
-        const response = await axios.get("https://medical-backend-loj4.onrender.com/api/mentor")
+        const response = await axios.get("https://medical-backend-3eek.onrender.com/api/mentor")
         const mentorsData = response.data.data
 
         // Filter active mentors with matching expertise

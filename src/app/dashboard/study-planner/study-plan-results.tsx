@@ -112,7 +112,7 @@ const SimpleTaskActions: React.FC<{
     
     try {
       const planId = localStorage.getItem("currentPlanId");
-      const response = await fetch(`https://medical-backend-loj4.onrender.com/api/ai-planner/rescheduleTask/${planId}`, {
+      const response = await fetch(`https://medical-backend-3eek.onrender.com/api/ai-planner/rescheduleTask/${planId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

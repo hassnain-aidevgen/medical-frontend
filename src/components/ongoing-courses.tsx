@@ -36,7 +36,7 @@ export function OngoingCourses({ limit = 3, showViewAll = true, className = "" }
         }
 
         const response = await fetch(
-          `https://medical-backend-loj4.onrender.com/api/course-purchase/user-courses?userId=${userId}`,
+          `https://medical-backend-3eek.onrender.com/api/course-purchase/user-courses?userId=${userId}`,
           {
             method: "GET",
             headers: {

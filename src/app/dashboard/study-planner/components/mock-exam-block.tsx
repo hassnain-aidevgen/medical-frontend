@@ -135,7 +135,7 @@ const fetchQuestions = async () => {
   try {
     // Step 1: Get subject IDs from names
     const subjectNames = focusAreas.join(",");
-    const idsResponse = await axios.get("https://medical-backend-loj4.onrender.com/api/test/subjects/get-ids", {
+    const idsResponse = await axios.get("https://medical-backend-3eek.onrender.com/api/test/subjects/get-ids", {
       params: { names: subjectNames }
     });
     
@@ -153,7 +153,7 @@ const fetchQuestions = async () => {
       exam_type: "ALL_USMLE_TYPES",
     });
     
-    const response = await axios.get("https://medical-backend-loj4.onrender.com/api/test/take-test/questions", {
+    const response = await axios.get("https://medical-backend-3eek.onrender.com/api/test/take-test/questions", {
       params: {
         subjects,
         count,
@@ -213,7 +213,7 @@ const fetchQuestions = async () => {
 
       // Question analytics API call - use the same domain as other API calls
       const response = await axios.get(
-        `https://medical-backend-loj4.onrender.com/api/test/take-test/question-analytics/${questionId}`,
+        `https://medical-backend-3eek.onrender.com/api/test/take-test/question-analytics/${questionId}`,
       )
       setQuestionAnalytics(response.data)
     } catch (error) {
@@ -243,7 +243,7 @@ const fetchQuestions = async () => {
       const safeOptions = Array.isArray(currentQuestion.options) ? currentQuestion.options : []
 
       // Call your backend API that will use OpenAI
-      const response = await axios.post(`https://medical-backend-loj4.onrender.com/api/test/ai-explain`, {
+      const response = await axios.post(`https://medical-backend-3eek.onrender.com/api/test/ai-explain`, {
         question: currentQuestion.question,
         options: safeOptions,
         correctAnswer: userAnswer, // This will be updated with the correct answer from the response

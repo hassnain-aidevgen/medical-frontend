@@ -77,7 +77,7 @@ export function StatisticalVisualSummaries() {
       
       // Using the weak-topics-flashcards endpoint to get weak topics
       const response = await axios.get(
-        `https://medical-backend-loj4.onrender.com/api/reviews/weak-topics-flashcards/${userId}?detailed=true`
+        `https://medical-backend-3eek.onrender.com/api/reviews/weak-topics-flashcards/${userId}?detailed=true`
       )
       
       // Transform the data format to match our DifficultTopic interface
@@ -173,7 +173,7 @@ export function StatisticalVisualSummaries() {
     for (const topic of topics) {
       try {
         const response = await axios.get(
-          `https://medical-backend-loj4.onrender.com/api/reviews/topic-stats/${userId}/${topic.subjectId}/${topic.subsectionId}`
+          `https://medical-backend-3eek.onrender.com/api/reviews/topic-stats/${userId}/${topic.subjectId}/${topic.subsectionId}`
         )
         
         if (response.data?.stats) {
@@ -227,7 +227,7 @@ export function StatisticalVisualSummaries() {
     try {
       const userId = localStorage.getItem("Medical_User_Id")
       const response = await axios.get(
-        `https://medical-backend-loj4.onrender.com/api/reviews/visual-summaries/${userId}`
+        `https://medical-backend-3eek.onrender.com/api/reviews/visual-summaries/${userId}`
       )
       
       const visuals = response.data?.visualSummaries || []
@@ -306,7 +306,7 @@ export function StatisticalVisualSummaries() {
       const userId = localStorage.getItem("Medical_User_Id")
       try {
         await axios.post(
-          `https://medical-backend-loj4.onrender.com/api/reviews/visual-summaries/save`,
+          `https://medical-backend-3eek.onrender.com/api/reviews/visual-summaries/save`,
           {
             userId,
             visualSummary: newVisualSummary

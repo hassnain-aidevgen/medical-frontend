@@ -79,7 +79,7 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({ selectedE
         // Fetch exam blueprint with error handling
         let blueprintData = []
         try {
-          const baseUrl = "https://medical-backend-loj4.onrender.com"
+          const baseUrl = "https://medical-backend-3eek.onrender.com"
 
           console.log(`Fetching blueprint data for exam: ${selectedExam}, userId: ${userId}`)
 
@@ -121,7 +121,7 @@ const SubjectPrioritization: React.FC<SubjectPrioritizationProps> = ({ selectedE
 
         // Fetch user tests
         try {
-          const baseUrl = "https://medical-backend-loj4.onrender.com" // Keep same base URL
+          const baseUrl = "https://medical-backend-3eek.onrender.com" // Keep same base URL
           const testsResponse = await axios.get(`${baseUrl}/api/test/calender/${userId}`)
 
           if (Array.isArray(testsResponse.data)) {

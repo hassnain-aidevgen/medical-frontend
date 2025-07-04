@@ -58,7 +58,7 @@ export default function RatingDialog({
         setIsSubmitting(true)
 
         try {
-            await axios.post("https://medical-backend-loj4.onrender.com/api/ratings", {
+            await axios.post("https://medical-backend-3eek.onrender.com/api/ratings", {
                 userId,
                 rating,
                 feedback: feedback.trim() || undefined,

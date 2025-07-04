@@ -72,7 +72,7 @@ const TestComponent = () => {
         setIsLoading(true)
         setError(null)
         try {
-            const response = await axios.get("https://medical-backend-loj4.onrender.com/api/test/take-test/questions", {
+            const response = await axios.get("https://medical-backend-3eek.onrender.com/api/test/take-test/questions", {
                 params: {
                     subjects: subjectsParam,
                     subsections: subsectionsParam,

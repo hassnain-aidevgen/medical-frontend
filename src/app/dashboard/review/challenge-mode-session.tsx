@@ -59,7 +59,7 @@ export default function FlashcardChallengeMode() {
       }
 
       // Fetch flashcards for weak topics - backend handles all analysis
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/challenge/weak-topics-flashcards/${userId}?limit=10`)
+      const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/challenge/weak-topics-flashcards/${userId}?limit=10`)
 
       setFlashcards(response.data.flashcards)
       setLoading(false)
@@ -126,7 +126,7 @@ export default function FlashcardChallengeMode() {
       }
 
       // Send results to backend
-      await axios.post(`https://medical-backend-loj4.onrender.com/api/challenge/complete-flashcards`, result)
+      await axios.post(`https://medical-backend-3eek.onrender.com/api/challenge/complete-flashcards`, result)
 
       setCompleted(true)
       toast.success("Challenge completed!")

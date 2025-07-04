@@ -50,7 +50,7 @@ export default function LeaderboardRank({ userId }: LeaderboardRankProps) {
     
     try {
       const response = await axios.get(
-        `https://medical-backend-loj4.onrender.com/api/test/leaderboard/player/${userId}?timeFrame=${timeFrame}`
+        `https://medical-backend-3eek.onrender.com/api/test/leaderboard/player/${userId}?timeFrame=${timeFrame}`
       )
 
       if (response.data && response.data.success) {

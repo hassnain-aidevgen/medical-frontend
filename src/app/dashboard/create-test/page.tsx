@@ -234,8 +234,8 @@ export default function CreateTest() {
   }, [])
 
   // Use environment variable or fallback to a relative path for API
-  const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test/create-test"
-  const API_BASE_URL_LOCAL = "https://medical-backend-loj4.onrender.com/api/test/create-test"
+  const API_BASE_URL = "https://medical-backend-3eek.onrender.com/api/test/create-test"
+  const API_BASE_URL_LOCAL = "https://medical-backend-3eek.onrender.com/api/test/create-test"
 
   // New fetchData using local API
   const fetchData = useCallback(async () => {
@@ -287,7 +287,7 @@ export default function CreateTest() {
   useEffect(() => {
     const fetchExamTypes = async () => {
       try {
-        const response = await axios.get("https://medical-backend-loj4.onrender.com/api/exam-type/exam-types")
+        const response = await axios.get("https://medical-backend-3eek.onrender.com/api/exam-type/exam-types")
         if (response.data.success) {
           setExamTypes(response.data.examTypes)
         }
@@ -401,7 +401,7 @@ export default function CreateTest() {
         }
 
         const performanceResponse = await axios.get<PerformanceResponse>(
-          "https://medical-backend-loj4.onrender.com/api/test/performance2",
+          "https://medical-backend-3eek.onrender.com/api/test/performance2",
           {
             params: { userId },
           },

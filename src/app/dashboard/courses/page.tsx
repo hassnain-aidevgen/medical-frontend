@@ -62,7 +62,7 @@ export default function CoursesPage() {
     const fetchCourses = async () => {
       try {
         setLoading(true)
-        const response = await fetch("https://medical-backend-loj4.onrender.com/api/courses/all-courses")
+        const response = await fetch("https://medical-backend-3eek.onrender.com/api/courses/all-courses")
         if (!response.ok) {
           throw new Error("Failed to fetch courses")
         }
@@ -217,7 +217,7 @@ export default function CoursesPage() {
       }
 
       const response = await fetch(
-        `https://medical-backend-loj4.onrender.com/api/course-purchase/user-courses?userId=${userId}`,
+        `https://medical-backend-3eek.onrender.com/api/course-purchase/user-courses?userId=${userId}`,
         {
           method: "GET",
           headers: {

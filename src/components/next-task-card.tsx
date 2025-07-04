@@ -87,7 +87,7 @@ export default function NextTaskCard({ userId, onNavigate }: { userId: string | 
 
       try {
         const response = await axios.get<StudyPlanResponse>(
-          `https://medical-backend-loj4.onrender.com/api/ai-planner/activePlan?userId=${userId}`,
+          `https://medical-backend-3eek.onrender.com/api/ai-planner/activePlan?userId=${userId}`,
         )
         setData(response.data)
       } catch (err: any) {

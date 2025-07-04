@@ -24,7 +24,7 @@ export interface ApiErrorResponse {
 
 // Create an axios instance with default config
 export const api = axios.create({
-  baseURL: "https://medical-backend-loj4.onrender.com/api",
+  baseURL: "https://medical-backend-3eek.onrender.com/api",
   headers: {
     "Content-Type": "application/json",
   },

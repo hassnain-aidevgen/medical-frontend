@@ -37,7 +37,7 @@ const LoginPage = () => {
     localStorage.removeItem("authToken")
 
     try {
-      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/auth/login", formData)
+      const response = await axios.post("https://medical-backend-3eek.onrender.com/api/auth/login", formData)
 
       if (response.status === 200) {
         setAuthToken(response.data.token)
@@ -74,7 +74,7 @@ const LoginPage = () => {
   }
 
   const handleGoogleLogin = async () => {
-    router.push("https://medical-backend-loj4.onrender.com/api/auth/google")
+    router.push("https://medical-backend-3eek.onrender.com/api/auth/google")
   }
 
   return (

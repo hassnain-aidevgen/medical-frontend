@@ -37,7 +37,7 @@ const FlashcardView = ({ flashcardId, onClose }: FlashcardViewProps) => {
       
       try {
         const response = await axios.get(
-          `https://medical-backend-loj4.onrender.com/api/v2/flashcards/${flashcardId}`
+          `https://medical-backend-3eek.onrender.com/api/v2/flashcards/${flashcardId}`
         )
         
         setFlashcard(response.data)

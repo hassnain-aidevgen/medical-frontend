@@ -72,7 +72,7 @@ const UserPlansList: React.FC<UserPlansListProps> = ({
 
             try {
                 const response = await axios.delete(
-                    `https://medical-backend-loj4.onrender.com/api/ai-planner/deleteStudyPlan/${planId}`,
+                    `https://medical-backend-3eek.onrender.com/api/ai-planner/deleteStudyPlan/${planId}`,
                 )
 
                 if (response.data.success) {
@@ -105,12 +105,12 @@ const UserPlansList: React.FC<UserPlansListProps> = ({
 
         try {
             // First, deactivate all plans
-            await axios.put(`https://medical-backend-loj4.onrender.com/api/ai-planner/deactivateAllPlans`, {
+            await axios.put(`https://medical-backend-3eek.onrender.com/api/ai-planner/deactivateAllPlans`, {
                 userId: localPlans[0]?.userId, // Assuming all plans belong to the same user
             })
 
             // Then activate the selected plan
-            const response = await axios.put(`https://medical-backend-loj4.onrender.com/api/ai-planner/activatePlan/${planId}`)
+            const response = await axios.put(`https://medical-backend-3eek.onrender.com/api/ai-planner/activatePlan/${planId}`)
 
             if (response.data.success) {
                 toast.success("Study plan activated successfully")
@@ -149,7 +149,7 @@ const UserPlansList: React.FC<UserPlansListProps> = ({
 
         try {
             // Deactivate the selected plan
-            const response = await axios.put(`https://medical-backend-loj4.onrender.com/api/ai-planner/deactivatePlan/${planId}`)
+            const response = await axios.put(`https://medical-backend-3eek.onrender.com/api/ai-planner/deactivatePlan/${planId}`)
 
             if (response.data.success) {
                 toast.success("Study plan deactivated successfully")
@@ -165,7 +165,7 @@ const UserPlansList: React.FC<UserPlansListProps> = ({
                 // Remove calendar tasks associated with this plan
                 try {
                     const deleteResponse = await axios.delete(
-                        `https://medical-backend-loj4.onrender.com/api/ai-planner/calender/byPlan/${planId}`,
+                        `https://medical-backend-3eek.onrender.com/api/ai-planner/calender/byPlan/${planId}`,
                     )
                     if (deleteResponse.data.deletedCount > 0) {
                         toast.success(`Removed ${deleteResponse.data.deletedCount} tasks from your calendar`)

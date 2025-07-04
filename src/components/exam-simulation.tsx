@@ -137,7 +137,7 @@ const ExamSimulation: React.FC = () => {
 
       // Question analytics API call - use the same domain as other API calls
       const response = await axios.get(
-        `https://medical-backend-loj4.onrender.com/api/test/take-test/question-analytics/${questionId}`,
+        `https://medical-backend-3eek.onrender.com/api/test/take-test/question-analytics/${questionId}`,
       )
       setQuestionAnalytics(response.data)
     } catch (error) {
@@ -168,7 +168,7 @@ const ExamSimulation: React.FC = () => {
       const safeOptions = Array.isArray(currentQuestion.options) ? currentQuestion.options : []
 
       // Call your backend API that will use OpenAI (same endpoint used in challenge)
-      const response = await axios.post(`https://medical-backend-loj4.onrender.com/api/test/ai-explain`, {
+      const response = await axios.post(`https://medical-backend-3eek.onrender.com/api/test/ai-explain`, {
         question: currentQuestion.questionText || currentQuestion.question,
         options: safeOptions,
         correctAnswer: userAnswer, // This will be updated with the correct answer from the response
@@ -208,7 +208,7 @@ Note: A more detailed explanation will be available when our explanation service
     try {
       const user_id = localStorage.getItem("Medical_User_Id")
       const { data } = await axios.get(
-        `https://medical-backend-loj4.onrender.com/api/simulation/getSimulationHistory?userId=${user_id}`,
+        `https://medical-backend-3eek.onrender.com/api/simulation/getSimulationHistory?userId=${user_id}`,
       )
       // console.log(data)
       setSimulationHistory(data.data)
@@ -282,7 +282,7 @@ Note: A more detailed explanation will be available when our explanation service
     setSimulationHistory((prev) => [historyEntry, ...prev])
 
     try {
-      axios.post("https://medical-backend-loj4.onrender.com/api/simulation/saveSimulationHistory", saveToDb)
+      axios.post("https://medical-backend-3eek.onrender.com/api/simulation/saveSimulationHistory", saveToDb)
     } catch (error) {
       console.error(error)
     }
@@ -337,7 +337,7 @@ Note: A more detailed explanation will be available when our explanation service
       try {
         // Fetch main subject questions (80%)
         const examSpecificResponse = await axios.get(
-          "https://medical-backend-loj4.onrender.com/api/test/take-test/questions-fixed",
+          "https://medical-backend-3eek.onrender.com/api/test/take-test/questions-fixed",
           {
             params: {
               subjects: examSubjects.join(","),
@@ -349,7 +349,7 @@ Note: A more detailed explanation will be available when our explanation service
 
         // Fetch related subject questions (20%)
         const relatedSubjectsResponse = await axios.get(
-          "https://medical-backend-loj4.onrender.com/api/test/take-test/questions-fixed",
+          "https://medical-backend-3eek.onrender.com/api/test/take-test/questions-fixed",
           {
             params: {
               subjects: relatedSubjects.join(","),
@@ -588,7 +588,7 @@ Note: A more detailed explanation will be available when our explanation service
         // In a full implementation, you would call the API to add this to flashcards
         try {
           // This is a placeholder for the actual API call to save to flashcards
-          // await axios.post("https://medical-backend-loj4.onrender.com/api/flashcards/create", {
+          // await axios.post("https://medical-backend-3eek.onrender.com/api/flashcards/create", {
           //   userId,
           //   questionId: currentQuestion._id,
           //   category: "Mistakes",

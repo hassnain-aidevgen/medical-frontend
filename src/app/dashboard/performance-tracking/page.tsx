@@ -225,7 +225,7 @@ export default function AnalyticsDashboard() {
   const fetchWeakSubjects = async (userId: string) => {
     try {
       // Fetch performance data from your new endpoint
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/get-performance/${userId}`)
+      const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/get-performance/${userId}`)
 
       if (response.data.success && response.data.data) {
         setUserPerformanceData(response.data.data)
@@ -315,7 +315,7 @@ export default function AnalyticsDashboard() {
 
       try {
         // Fetch performance data
-        const performanceResponse = await axios.get("https://medical-backend-loj4.onrender.com/api/test/performance2", {
+        const performanceResponse = await axios.get("https://medical-backend-3eek.onrender.com/api/test/performance2", {
           params: { userId },
         })
         if (performanceResponse.data.success) {
@@ -327,7 +327,7 @@ export default function AnalyticsDashboard() {
 
         // Fetch stats data
         const statsResponse = await axios.get<StatsData>(
-          `https://medical-backend-loj4.onrender.com/api/test/user/${userId}/stats`,
+          `https://medical-backend-3eek.onrender.com/api/test/user/${userId}/stats`,
         )
         setStatsData(statsResponse.data)
         setLoading((prev) => ({ ...prev, stats: false }))
@@ -335,7 +335,7 @@ export default function AnalyticsDashboard() {
         // Fetch comparative analytics
         try {
           const comparativeResponse = await axios.get<ComparativeAnalytics>(
-            `https://medical-backend-loj4.onrender.com/api/test/comparative/${userId}`,
+            `https://medical-backend-3eek.onrender.com/api/test/comparative/${userId}`,
           )
           setComparativeData(comparativeResponse.data)
         } catch (err) {
@@ -348,7 +348,7 @@ export default function AnalyticsDashboard() {
         // Fetch topic mastery data
         try {
           const topicMasteryResponse = await axios.get<TopicMasteryMetrics>(
-            `https://medical-backend-loj4.onrender.com/api/test/topic-mastery-v2/${userId}`,
+            `https://medical-backend-3eek.onrender.com/api/test/topic-mastery-v2/${userId}`,
           )
           setTopicMasteryData(topicMasteryResponse.data)
         } catch (err) {

@@ -2,7 +2,7 @@ import axios from "axios"
 import type { ApiError, ApiResponse } from "./types/api-error"
 
 // Base API URL - you may need to adjust this based on your environment
-const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/user-badges"
+const API_BASE_URL = "https://medical-backend-3eek.onrender.com/api/user-badges"
 
 export const userBadgeApi = {
   // Get all badges for a specific user

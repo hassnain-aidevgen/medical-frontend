@@ -62,7 +62,7 @@ export default function ReviewSessionPage() {
         setLoading(true)
         const userId = localStorage.getItem("Medical_User_Id")
         const response = await axios.get(
-          `https://medical-backend-loj4.onrender.com/api/test/reviews/session/${params.sessionId}?userId=${userId}`
+          `https://medical-backend-3eek.onrender.com/api/test/reviews/session/${params.sessionId}?userId=${userId}`
         )
         
         setSession(response.data.session)
@@ -172,7 +172,7 @@ export default function ReviewSessionPage() {
       const allReviewed = reviewedCount === flashcards.length
       
       await axios.post(
-        `https://medical-backend-loj4.onrender.com/api/test/session/${params.sessionId}/end`,
+        `https://medical-backend-3eek.onrender.com/api/test/session/${params.sessionId}/end`,
         {
           userId,
           performance,
@@ -208,7 +208,7 @@ export default function ReviewSessionPage() {
       
       // Update the session schedule
       await axios.post(
-        `https://medical-backend-loj4.onrender.com/api/test/session/${params.sessionId}/reschedule`,
+        `https://medical-backend-3eek.onrender.com/api/test/session/${params.sessionId}/reschedule`,
         {
           userId,
           scheduledFor

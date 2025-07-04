@@ -74,7 +74,7 @@ export default function ReviewsTab({
 
     try {
       setIsCheckingLastRating(true)
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/ratings/last-rating/${userId}`)
+      const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/ratings/last-rating/${userId}`)
 
       if (response.data.lastRatingDate) {
         // Parse the date and add one month
@@ -218,7 +218,7 @@ export default function ReviewsTab({
         if (!isNaN(currentCount) && currentCount > 0) {
           // Make API call to check if card was marked for review and update the database
           try {
-            const response = await axios.post("https://medical-backend-loj4.onrender.com/api/reviews/remove-from-review-later", {
+            const response = await axios.post("https://medical-backend-3eek.onrender.com/api/reviews/remove-from-review-later", {
               userId,
               cardId: card._id
             });
@@ -285,7 +285,7 @@ export default function ReviewsTab({
     try {
       // Make a direct API call to mark the card for review
       const response = await axios.post(
-        "https://medical-backend-loj4.onrender.com/api/reviews/add-to-review-later",
+        "https://medical-backend-3eek.onrender.com/api/reviews/add-to-review-later",
         {
           userId,
           cardId: card._id

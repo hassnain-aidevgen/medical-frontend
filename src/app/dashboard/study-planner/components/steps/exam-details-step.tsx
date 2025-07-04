@@ -33,7 +33,7 @@ const ExamDetailsStep: React.FC<ExamDetailsStepProps> = ({
         setLoading(true)
         setFetchError("")
         
-        const response = await fetch('https://medical-backend-loj4.onrender.com/api/exam-type/exam-types')
+        const response = await fetch('https://medical-backend-3eek.onrender.com/api/exam-type/exam-types')
         const data = await response.json()
         
         if (data.success) {

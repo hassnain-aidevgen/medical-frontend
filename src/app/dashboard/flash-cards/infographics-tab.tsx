@@ -31,8 +31,8 @@ interface InfographicsTabProps {
   userId: string
 }
 
-// const API_URL = "https://medical-backend-loj4.onrender.com/api"
-const API_URL = "https://medical-backend-loj4.onrender.com/api" // Localhost for development
+// const API_URL = "https://medical-backend-3eek.onrender.com/api"
+const API_URL = "https://medical-backend-3eek.onrender.com/api" // Localhost for development
 
 export default function InfographicsTab() {
   const [infographicData, setInfographicData] = useState<InfographicData | null>(null)

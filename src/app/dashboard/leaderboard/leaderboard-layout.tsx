@@ -98,7 +98,7 @@ export default function LeaderboardLayout({ loggedInUserId, leaderboardData, use
     const fetchSpecialtyRankings = useCallback(async () => {
         try {
             setLoadingSpecialty(true)
-            const response = await fetch(`https://medical-backend-loj4.onrender.com/api/test/specialty-ranking`)
+            const response = await fetch(`https://medical-backend-3eek.onrender.com/api/test/specialty-ranking`)
 
             if (!response.ok) {
                 throw new Error(`Failed to fetch specialty rankings: ${response.status}`)

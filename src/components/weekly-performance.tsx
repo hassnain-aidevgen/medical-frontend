@@ -48,7 +48,7 @@ export default function PerformanceCalendar() {
     setIsLoading(true)
     try {
       // Use localhost for testing, change to production URL for deployment
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/streak/${userId}`)
+      const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/streak/${userId}`)
       
       if (response.data && Array.isArray(response.data.streakData)) {
         const activityData = response.data.streakData

@@ -92,7 +92,7 @@ export default function ExamAlignment({
         }
 
         // Use localhost since the route is not yet deployed
-        const baseUrl = "https://medical-backend-loj4.onrender.com"
+        const baseUrl = "https://medical-backend-3eek.onrender.com"
 
         try {
           // Use the native fetch API to avoid NextAuth issues

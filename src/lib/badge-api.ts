@@ -2,7 +2,7 @@ import type { Badge } from "@/types/badge"
 import axios from "axios"
 import type { ApiError, ApiResponse } from "./types/api-error"
 
-const BASE_API_URL = "https://medical-backend-loj4.onrender.com/api/badges"
+const BASE_API_URL = "https://medical-backend-3eek.onrender.com/api/badges"
 
 // Add request and response timeout
 const api = axios.create({

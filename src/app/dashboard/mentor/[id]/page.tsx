@@ -94,7 +94,7 @@ interface MentorshipReview {
 // Function to fetch reviews for a specific mentorship
 const fetchMentorshipReviews = async (mentorshipId: string): Promise<MentorshipReview[]> => {
   try {
-    const res = await axios.get(`https://medical-backend-loj4.onrender.com/api/reviews/mentorship/${mentorshipId}`)
+    const res = await axios.get(`https://medical-backend-3eek.onrender.com/api/reviews/mentorship/${mentorshipId}`)
     return res.data?.data || []
   } catch (error) {
     console.error("Error fetching reviews for mentorship:", error)
@@ -140,7 +140,7 @@ export default function MentorDetailPage() {
     async (mentorId: string) => {
       try {
         setLoading(true)
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/mentor/${mentorId}`)
+        const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/mentor/${mentorId}`)
         const mentorData = response.data.data
         console.log("Fetched mentor data:", mentorData)
 
@@ -189,7 +189,7 @@ export default function MentorDetailPage() {
 
       console.log("🔍 Fetching bookings for user ID:", userId)
 
-      const response = await axios.get("https://medical-backend-loj4.onrender.com/api/bookings/user", {
+      const response = await axios.get("https://medical-backend-3eek.onrender.com/api/bookings/user", {
         params: {
           userId: userId,
         },
@@ -317,7 +317,7 @@ export default function MentorDetailPage() {
       }
 
       const response = await axios.get<CheckUserReviewResponse>(
-        `https://medical-backend-loj4.onrender.com/api/reviews/check-user-review/${mentorId}?userId=${userId}`,
+        `https://medical-backend-3eek.onrender.com/api/reviews/check-user-review/${mentorId}?userId=${userId}`,
       )
 
       const { hasReview } = response.data
@@ -331,10 +331,10 @@ export default function MentorDetailPage() {
 
       // Step 2: Submit or update the review
       if (hasReview) {
-        await axios.put("https://medical-backend-loj4.onrender.com/api/reviews/updatereview", reviewPayload)
+        await axios.put("https://medical-backend-3eek.onrender.com/api/reviews/updatereview", reviewPayload)
         toast.success("Review updated successfully")
       } else {
-        await axios.post("https://medical-backend-loj4.onrender.com/api/reviews/addreview", reviewPayload)
+        await axios.post("https://medical-backend-3eek.onrender.com/api/reviews/addreview", reviewPayload)
         toast.success("Review submitted successfully")
       }
 
@@ -403,7 +403,7 @@ export default function MentorDetailPage() {
 
         // Use x-auth-token header
         const response = await axios.post(
-          "https://medical-backend-loj4.onrender.com/api/bookings",
+          "https://medical-backend-3eek.onrender.com/api/bookings",
           {
             user_id,
             mentorshipId: mentorship._id,
@@ -490,7 +490,7 @@ export default function MentorDetailPage() {
       }
 
       const response = await axios.post(
-        `https://medical-backend-loj4.onrender.com/api/mentorship-payments/verify/${mentorId}/${mentorshipId}`,
+        `https://medical-backend-3eek.onrender.com/api/mentorship-payments/verify/${mentorId}/${mentorshipId}`,
         { userId },
       )
 
@@ -544,7 +544,7 @@ export default function MentorDetailPage() {
       }
 
       // Create checkout session
-      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/mentorship-payments/create-checkout-session", {
+      const response = await axios.post("https://medical-backend-3eek.onrender.com/api/mentorship-payments/create-checkout-session", {
         mentorId: mentor._id,
         mentorshipId: mentorship._id,
         userId,

@@ -26,8 +26,8 @@ import toast from "react-hot-toast"
 import Link from "next/link"
 
 // API base URL from environment variable or default
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api"
-const API_BASE_URL2 = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-3eek.onrender.com/api"
+const API_BASE_URL2 = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-3eek.onrender.com/api"
 
 interface MentorData {
     _id: string
@@ -272,7 +272,7 @@ export default function MentorRequestsPage() {
         // Send to the calendar API
         try {
           const calendarResponse = await axios.post(
-            "https://medical-backend-loj4.onrender.com/api/test/calender",
+            "https://medical-backend-3eek.onrender.com/api/test/calender",
             calendarEntry,
           )
 

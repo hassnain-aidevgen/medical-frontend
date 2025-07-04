@@ -59,7 +59,7 @@ export default function QuestionFeedback() {
       setIsLoading(true)
       setError(null)
       try {
-        const response = await axios.get("https://medical-backend-loj4.onrender.com/api/test/question-feedback")
+        const response = await axios.get("https://medical-backend-3eek.onrender.com/api/test/question-feedback")
 
         if (response.data.success) {
           // Convert string percentages to numbers for sorting
@@ -303,7 +303,7 @@ export default function QuestionFeedback() {
       }
 
       // Use the same route that works for take-test to fetch the question
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/take-test/questions`, {
+      const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/take-test/questions`, {
         params: {
           questionId: questionId,
           count: 1,

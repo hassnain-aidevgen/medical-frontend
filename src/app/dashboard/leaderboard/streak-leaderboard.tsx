@@ -14,7 +14,7 @@ interface StreakLeaderboardProps {
   globalLeaderboard: StreakEntry[] // Used as fallback
 }
 
-const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test"
+const API_BASE_URL = "https://medical-backend-3eek.onrender.com/api/test"
 
 export default function StreakLeaderboard({ timeFrame, loggedInUserId, globalLeaderboard }: StreakLeaderboardProps) {
   const [streakLeaderboard, setStreakLeaderboard] = useState<StreakEntry[]>([])
@@ -114,7 +114,7 @@ export default function StreakLeaderboard({ timeFrame, loggedInUserId, globalLea
           if (loggedInUserId) {
             try {
               const userStreakResponse = await axios.get(
-                `https://medical-backend-loj4.onrender.com/api/test/streak/${loggedInUserId}`
+                `https://medical-backend-3eek.onrender.com/api/test/streak/${loggedInUserId}`
               )
               
               if (userStreakResponse.data && typeof userStreakResponse.data.currentStreak === "number") {

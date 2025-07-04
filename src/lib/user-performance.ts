@@ -50,7 +50,7 @@ export async function getUserPerformance(): Promise<UserPerformanceData | null> 
     console.log("Fetching performance data for user:", userId)
 
     // Fetch performance data from API
-    const apiUrl = `https://medical-backend-loj4.onrender.com/api/test/get-performance/${userId}`
+    const apiUrl = `https://medical-backend-3eek.onrender.com/api/test/get-performance/${userId}`
     console.log("API URL:", apiUrl)
 
     const response = await axios.get(apiUrl)

@@ -32,7 +32,7 @@ export default function DashboardNextReview() {
         }
 
         const response = await axios.get(
-          `https://medical-backend-loj4.onrender.com/api/reviews/dashboard?userId=${userId}`,
+          `https://medical-backend-3eek.onrender.com/api/reviews/dashboard?userId=${userId}`,
         )
 
         if (response.data && response.data.upcomingReviews && response.data.upcomingReviews.length > 0) {

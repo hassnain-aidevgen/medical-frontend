@@ -236,7 +236,7 @@ export function MotivationalMessage(): JSX.Element {
                 }
 
                 // Fetch motivational stats
-                const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/motivational-stats/${userId}`)
+                const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/motivational-stats/${userId}`)
                 const data: MotivationalStats = await response.data
 
                 if (!data.success) {

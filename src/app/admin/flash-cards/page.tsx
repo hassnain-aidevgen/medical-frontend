@@ -19,7 +19,7 @@
 // }
 
 // const MAX_FLASHCARDS = 5
-// const BASE_API_URL = "https://medical-backend-loj4.onrender.com/api/test"
+// const BASE_API_URL = "https://medical-backend-3eek.onrender.com/api/test"
 
 // export default function CreateFlashCard() {
 // const [flashcards, setFlashcards] = useState<FlashCard[]>([{ question: "", answer: "", hint: "" }])

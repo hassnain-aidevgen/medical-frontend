@@ -166,7 +166,7 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
         }
 
         // Fetch test data
-        const testsResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`);
+        const testsResponse = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/calender/${userId}`);
 
         if (Array.isArray(testsResponse.data)) {
           setTests(testsResponse.data);
@@ -176,7 +176,7 @@ const AdaptiveStudyTracker: React.FC<AdaptiveStudyTrackerProps> = ({ selectedExa
 
         // Fetch exam blueprint
         try {
-          const blueprintResponse = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/exams/blueprint/${selectedExam}`);
+          const blueprintResponse = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/exams/blueprint/${selectedExam}`);
 
           if (blueprintResponse.data && Array.isArray(blueprintResponse.data)) {
             setExamBlueprint(blueprintResponse.data);

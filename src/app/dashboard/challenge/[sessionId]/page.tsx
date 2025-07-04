@@ -181,7 +181,7 @@ export default function ChallengePage() {
                 const userId = localStorage.getItem("Medical_User_Id")
 
                 const response = await axios.get<SessionResponse>(
-                    `https://medical-backend-loj4.onrender.com/api/challenge/${sessionId}?userId=${userId}`,
+                    `https://medical-backend-3eek.onrender.com/api/challenge/${sessionId}?userId=${userId}`,
                 )
 
                 if (response.data.success) {
@@ -272,7 +272,7 @@ export default function ChallengePage() {
 
             // Question analytics API call - use the same domain as other API calls
             const response = await axios.get(
-                `https://medical-backend-loj4.onrender.com/api/test/take-test/question-analytics/${questionId}`,
+                `https://medical-backend-3eek.onrender.com/api/test/take-test/question-analytics/${questionId}`,
             )
             setQuestionAnalytics(response.data)
         } catch (error) {
@@ -302,7 +302,7 @@ export default function ChallengePage() {
             const safeOptions = Array.isArray(currentQuestion.options) ? currentQuestion.options : []
 
             // Call your backend API that will use OpenAI
-            const response = await axios.post(`https://medical-backend-loj4.onrender.com/api/test/ai-explain`, {
+            const response = await axios.post(`https://medical-backend-3eek.onrender.com/api/test/ai-explain`, {
                 question: currentQuestion.question,
                 options: safeOptions,
                 correctAnswer: userAnswer, // This will be updated with the correct answer from the response
@@ -349,7 +349,7 @@ Note: A more detailed explanation will be available when our explanation service
             const currentQuestion = questions[currentQuestionIndex]
 
             const response = await axios.post<SubmitAnswerResponse>(
-                `https://medical-backend-loj4.onrender.com/api/challenge/${sessionId}/submit?userId=${userId}`,
+                `https://medical-backend-3eek.onrender.com/api/challenge/${sessionId}/submit?userId=${userId}`,
                 {
                     questionId: currentQuestion._id,
                     answer: selectedAnswer,
@@ -397,7 +397,7 @@ Note: A more detailed explanation will be available when our explanation service
 
                     // Fetch updated session to get final results
                     const sessionResponse = await axios.get<SessionResponse>(
-                        `https://medical-backend-loj4.onrender.com/api/challenge/${sessionId}?userId=${userId}`,
+                        `https://medical-backend-3eek.onrender.com/api/challenge/${sessionId}?userId=${userId}`,
                     )
 
                     if (sessionResponse.data.success) {

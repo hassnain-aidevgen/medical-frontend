@@ -66,7 +66,7 @@ interface UserSpecialtyStats {
 type TabType = "weekly" | "monthly" | "all-time" | "specialty" | "country" | "streaks" | "exams"
 
 // Base API URL to ensure all calls go to the same address
-const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/test"
+const API_BASE_URL = "https://medical-backend-3eek.onrender.com/api/test"
 
 export default function GamifiedLeaderboard() {
   const [leaderboardData, setLeaderboardData] = useState<{
@@ -125,7 +125,7 @@ export default function GamifiedLeaderboard() {
 
         // Fetch leaderboard data
         const leaderboardRes = await fetch(
-          `https://medical-backend-loj4.onrender.com/api/test/leaderboard2?timeFrame=${timeFrame}`,
+          `https://medical-backend-3eek.onrender.com/api/test/leaderboard2?timeFrame=${timeFrame}`,
         )
 
         if (!leaderboardRes.ok) {
@@ -145,7 +145,7 @@ export default function GamifiedLeaderboard() {
         if (userId) {
           try {
             const userStatsRes = await fetch(
-              `https://medical-backend-loj4.onrender.com/api/test/leaderboard/player/${userId}?timeFrame=${timeFrame}`,
+              `https://medical-backend-3eek.onrender.com/api/test/leaderboard/player/${userId}?timeFrame=${timeFrame}`,
             )
 
             if (userStatsRes.ok) {

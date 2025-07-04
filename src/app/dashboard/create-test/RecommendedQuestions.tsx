@@ -166,7 +166,7 @@ const RecommendedQuestions: React.FC<RecommendedQuestionsProps> = ({
         console.log("No user ID found in localStorage")
         return
       }
-      const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations4/${userId}`)
+      const { data } = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/recommendations4/${userId}`)
 
       console.log("Recommendation data received:", data)
 
@@ -214,7 +214,7 @@ const RecommendedQuestions: React.FC<RecommendedQuestionsProps> = ({
           try {
             // Try to fetch the question by topic or text to get all options
             const searchTerm = rec.topic || rec.questionText
-            const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/questions/search`, {
+            const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/questions/search`, {
               params: { query: searchTerm, limit: 5 },
             })
 

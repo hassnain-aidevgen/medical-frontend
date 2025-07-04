@@ -84,7 +84,7 @@ const CustomStudyScheduleGenerator: React.FC<StudyScheduleProps> = ({ selectedEx
     const fetchTests = async () => {
       setIsLoading(true)
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`)
+        const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/calender/${userId}`)
         if (Array.isArray(response.data)) {
           setTests(response.data)
         }
@@ -110,7 +110,7 @@ const CustomStudyScheduleGenerator: React.FC<StudyScheduleProps> = ({ selectedEx
         // Try fetching from blueprint endpoint
         try {
           const response = await axios.get(
-            `https://medical-backend-loj4.onrender.com/api/test/exams/blueprint/${selectedExam}/${userId}`,
+            `https://medical-backend-3eek.onrender.com/api/test/exams/blueprint/${selectedExam}/${userId}`,
           )
           if (response.data && Array.isArray(response.data) && response.data.length > 0) {
             setExamBlueprint(response.data)

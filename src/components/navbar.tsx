@@ -64,7 +64,7 @@ export function Navbar({ toggleSidebar }: NavbarProps) {
         return;
       }
 
-      const response = await fetch(`https://medical-backend-loj4.onrender.com/api/test/userdata/${userId}`);
+      const response = await fetch(`https://medical-backend-3eek.onrender.com/api/test/userdata/${userId}`);
       if (response.ok) {
         const data = await response.json();
         setUserDetails({

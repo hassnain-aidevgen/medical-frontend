@@ -48,7 +48,7 @@ export default function RecentTest() {
       setError(null) // Reset error state
       try {
         // Use localhost for testing, change to production URL for deployment
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recent-test/${userId}`)
+        const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/recent-test/${userId}`)
         
         if (response.data && response.data.success) {
           setRecentTest(response.data.data)

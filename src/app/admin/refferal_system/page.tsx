@@ -50,7 +50,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Textarea } from "@/components/ui/textarea"
 
-const API_BASE_URL =  "https://medical-backend-loj4.onrender.com"
+const API_BASE_URL =  "https://medical-backend-3eek.onrender.com"
 
 const AdminReferrals = () => {
     const [isLoading, setIsLoading] = useState(true)

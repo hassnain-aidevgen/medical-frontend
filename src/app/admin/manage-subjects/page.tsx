@@ -19,7 +19,7 @@ import { Edit2, Plus, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import { toast, Toaster } from "react-hot-toast"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api/test"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-3eek.onrender.com/api/test"
 
 type Subject = {
     _id: string

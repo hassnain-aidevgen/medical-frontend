@@ -2,7 +2,7 @@ import axios from "axios"
 
 // Create axios instance
 const api = axios.create({
-  baseURL: "https://medical-backend-loj4.onrender.com/api",
+  baseURL: "https://medical-backend-3eek.onrender.com/api",
   headers: {
     "Content-Type": "application/json",
   },

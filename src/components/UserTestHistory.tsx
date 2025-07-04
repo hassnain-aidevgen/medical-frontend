@@ -70,7 +70,7 @@ const UserTestHistory: React.FC<UserTestHistoryProps> = ({ limit = 5 }) => {
 
       // Use the new sorted endpoint we created
       const response = await axios.get(
-        `https://medical-backend-loj4.onrender.com/api/test/user-tests-sorted/${userId}?t=${timestamp}`,
+        `https://medical-backend-3eek.onrender.com/api/test/user-tests-sorted/${userId}?t=${timestamp}`,
         { headers: { 'Cache-Control': 'no-cache' } }
       )
 

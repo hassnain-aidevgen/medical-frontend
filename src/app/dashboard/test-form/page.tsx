@@ -25,7 +25,7 @@ type FormData = {
     questions: Question[]
 }
 
-const PostUrl = "https://medical-backend-loj4.onrender.com/api/test/create-test"
+const PostUrl = "https://medical-backend-3eek.onrender.com/api/test/create-test"
 
 const initialQuestion: Question = {
     question: "",

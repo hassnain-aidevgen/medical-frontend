@@ -52,7 +52,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Image from "next/image"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api/user-stats"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-3eek.onrender.com/api/user-stats"
 
 // Types for the user stats API response
 type UserStats = {

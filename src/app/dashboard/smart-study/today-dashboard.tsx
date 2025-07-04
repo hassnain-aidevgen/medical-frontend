@@ -149,7 +149,7 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
     try {
       // Try to fetch from API
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/daily-challenge`, {
+        const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/daily-challenge`, {
           params: {
             userId,
             exam: selectedExam,
@@ -197,7 +197,7 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
     try {
       // Try to fetch from API
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/daily-challenge`, {
+        const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/daily-challenge`, {
           params: {
             userId,
             exam: selectedExam,
@@ -375,7 +375,7 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
         onTestComplete(item.data._id, newCompletedState)
       } else {
         // Otherwise handle it internally
-        await axios.patch(`https://medical-backend-loj4.onrender.com/api/test/calender/completion/${item.data._id}`, {
+        await axios.patch(`https://medical-backend-3eek.onrender.com/api/test/calender/completion/${item.data._id}`, {
           completed: newCompletedState,
         })
 

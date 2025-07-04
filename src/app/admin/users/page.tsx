@@ -58,8 +58,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api/auth"
-const STATS_API_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-loj4.onrender.com/api/user-stats"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-3eek.onrender.com/api/auth"
+const STATS_API_URL = process.env.NEXT_PUBLIC_API_URL || "https://medical-backend-3eek.onrender.com/api/user-stats"
 
 type UserType = {
     _id: string

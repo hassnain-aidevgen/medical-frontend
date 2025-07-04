@@ -128,7 +128,7 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
       
       // Send performance data to the API
       const response = await axios.post(
-        "https://medical-backend-loj4.onrender.com/api/test/update-performance", 
+        "https://medical-backend-3eek.onrender.com/api/test/update-performance", 
         performanceData,
         {
           headers: { "Content-Type": "application/json" }
@@ -162,7 +162,7 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
   
         try {
           const response = await axios.get(
-            `https://medical-backend-loj4.onrender.com/api/test/take-test/question-analytics/${question._id}`
+            `https://medical-backend-3eek.onrender.com/api/test/take-test/question-analytics/${question._id}`
           );
           return { id: question._id, data: response.data };
         } catch (error) {
@@ -218,7 +218,7 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
 
         // Call the new AI feedback endpoint
         const response = await axios.post(
-          "https://medical-backend-loj4.onrender.com/api/test/ai-report-feedback",
+          "https://medical-backend-3eek.onrender.com/api/test/ai-report-feedback",
           feedbackData,
         )
 
@@ -329,7 +329,7 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
     try {
       console.log("Submitting test data to API...");
       const response = await axios.post(
-        "https://medical-backend-loj4.onrender.com/api/test/take-test/submit-test/v2", 
+        "https://medical-backend-3eek.onrender.com/api/test/take-test/submit-test/v2", 
         testData, 
         {
           headers: { "Content-Type": "application/json" },
@@ -354,7 +354,7 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
         
         // Update the streak
         try {
-          await axios.post(`https://medical-backend-loj4.onrender.com/api/test/update-streak/${userId}`);
+          await axios.post(`https://medical-backend-3eek.onrender.com/api/test/update-streak/${userId}`);
           console.log("Test streak updated successfully");
         } catch (streakError) {
           console.error("Error updating streak:", streakError);

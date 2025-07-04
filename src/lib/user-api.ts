@@ -2,13 +2,13 @@ import axios from "axios"
 import type { ApiError, ApiResponse } from "./types/api-error"
 
 // Base API URL - you may need to adjust this based on your environment
-const API_BASE_URL = "https://medical-backend-loj4.onrender.com/api/user-badges"
+const API_BASE_URL = "https://medical-backend-3eek.onrender.com/api/user-badges"
 
 export const userApi = {
   // Get all users
   getAllUsers: async (): Promise<ApiResponse> => {
     try {
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/user-badges/leaderboard-users`)
+      const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/user-badges/leaderboard-users`)
       return {
         success: true,
         data: response.data,

@@ -101,7 +101,7 @@ const DailyChallenge: React.FC<DailyChallengeProps> = ({ initialQuestions, chall
 
         try {
             const response = await axios.post(
-                `https://medical-backend-loj4.onrender.com/api/test/ai-explain`,
+                `https://medical-backend-3eek.onrender.com/api/test/ai-explain`,
                 {
                     question: question.question,
                     options: question.options,
@@ -143,7 +143,7 @@ const DailyChallenge: React.FC<DailyChallengeProps> = ({ initialQuestions, chall
                 answers,
             })
 
-            const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/daily-challenge", {
+            const response = await axios.post("https://medical-backend-3eek.onrender.com/api/test/daily-challenge", {
                 challengeId,
                 userId,
                 answers, // Send the complete answers array

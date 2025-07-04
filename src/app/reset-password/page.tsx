@@ -38,7 +38,7 @@ const ResetPasswordForm = () => {
     console.log("Sending request with:", { email, token, newPassword })
 
     try {
-      const res = await axios.post("https://medical-backend-loj4.onrender.com/api/auth/reset-password", {
+      const res = await axios.post("https://medical-backend-3eek.onrender.com/api/auth/reset-password", {
         email,
         token,
         newPassword,

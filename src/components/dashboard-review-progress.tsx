@@ -29,7 +29,7 @@ export function DashboardReviewProgress() {
         }
 
         // Use the existing dashboard API endpoint
-        const response = await fetch(`https://medical-backend-loj4.onrender.com/api/reviews/dashboard?userId=${userId}`)
+        const response = await fetch(`https://medical-backend-3eek.onrender.com/api/reviews/dashboard?userId=${userId}`)
 
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`)

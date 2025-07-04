@@ -47,7 +47,7 @@ export default function MentorshipsWidget() {
       setLoading(true)
       const userId = localStorage.getItem("Medical_User_Id") || "67add3cce1f30e04deae372a"
 
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/bookings/user?userId=${userId}`)
+      const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/bookings/user?userId=${userId}`)
 
       if (response.data.success) {
         console.log("API Response:", response.data)

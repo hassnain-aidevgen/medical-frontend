@@ -69,7 +69,7 @@ export default function StreakTracker({ performanceData, isLoading = false }: St
 
     const fetchStreakData = async () => {
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/streak/${userId}`)
+        const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/streak/${userId}`)
 
         if (response.data) {
           // Extract dates from performance data for calendar visualization

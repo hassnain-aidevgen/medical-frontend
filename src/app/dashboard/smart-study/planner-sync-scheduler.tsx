@@ -147,7 +147,7 @@ const PlannerSyncScheduler = ({
   // Fetch the active study plan
   const fetchActivePlan = async () => {
     try {
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/ai-planner/getActivePlan/${userId}`)
+      const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/ai-planner/getActivePlan/${userId}`)
 
       if (response.data.success && response.data.data) {
         setActivePlan(response.data.data)
@@ -171,7 +171,7 @@ const PlannerSyncScheduler = ({
     }
 
     try {
-      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/ai-planner/add_ai_plan_to_calender", {
+      const response = await axios.post("https://medical-backend-3eek.onrender.com/api/ai-planner/add_ai_plan_to_calender", {
         userId: test.userId,
         subjectName: test.subjectName,
         testTopic: test.testTopic,
@@ -217,7 +217,7 @@ const PlannerSyncScheduler = ({
     }
 
     try {
-      const response = await axios.delete(`https://medical-backend-loj4.onrender.com/api/ai-planner/calender/${testId}`)
+      const response = await axios.delete(`https://medical-backend-3eek.onrender.com/api/ai-planner/calender/${testId}`)
 
       if (response.status !== 200) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -238,7 +238,7 @@ const PlannerSyncScheduler = ({
     }
 
     try {
-      const response = await axios.delete(`https://medical-backend-loj4.onrender.com/api/ai-planner/calender/byPlan/${planId}`)
+      const response = await axios.delete(`https://medical-backend-3eek.onrender.com/api/ai-planner/calender/byPlan/${planId}`)
 
       if (response.status !== 200) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -303,7 +303,7 @@ const PlannerSyncScheduler = ({
     if (!activePlan) {
       // Try to fetch the active plan
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/ai-planner/getActivePlan/${userId}`)
+        const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/ai-planner/getActivePlan/${userId}`)
 
         if (response.data.success && response.data.data) {
           setActivePlan(response.data.data)

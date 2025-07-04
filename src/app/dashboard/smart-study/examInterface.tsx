@@ -276,7 +276,7 @@ const ExamInterface = ({
         // First try with the API
         // Fetch exam-specific questions (80%)
         const examSpecificResponse = await axios.get(
-          "https://medical-backend-loj4.onrender.com/api/test/take-test/questions-fixed",
+          "https://medical-backend-3eek.onrender.com/api/test/take-test/questions-fixed",
           {
             params: {
               subjects: examSubjects.join(","),
@@ -287,7 +287,7 @@ const ExamInterface = ({
 
         // Fetch related subjects questions (20%)
         const relatedSubjectsResponse = await axios.get(
-          "https://medical-backend-loj4.onrender.com/api/test/take-test/questions-fixed",
+          "https://medical-backend-3eek.onrender.com/api/test/take-test/questions-fixed",
           {
             params: {
               subjects: relatedSubjects.join(","),
@@ -333,7 +333,7 @@ const ExamInterface = ({
     try {
       // Try to fetch from the backend
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/questions/high-yield`, {
+        const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/questions/high-yield`, {
           params: {
             exam: selectedExam,
             userId: userId,

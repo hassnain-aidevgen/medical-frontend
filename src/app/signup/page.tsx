@@ -258,7 +258,7 @@ const SignupPage = () => {
     setIsLoading(true)
     setMessage(null)
     try {
-      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/auth/signup", formData)
+      const response = await axios.post("https://medical-backend-3eek.onrender.com/api/auth/signup", formData)
 
       if (response.status === 201) {
         const successMessage =
@@ -283,7 +283,7 @@ const SignupPage = () => {
   }
 
   const handleGoogleSignup = () => {
-    router.push("https://medical-backend-loj4.onrender.com/api/auth/google")
+    router.push("https://medical-backend-3eek.onrender.com/api/auth/google")
   }
 
   return (

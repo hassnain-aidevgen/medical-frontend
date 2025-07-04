@@ -102,7 +102,7 @@ export default function NewMentorPage() {
     try {
       // Create the mentor profile with all schema fields
       await axios.post(
-        "https://medical-backend-loj4.onrender.com/api/mentor",
+        "https://medical-backend-3eek.onrender.com/api/mentor",
         {
           name: formData.name,
           email: formData.email,

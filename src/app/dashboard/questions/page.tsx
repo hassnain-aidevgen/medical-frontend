@@ -63,7 +63,7 @@ export default function QuestionsPage() {
         return
       }
 
-      const { data } = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/recommendations3/${userId}`)
+      const { data } = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/recommendations3/${userId}`)
 
       console.log("Recommendation data received:", data)
 
@@ -94,7 +94,7 @@ export default function QuestionsPage() {
         }
 
         const { data } = await axios.get(
-          `https://medical-backend-loj4.onrender.com/api/test/recommendations3/${userId}`,
+          `https://medical-backend-3eek.onrender.com/api/test/recommendations3/${userId}`,
         )
 
         if (data.recommendations && data.recommendations.length > 0) {
@@ -143,7 +143,7 @@ export default function QuestionsPage() {
         }
 
         const response = await axios.get<StatsData>(
-          `https://medical-backend-loj4.onrender.com/api/test/user/${userId}/stats`,
+          `https://medical-backend-3eek.onrender.com/api/test/user/${userId}/stats`,
         )
         setStatsData(response.data)
       } catch (error) {
@@ -160,7 +160,7 @@ export default function QuestionsPage() {
           return
         }
 
-        const performanceResponse = await axios.get("https://medical-backend-loj4.onrender.com/api/test/performance2", {
+        const performanceResponse = await axios.get("https://medical-backend-3eek.onrender.com/api/test/performance2", {
           params: { userId },
         })
 

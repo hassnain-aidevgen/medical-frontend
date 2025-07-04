@@ -165,7 +165,7 @@ const SmartStudyCalendar = () => {
 
     setIsLoading(true)
     try {
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/calender/${userId}`)
+      const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/calender/${userId}`)
       if (Array.isArray(response.data)) {
         setTests(response.data)
       } else {
@@ -246,7 +246,7 @@ const SmartStudyCalendar = () => {
 
     setIsLoading(true)
     try {
-      const response = await axios.post("https://medical-backend-loj4.onrender.com/api/test/calender", {
+      const response = await axios.post("https://medical-backend-3eek.onrender.com/api/test/calender", {
         ...newTest,
         userId,
         source: "manual", // Mark this test as manually added
@@ -273,7 +273,7 @@ const SmartStudyCalendar = () => {
     }
     setIsLoading(true)
     try {
-      await axios.delete(`https://medical-backend-loj4.onrender.com/api/test/calender/${id}`)
+      await axios.delete(`https://medical-backend-3eek.onrender.com/api/test/calender/${id}`)
       setTests(tests.filter((test) => test._id !== id))
       toast.success("Test deleted successfully")
     } catch (error) {
@@ -303,7 +303,7 @@ const SmartStudyCalendar = () => {
     setIsLoading(true)
     try {
       const response = await axios.patch(
-        `https://medical-backend-loj4.onrender.com/api/test/calender/completion/${currentTestId}`,
+        `https://medical-backend-3eek.onrender.com/api/test/calender/completion/${currentTestId}`,
         {
           completed: isCompleting,
         },
@@ -423,7 +423,7 @@ const SmartStudyCalendar = () => {
     setIsLoading(true)
     try {
       const response = await axios.patch(
-        `https://medical-backend-loj4.onrender.com/api/test/calender/${currentTestId}`,
+        `https://medical-backend-3eek.onrender.com/api/test/calender/${currentTestId}`,
         {
           date: dateToSchedule,
         },

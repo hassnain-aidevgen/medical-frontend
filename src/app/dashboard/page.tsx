@@ -358,7 +358,7 @@ export default function DashboardPage() {
 
       setExamTypeStatsLoading(true)
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/exam-type-stats/${userId}`)
+        const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/exam-type-stats/${userId}`)
 
         if (response.data && response.data.success && Array.isArray(response.data.examTypeStats)) {
           setExamTypeStats(response.data.examTypeStats)
@@ -388,7 +388,7 @@ export default function DashboardPage() {
       if (lowAccuracyExams.length > 0) {
         try {
           const response = await axios.get(
-            `https://medical-backend-loj4.onrender.com/api/courses/recommended-courses/${userId}?examTypes=${lowAccuracyExams.join(",")}`,
+            `https://medical-backend-3eek.onrender.com/api/courses/recommended-courses/${userId}?examTypes=${lowAccuracyExams.join(",")}`,
           )
 
           if (response.data && response.data.success) {
@@ -409,7 +409,7 @@ export default function DashboardPage() {
 
       setIsLoading(true)
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/test/streak/${userId}`)
+        const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/streak/${userId}`)
 
         if (response.data && typeof response.data.currentStreak === "number") {
           setCurrentStreak(response.data.currentStreak || 0)
@@ -439,7 +439,7 @@ export default function DashboardPage() {
 
       try {
         const response = await axios.get(
-          `https://medical-backend-loj4.onrender.com/api/test/leaderboard/player/${userId}?timeFrame=${activeTab}`,
+          `https://medical-backend-3eek.onrender.com/api/test/leaderboard/player/${userId}?timeFrame=${activeTab}`,
         )
 
         if (response.data && response.data.success) {
@@ -465,7 +465,7 @@ export default function DashboardPage() {
 
       setGoalsLoading(true)
       try {
-        const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/quest?userId=${userId}`)
+        const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/quest?userId=${userId}`)
         if (response.data && response.data.data) {
           setGoals(response.data.data)
         }
@@ -489,7 +489,7 @@ export default function DashboardPage() {
       setDailyStatsLoading(true)
       try {
         const response = await axios.get(
-          `https://medical-backend-loj4.onrender.com/api/test/daily-question-stats?userId=${userId}`,
+          `https://medical-backend-3eek.onrender.com/api/test/daily-question-stats?userId=${userId}`,
         )
         console.log("DailyQuestionStat: ", response.data)
         if (response.data) {
@@ -524,7 +524,7 @@ export default function DashboardPage() {
       try {
         // Change this URL to your actual API endpoint and add filter for reviewCount > 0
         const response = await axios.get<Flashcard[]>(
-          `https://medical-backend-loj4.onrender.com/api/v2/flashcards?userId=${userId}&numFlashcards=10`,
+          `https://medical-backend-3eek.onrender.com/api/v2/flashcards?userId=${userId}&numFlashcards=10`,
         )
 
         if (response.data) {

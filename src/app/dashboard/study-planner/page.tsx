@@ -136,7 +136,7 @@ const PlannerForm: React.FC = () => {
       console.log("Fetching subjects from API...")
       try {
         const response = await axios.get(
-          'https://medical-backend-loj4.onrender.com/api/ai-planner/get-subjects'
+          'https://medical-backend-3eek.onrender.com/api/ai-planner/get-subjects'
         )
         if (response.data.success) {
           setAllSubjects(response.data.data)
@@ -215,7 +215,7 @@ const PlannerForm: React.FC = () => {
 
     try {
       const response = await axios.get(
-        `https://medical-backend-loj4.onrender.com/api/ai-planner/getUserStudyPlans/${userId}`,
+        `https://medical-backend-3eek.onrender.com/api/ai-planner/getUserStudyPlans/${userId}`,
       )
       console.log("API response:", response.data)
       if (response.data.success && response.data.data && response.data.data.length > 0) {
@@ -350,7 +350,7 @@ const PlannerForm: React.FC = () => {
 
     try {
       const response = await axios.get(
-        `https://medical-backend-loj4.onrender.com/api/ai-planner/get-performance-for-aiplanner/${userId}`,
+        `https://medical-backend-3eek.onrender.com/api/ai-planner/get-performance-for-aiplanner/${userId}`,
         {
           params: {
             targetExam: formData.targetExam,
@@ -393,7 +393,7 @@ const PlannerForm: React.FC = () => {
       if (planId) {
         try {
           const response = await axios.get(
-            `https://medical-backend-loj4.onrender.com/api/ai-planner/getStudyPlan/${planId}`,
+            `https://medical-backend-3eek.onrender.com/api/ai-planner/getStudyPlan/${planId}`,
           )
 
           if (response.data.success && response.data.data) {
@@ -456,7 +456,7 @@ const PlannerForm: React.FC = () => {
             try {
 
               // Add the task to the calendar using the new endpoint and data structure
-              await axios.post("https://medical-backend-loj4.onrender.com/api/ai-planner/add_ai_plan_to_calender", {
+              await axios.post("https://medical-backend-3eek.onrender.com/api/ai-planner/add_ai_plan_to_calender", {
                 userId: userId,
                 subjectName: task.subject,
                 testTopic: `${task.activity}`,
@@ -609,7 +609,7 @@ const PlannerForm: React.FC = () => {
 
     try {
       const response = await axios.post(
-        `https://medical-backend-loj4.onrender.com/api/ai-planner/generatePlan?userId=${userId}`,
+        `https://medical-backend-3eek.onrender.com/api/ai-planner/generatePlan?userId=${userId}`,
         submissionData,
         {
           headers: {

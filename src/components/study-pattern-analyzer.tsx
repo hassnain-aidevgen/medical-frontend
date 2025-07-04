@@ -100,7 +100,7 @@ const StudyPatternAnalyzer: React.FC<StudyPatternAnalyzerProps> = ({ selectedExa
       // Try to fetch dynamic blueprint
       try {
         const response = await axios.get(
-          `https://medical-backend-loj4.onrender.com/api/test/exams/blueprint/${selectedExam}`
+          `https://medical-backend-3eek.onrender.com/api/test/exams/blueprint/${selectedExam}`
         );
 
         if (response.data && Array.isArray(response.data) && response.data.length > 0) {

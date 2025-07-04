@@ -42,7 +42,7 @@ interface Question {
     explanation: string
 }
 
-const BASE_API_URL = "https://medical-backend-loj4.onrender.com/api/test"
+const BASE_API_URL = "https://medical-backend-3eek.onrender.com/api/test"
 
 const getDifficultyColor = (difficulty: string) => {
     switch (difficulty?.toLowerCase()) {

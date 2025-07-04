@@ -200,7 +200,7 @@ export const StudyProgressBar: React.FC<StudyProgressBarProps> = ({
     setIsRefreshing(true)
     try {
       // Get fresh data from backend
-      const response = await axios.get(`https://medical-backend-loj4.onrender.com/api/ai-planner/getStudyPlan/${planId}`);
+      const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/ai-planner/getStudyPlan/${planId}`);
       
       if (response.data.success) {
         // The parent component should handle this update
