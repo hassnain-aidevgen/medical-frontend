@@ -128,7 +128,7 @@ export default function InquiryDetailPage() {
         return (
             <div className="container mx-auto max-w-4xl py-10">
                 <div className="mb-8">
-                    <Link href="/inquiries" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
+                    <Link href="/dashboard/inquiries" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to inquiries
                     </Link>
@@ -151,7 +151,7 @@ export default function InquiryDetailPage() {
     return (
         <div className="w-full py-10">
             <div className="mb-8">
-                <Link href="/inquiries" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
+                <Link href="/dashboard/inquiries" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back to inquiries
                 </Link>

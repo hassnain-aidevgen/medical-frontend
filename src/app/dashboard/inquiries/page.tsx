@@ -11,7 +11,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getUserInquiries } from "@/lib/inquiries-api"
 import type { Inquiry, InquiryStatus } from "@/lib/types/InquiryStatus"
 
@@ -140,89 +139,69 @@ export default function InquiriesPage() {
                 </Select>
             </div>
 
-            <Tabs defaultValue="all" className="mb-8">
-                <TabsList>
-                    <TabsTrigger value="all">All</TabsTrigger>
-                    <TabsTrigger value="open">Open</TabsTrigger>
-                    <TabsTrigger value="in-progress">In Progress</TabsTrigger>
-                    <TabsTrigger value="resolved">Resolved</TabsTrigger>
-                </TabsList>
-                <TabsContent value="all" className="mt-6">
-                    {isLoading ? (
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {Array(6)
-                                .fill(0)
-                                .map((_, i) => (
-                                    <Card key={i}>
-                                        <CardHeader className="pb-2">
-                                            <Skeleton className="h-5 w-1/2 mb-1" />
-                                            <Skeleton className="h-4 w-1/4" />
-                                        </CardHeader>
-                                        <CardContent>
-                                            <Skeleton className="h-4 w-full mb-2" />
-                                            <Skeleton className="h-4 w-3/4" />
-                                        </CardContent>
-                                        <CardFooter>
-                                            <Skeleton className="h-8 w-full" />
-                                        </CardFooter>
-                                    </Card>
-                                ))}
-                        </div>
-                    ) : filteredInquiries.length === 0 ? (
-                        <div className="text-center py-12">
-                            <h3 className="text-lg font-medium">No inquiries found</h3>
-                            <p className="text-muted-foreground mt-1">Try adjusting your filters or create a new inquiry.</p>
-                            <Link href="/dashboard/inquiries/new" className="mt-4 inline-block">
-                                <Button>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    New Inquiry
-                                </Button>
-                            </Link>
-                        </div>
-                    ) : (
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {filteredInquiries.map((inquiry) => (
-                                <Link href={`/dashboard/inquiries/${inquiry._id || inquiry.id}`} key={inquiry._id || inquiry.id}>
-                                    <Card className="h-full transition-all hover:border-primary hover:shadow-sm">
-                                        <CardHeader className="pb-2">
-                                            <div className="flex justify-between items-start">
-                                                <CardTitle className="text-lg">{inquiry.title}</CardTitle>
-                                                <Badge variant={getStatusBadgeVariant(inquiry.status)}>
-                                                    {inquiry.status.replace("-", " ")}
-                                                </Badge>
-                                            </div>
-                                            <CardDescription>{new Date(inquiry.createdAt).toLocaleDateString()}</CardDescription>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <p className="line-clamp-2 text-sm text-muted-foreground">{inquiry.description}</p>
-                                        </CardContent>
-                                        <CardFooter>
-                                            <div className="flex justify-between items-center w-full">
-                                                <Badge variant="outline">{inquiry.category}</Badge>
-                                                {inquiry.responseCount > 0 && (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {inquiry.responseCount} response{inquiry.responseCount > 1 ? "s" : ""}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </CardFooter>
-                                    </Card>
-                                </Link>
-                            ))}
-                        </div>
-                    )}
-                </TabsContent>
-                <TabsContent value="open" className="mt-6">
-                    {/* Similar content as "all" but filtered for open inquiries */}
-                </TabsContent>
-                <TabsContent value="in-progress" className="mt-6">
-                    {/* Similar content as "all" but filtered for in-progress inquiries */}
-                </TabsContent>
-                <TabsContent value="resolved" className="mt-6">
-                    {/* Similar content as "all" but filtered for resolved inquiries */}
-                </TabsContent>
-            </Tabs>
+            {isLoading ? (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {Array(6)
+                        .fill(0)
+                        .map((_, i) => (
+                            <Card key={i}>
+                                <CardHeader className="pb-2">
+                                    <Skeleton className="h-5 w-1/2 mb-1" />
+                                    <Skeleton className="h-4 w-1/4" />
+                                </CardHeader>
+                                <CardContent>
+                                    <Skeleton className="h-4 w-full mb-2" />
+                                    <Skeleton className="h-4 w-3/4" />
+                                </CardContent>
+                                <CardFooter>
+                                    <Skeleton className="h-8 w-full" />
+                                </CardFooter>
+                            </Card>
+                        ))}
+                </div>
+            ) : filteredInquiries.length === 0 ? (
+                <div className="text-center py-12">
+                    <h3 className="text-lg font-medium">No inquiries found</h3>
+                    <p className="text-muted-foreground mt-1">Try adjusting your filters or create a new inquiry.</p>
+                    <Link href="/dashboard/inquiries/new" className="mt-4 inline-block">
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" />
+                            New Inquiry
+                        </Button>
+                    </Link>
+                </div>
+            ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {filteredInquiries.map((inquiry) => (
+                        <Link href={`/dashboard/inquiries/${inquiry._id || inquiry.id}`} key={inquiry._id || inquiry.id}>
+                            <Card className="h-full transition-all hover:border-primary hover:shadow-sm">
+                                <CardHeader className="pb-2">
+                                    <div className="flex justify-between items-start">
+                                        <CardTitle className="text-lg">{inquiry.title}</CardTitle>
+                                        <Badge variant={getStatusBadgeVariant(inquiry.status)}>
+                                            {inquiry.status.replace("-", " ")}
+                                        </Badge>
+                                    </div>
+                                    <CardDescription>{new Date(inquiry.createdAt).toLocaleDateString()}</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="line-clamp-2 text-sm text-muted-foreground">{inquiry.description}</p>
+                                </CardContent>
+                                <CardFooter>
+                                    <div className="flex justify-between items-center w-full">
+                                        <Badge variant="outline">{inquiry.category}</Badge>
+                                        {inquiry.responseCount > 0 && (
+                                            <span className="text-xs text-muted-foreground">
+                                                {inquiry.responseCount} response{inquiry.responseCount > 1 ? "s" : ""}
+                                            </span>
+                                        )}
+                                    </div>
+                                </CardFooter>
+                            </Card>
+                        </Link>
+                    ))}
+                </div>
+            )}
         </div>
     )
 }
-

@@ -286,7 +286,7 @@ export default function AdminDashboardPage() {
                                                                     <DropdownMenuContent align="end">
                                                                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                                         <DropdownMenuItem asChild>
-                                                                            <Link href={`/admin/inquiries/${inquiry._id || inquiry.id}`}>View Details</Link>
+                                                                            <Link href={`/admin/inquiries/${inquiry._id || inquiry.id}/edit`}>View Details</Link>
                                                                         </DropdownMenuItem>
                                                                         <DropdownMenuSeparator />
                                                                         {inquiry.status === "open" && (

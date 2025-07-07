@@ -1,6 +1,6 @@
 "use client"
 
-import AITestSuggestions from "@/components/AITestSuggestions"
+import AITestSuggestions from "./components/AITestSuggestions"
 import ExamSimulation from "@/components/exam-simulation"
 import SyllabusCoverageIndicator from "@/components/syllabus-coverage-indicator"
 import RecommendedQuestions from "./RecommendedQuestions"
