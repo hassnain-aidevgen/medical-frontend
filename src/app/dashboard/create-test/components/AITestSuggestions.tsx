@@ -323,7 +323,7 @@ const AITestSuggestions: React.FC<AITestSuggestionsProps> = ({ mode }) => {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-red-700">
-                  We couldn't generate questions at this time. Please try again or try a different topic.
+                  We couldn&apos;t generate questions at this time. Please try again or try a different topic.
                 </p>
               </div>
             </div>
