@@ -217,6 +217,28 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
     }
   );
 
+  const hasRemainingDays = () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0); // Set to beginning of tomorrow
+  
+  // Check all weeks and days
+  for (const week of weeklyPlans) {
+    if (week.days) {
+      for (const day of week.days) {
+        if (day.date) {
+          const dayDate = new Date(day.date);
+          if (dayDate >= tomorrow) {
+            return true; // Found at least one day in the future
+          }
+        }
+      }
+    }
+  }
+  
+  return false; // No future days found
+};
+
   const formatDateWithDay = (dateString: string | number | Date, dayOfWeek: any) => {
     if (!dateString) return dayOfWeek;
 
@@ -1033,6 +1055,15 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
             {activeTab === "resources" && renderResources()}
           </motion.div>
         </AnimatePresence>
+        {!hasRemainingDays() && (
+  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-center">
+    <XCircle size={20} className="mr-2 text-red-500" />
+    <div>
+      <p className="font-medium">No days remaining in your plan or your plan past due date.</p>
+      <p className="text-sm">Please create a new study plan to continue your preparation.</p>
+    </div>
+  </div>
+)}
       </div>
     </div>
   )

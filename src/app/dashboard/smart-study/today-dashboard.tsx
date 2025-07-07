@@ -649,7 +649,7 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
               </div>
             )}
 
-            {/* Practice Section (Questions & Simulations) */}
+            {/* Practice Section (Questions & Simulations)
             {todayItems.filter((item) => item.type === "question" || item.type === "simulation").length > 0 && (
               <div>
                 <h3 className="flex items-center text-sm font-semibold text-gray-700 mb-2">
@@ -681,7 +681,7 @@ const TodayDashboard = ({ tests = [], onTestComplete, onRefresh }: TodayDashboar
                     ))}
                 </div>
               </div>
-            )}
+            )} */}
           </div>
         </div>
       ) : (

@@ -6,9 +6,6 @@ import { Award, BarChart3, FileBarChart, Gauge, Settings2, Users } from "lucide-
 import { useState } from "react"
 import { BadgeManagement } from "./badge-management"
 import { DashboardOverview } from "./dashboard-overview"
-// import { ReportsAnalytics } from "./reports-analytics"
-// import { RuleBuilder } from "./rule-builder"
-// import { Settings } from "./settings"
 import UserProgress from "./user-progress"
 
 export default function AdminDashboard() {
@@ -106,9 +103,6 @@ export default function AdminDashboard() {
                 {activeTab === "overview" && <DashboardOverview />}
                 {activeTab === "badges" && <BadgeManagement />}
                 {activeTab === "users" && <UserProgress />}
-                {/* {activeTab === "reports" && <ReportsAnalytics />} */}
-                {/* {activeTab === "rules" && <RuleBuilder />} */}
-                {/* {activeTab === "settings" && <Settings />} */}
             </div>
         </div>
     )

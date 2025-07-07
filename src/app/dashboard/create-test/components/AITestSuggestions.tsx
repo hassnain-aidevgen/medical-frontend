@@ -46,7 +46,7 @@ const AITestSuggestions: React.FC<AITestSuggestionsProps> = ({ mode }) => {
     const fetchSubjects = async () => {
       setLoadingSubjects(true)
       try {
-        const response = await axios.get('http://localhost:5000/api/test/subjects-ai')
+        const response = await axios.get('https://medical-backend-3eek.onrender.com/api/test/subjects-ai')
         setSubjects(response.data)
       } catch (error) {
         console.error("Error fetching subjects:", error)
@@ -70,7 +70,7 @@ const AITestSuggestions: React.FC<AITestSuggestionsProps> = ({ mode }) => {
     const fetchSubsections = async () => {
       setLoadingSubsections(true)
       try {
-        const response = await axios.get(`http://localhost:5000/api/test/subjects-ai/${selectedSubject}/subsections`)
+        const response = await axios.get(`https://medical-backend-3eek.onrender.com/api/test/subjects-ai/${selectedSubject}/subsections`)
         setSubsections(response.data)
         
         // If there are subsections, select the first one by default
@@ -126,7 +126,7 @@ const AITestSuggestions: React.FC<AITestSuggestionsProps> = ({ mode }) => {
 
     try {
       // Call the API to generate and save AI test questions
-      const apiUrl = 'http://localhost:5000/api/test/ai-test-suggestions';
+      const apiUrl = 'https://medical-backend-3eek.onrender.com/api/test/ai-test-suggestions';
       const { data } = await axios.post(apiUrl, {
         topic: topic.trim(),
         questionCount: count,
@@ -175,7 +175,7 @@ const AITestSuggestions: React.FC<AITestSuggestionsProps> = ({ mode }) => {
       <CardHeader className="pb-4">
         <CardTitle className="text-2xl font-semibold flex items-center text-gray-700">
           <Brain className="mr-2" size={24} />
-          AI Test Suggestions
+          AI Quick Test
         </CardTitle>
         <CardDescription>
           Generate a customized test focused on a specific medical topic
