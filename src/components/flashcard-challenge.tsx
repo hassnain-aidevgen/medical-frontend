@@ -182,7 +182,7 @@ export function FlashcardChallenge({ isOpen, onClose }: FlashcardChallengeProps)
                 <BookOpen className="h-10 w-10 text-sky-600" />
             </div>
             <h2 className="text-xl font-bold mb-2">Daily Flashcard Challenge</h2>
-            <p className="mb-6 text-slate-600 max-w-sm">Review cards you've learned or struggled with to build long-term memory.</p>
+            <p className="mb-6 text-slate-600 max-w-sm">Review cards you&apos;ve learned or struggled with to build long-term memory.</p>
             <Button onClick={fetchChallenge} size="lg" className="bg-sky-600 hover:bg-sky-700">
                 {"Start Today's Challenge"}
             </Button>
