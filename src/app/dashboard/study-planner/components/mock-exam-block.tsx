@@ -232,47 +232,43 @@ const fetchQuestions = async () => {
     }
   }
 
-  const fetchAiExplanation = async (questionId: string, userAnswer: string | null) => {
-    setIsLoadingAiExplanation(true)
-    setAiExplanationError(null)
+ const fetchAiExplanation = async (questionId: string, userAnswer: string | null, correctAnswer: string) => {
+        setIsLoadingAiExplanation(true);
+        setAiExplanationError(null);
+        setAiExplanation(null); // Clear previous explanation
 
-    try {
-      const currentQuestion = questions[currentQuestionIndex]
+        try {
+            // In this file, currentQuestion is derived from the 'questions' state
+            const currentQuestion = questions[currentQuestionIndex];
+            const safeOptions = Array.isArray(currentQuestion.options) ? currentQuestion.options : [];
 
-      // Make sure options is properly formatted before sending
-      const safeOptions = Array.isArray(currentQuestion.options) ? currentQuestion.options : []
+            const response = await axios.post(`https://medical-backend-3eek.onrender.com/api/ai-explain/ai-explain`, {
+                question: currentQuestion.question,
+                options: safeOptions,
+                correctAnswer: correctAnswer, // Pass the correct answer from the submission logic
+                userAnswer: userAnswer || "No answer provided",
+            });
 
-      // Call your backend API that will use OpenAI
-      const response = await axios.post(`https://medical-backend-3eek.onrender.com/api/test/ai-explain`, {
-        question: currentQuestion.question,
-        options: safeOptions,
-        correctAnswer: userAnswer, // This will be updated with the correct answer from the response
-        userAnswer: userAnswer || "No answer provided",
-      })
+            if (response.data.explanation) {
+                setAiExplanation(response.data.explanation);
+            } else {
+                throw new Error("Received an empty explanation from the server.");
+            }
 
-      setAiExplanation(response.data.explanation)
-    } catch (error) {
-      console.error("Error fetching AI explanation:", error)
+        } catch (error) {
+            console.error("Error fetching AI explanation:", error);
+            let errorMessage = "Failed to load AI explanation. The service may be temporarily unavailable.";
+            if (axios.isAxiosError(error) && error.response?.data?.error) {
+                errorMessage = error.response.data.error;
+            }
+            setAiExplanationError(errorMessage);
+            setAiExplanation(errorMessage); // Display error in the explanation box
+        } finally {
+            setIsLoadingAiExplanation(false);
+        }
+    };
 
-      // Create a basic fallback explanation
-      const localFallbackExplanation = `
-The correct answer is provided above.
-
-This question tests your understanding of medical concepts related to ${questions[currentQuestionIndex]?.specialty || questions[currentQuestionIndex]?.topic || "this topic"}.
-
-To remember this concept: Focus on connecting the key symptoms or findings with the most appropriate medical approach.
-
-Note: A more detailed explanation will be available when our explanation service is fully online.
-      `
-
-      setAiExplanation(localFallbackExplanation)
-      setAiExplanationError("Failed to load AI explanation")
-    } finally {
-      setIsLoadingAiExplanation(false)
-    }
-  }
-
-  const submitAnswer = async () => {
+ const submitAnswer = async () => {
     if (!selectedAnswer) {
       toast.error("Please select an answer before submitting", {
         duration: 2000,
@@ -283,35 +279,31 @@ Note: A more detailed explanation will be available when our explanation service
     }
 
     setIsSubmitting(true)
-    const timeSpent = Math.floor((Date.now() - timeStarted) / 1000) // Time in seconds
+    const timeSpent = Math.floor((Date.now() - timeStarted) / 1000)
 
     try {
-      const userId = localStorage.getItem("Medical_User_Id")
       const currentQuestion = questions[currentQuestionIndex]
 
-      // Simulate API call for mock exam
-      // In a real implementation, you would call your actual API endpoint
-      // Similar to the challenge page's submit endpoint
+      // This is a simulated response for the mock exam.
+      const isCorrect = selectedAnswer === currentQuestion.options[0]; // Example: correct answer is always the first option for this mock
+      const correctAnswer = currentQuestion.options[0];
 
-      // For now, we'll simulate a response
       const mockResponse: SubmitAnswerResponse = {
         success: true,
-        isCorrect: Math.random() > 0.3, // 70% chance of being correct for demo
-        correctAnswer: currentQuestion.options[Math.floor(Math.random() * currentQuestion.options.length)],
+        isCorrect: isCorrect,
+        correctAnswer: correctAnswer,
         explanation: `This is an explanation for the question about ${currentQuestion.topic || currentQuestion.specialty}.`,
         sessionComplete: currentQuestionIndex === questions.length - 1,
-        flashcardCreated: Math.random() > 0.7, // 30% chance of creating a flashcard
+        flashcardCreated: !isCorrect,
         flashcardCategory: "Mistakes",
       }
 
-      // Update the answer result
       setAnswerResult({
         isCorrect: mockResponse.isCorrect,
         correctAnswer: mockResponse.correctAnswer,
         explanation: mockResponse.explanation,
       })
 
-      // Update flashcard status
       if (mockResponse.flashcardCreated) {
         setFlashcardCreated(true)
         setFlashcardCategory(mockResponse.flashcardCategory || "Mistakes")
@@ -321,9 +313,9 @@ Note: A more detailed explanation will be available when our explanation service
 
       // Fetch analytics and AI explanation
       fetchQuestionAnalytics(currentQuestion._id)
-      fetchAiExplanation(currentQuestion._id, mockResponse.correctAnswer)
+      // FIX: Pass all three required arguments: questionId, selectedAnswer, and correctAnswer
+      fetchAiExplanation(currentQuestion._id, selectedAnswer, mockResponse.correctAnswer)
 
-      // Show toast based on answer correctness
       if (mockResponse.isCorrect) {
         toast.success("Correct answer! 🎉", {
           duration: 2000,
@@ -338,18 +330,22 @@ Note: A more detailed explanation will be available when our explanation service
       }
 
       // Update results
-      const updatedResults = { ...results }
-      if (mockResponse.isCorrect) {
-        updatedResults.correct += 1
-      }
-      updatedResults.total += 1
-      updatedResults.percentage = Math.round((updatedResults.correct / updatedResults.total) * 100)
-      updatedResults.timeSpent += timeSpent
-      setResults(updatedResults)
+      setResults(prevResults => {
+          const newCorrectCount = prevResults.correct + (mockResponse.isCorrect ? 1 : 0);
+          const newTotalCount = prevResults.total + 1;
+          return {
+              correct: newCorrectCount,
+              total: newTotalCount,
+              percentage: Math.round((newCorrectCount / newTotalCount) * 100),
+              timeSpent: prevResults.timeSpent + timeSpent,
+          };
+      });
+
     } catch (error) {
       console.error("Error submitting answer:", error)
       const axiosError = error as AxiosError
-      toast.error(axiosError.message || "Failed to submit answer", {
+      const errorMessage = (axiosError.response?.data as { message?: string })?.message || "Failed to submit answer";
+      toast.error(errorMessage, {
         duration: 3000,
         position: "top-center",
       })
@@ -357,7 +353,6 @@ Note: A more detailed explanation will be available when our explanation service
       setIsSubmitting(false)
     }
   }
-
   useEffect(() => {
     if (answerResult) {
       setIsExplanationVisible(true)

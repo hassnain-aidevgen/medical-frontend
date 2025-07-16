@@ -193,13 +193,13 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
   }, [questions]);
 
   // Fetch AI feedback when component mounts
-  useEffect(() => {
+ useEffect(() => {
     const fetchAIFeedback = async () => {
       setIsLoadingFeedback(true)
       setFeedbackError(null)
 
       try {
-        // Prepare data for the AI feedback request
+        // Correctly map questions using human-readable names for the 'topic' field
         const feedbackData = {
           questions: questions.map((q, index) => ({
             questionId: q._id,
@@ -207,18 +207,17 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
             correctAnswer: q.answer,
             userAnswer: selectedAnswers[index] || "",
             timeSpent: questionTimes[index] || 0,
-            topic: isAIGenerated ? aiTopic : q.subsection || q.subject || "",
+            // FIX: Use display/name fields instead of raw IDs for the topic
+            topic: q.subsectionDisplay || q.subsectionName || q.subjectDisplay || q.subjectName || "General Knowledge",
           })),
           score,
           totalTime,
           percentage,
-          topic: isAIGenerated ? aiTopic : "", // Include AI topic when applicable
-          targetExam: targetExam || "", // Include target exam in feedback request
+          targetExam: targetExam || "",
         }
 
-        // Call the new AI feedback endpoint
         const response = await axios.post(
-          "https://medical-backend-3eek.onrender.com/api/test/ai-report-feedback",
+          "https://medical-backend-3eek.onrender.com/api/ai-explain/ai-report-feedback",
           feedbackData,
         )
 
@@ -231,11 +230,10 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
       }
     }
 
-    // Only fetch feedback if we have at least one question
     if (questions.length > 0) {
       fetchAIFeedback()
     }
-  }, [questions, selectedAnswers, questionTimes, score, totalTime, percentage, isAIGenerated, aiTopic, targetExam])
+  }, [questions, selectedAnswers, questionTimes, score, totalTime, percentage, targetExam])
 
   const handleSubmitResults = async () => {
     setLoading(true);
@@ -363,9 +361,9 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
 
       toast.success("Test Saved Successfully! 🎉");
 
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 4500);
+      // setTimeout(() => {
+      //   router.push("/dashboard");
+      // }, 4500);
     } catch (err) {
       console.error("Error submitting test results:", err);
       setError(err instanceof Error ? err.message : "An unexpected error occurred.");
@@ -498,21 +496,6 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
                 {loading ? "Submitting..." : "Save Results"}
               </Button>
               
-              {/* New button for adding incorrect questions to flashcards */}
-              {/* <Button 
-                onClick={addIncorrectQuestionsToFlashcards} 
-                disabled={isAddingToFlashcards || incorrectCount === 0} 
-                className="w-full bg-amber-500 hover:bg-amber-600"
-              >
-                <BookOpenCheck className="mr-2" />
-                {isAddingToFlashcards 
-                  ? "Adding to Flashcards..." 
-                  : incorrectCount === 0 
-                    ? "No incorrect questions" 
-                    : `Add ${incorrectCount} Incorrect ${incorrectCount === 1 ? 'Question' : 'Questions'} to Flashcards`
-                }
-              </Button> */}
-              
               <Button onClick={() => router.push("/dashboard")} variant="outline" className="w-full">
                 <Share2 className="mr-2" />
                 Back to Dashboard
@@ -568,21 +551,6 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
           )}
         </CardContent>
       </Card>
-
-      {/* Target Exam Blueprint */}
-      {/* {targetExam && (
-        <TargetedExamBlueprint
-          testResult={{
-            score: score,
-            totalQuestions: questions.length,
-            correctAnswers: score,
-            incorrectAnswers: questions.length - score,
-            totalTime: totalTime,
-            targetExam: targetExam,
-          }}
-          className="mb-8"
-        />
-      )} */}
 
       {error && (
         <Alert variant="destructive" className="mb-6">

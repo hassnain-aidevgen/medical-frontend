@@ -2,6 +2,7 @@
 
 import axios, { type AxiosError } from "axios"
 import { motion } from "framer-motion"
+import ChallengeHistory from "../ChallengeHistory"
 import {
     AlertCircle,
     ArrowLeft,
@@ -35,6 +36,20 @@ interface Question {
     system: string
     exam_type?: string
     difficulty?: "easy" | "medium" | "hard"
+}
+
+interface ChallengeMetrics {
+    totalQuestions: number;
+    correctAnswers: number;
+    incorrectAnswers: number;
+    totalTimeSpent: number;
+    score: number;
+    averageTimePerQuestion: number;
+}
+
+interface HistorySession extends ChallengeSession {
+    createdAt: string;
+    metrics?: ChallengeMetrics;
 }
 
 interface QuestionAnalytics {
@@ -162,6 +177,19 @@ export default function ChallengePage() {
 
     const [isExplanationVisible, setIsExplanationVisible] = useState(false)
     const [showPopup, setShowPopup] = useState(false)
+    const [view, setView] = useState<"results" | "history">("results");
+    const [historyData, setHistoryData] = useState<HistorySession[]>([]);
+    const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+    const [isStartingNewChallenge, setIsStartingNewChallenge] = useState(false);
+    const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null);
+    const [userID, setUserID] = useState<string | null>(null);
+
+     useEffect(() => {
+        const storedUserId = localStorage.getItem("Medical_User_Id");
+        if (storedUserId) {
+            setUserID(storedUserId);
+        }
+    }, []);
 
     // Update elapsed time every second
     useEffect(() => {
@@ -174,23 +202,31 @@ export default function ChallengePage() {
         }
     }, [timeStarted, answerResult, sessionComplete])
 
-    useEffect(() => {
+ useEffect(() => {
         const fetchChallengeSession = async () => {
-            setIsLoading(true)
+            setIsLoading(true);
             try {
-                const userId = localStorage.getItem("Medical_User_Id")
+                const userId = localStorage.getItem("Medical_User_Id");
+                
+                if (!userId) {
+                    toast.error("User not found. Please log in again.");
+                    router.push("/login");
+                    return;
+                }
 
                 const response = await axios.get<SessionResponse>(
                     `https://medical-backend-3eek.onrender.com/api/challenge/${sessionId}?userId=${userId}`,
-                )
+                );
 
                 if (response.data.success) {
-                    const sessionData = response.data.session
+                    const sessionData = response.data.session;
 
                     // If session is already completed, show results directly
                     if (sessionData.status === "completed") {
-                        setSessionComplete(true)
-                        calculateResults(sessionData)
+                        setSessionComplete(true);
+                        calculateResults(sessionData);
+                        setIsLoading(false);
+                        return;
                     }
 
                     // Extract questions and session data
@@ -201,55 +237,116 @@ export default function ChallengePage() {
                         specialty: q.specialty,
                         topic: q.topic,
                         system: q.system,
-                    }))
+                    }));
 
                     setSession({
-                        _id: sessionData._id,
-                        userId: sessionData.userId,
+                        ...sessionData,
                         questions: sessionData.questions.map((q) => ({
                             questionId: q.questionId,
                             userAnswer: q.userAnswer,
                             isCorrect: q.isCorrect,
                             timeSpent: q.timeSpent,
                         })),
-                        status: sessionData.status,
-                        metadata: sessionData.metadata,
-                    })
+                    });
 
-                    setQuestions(formattedQuestions)
+                    setQuestions(formattedQuestions);
 
-                    // Reset timer for the current question
-                    setTimeStarted(Date.now())
+                    // Resume logic: Find the first unanswered question
+                    const firstUnansweredIndex = sessionData.questions.findIndex((q) => q.userAnswer === null);
+                    const resumeIndex = firstUnansweredIndex > -1 ? firstUnansweredIndex : 0;
+                    setCurrentQuestionIndex(resumeIndex);
+                    
+                    setTimeStarted(Date.now());
 
-                    console.log("Challenge loaded successfully")
                 } else {
-                    console.error("Failed to load challenge session")
+                    toast.error("Failed to load challenge session.");
                 }
             } catch (error) {
-                console.error("Error fetching challenge session:", error)
-                const axiosError = error as AxiosError
-                console.error(axiosError.message || "Failed to load challenge session")
+                console.error("Error fetching challenge session:", error);
+                toast.error("An error occurred while loading the challenge.");
             } finally {
-                setIsLoading(false)
+                setIsLoading(false);
             }
-        }
+        };
 
-        fetchChallengeSession()
-    }, [sessionId, router])
+        fetchChallengeSession();
+    }, [sessionId, router]);
+
+     const handleViewHistory = () => {
+        setView('history');
+    }
+
+const startNewChallenge = async () => {
+        setIsStartingNewChallenge(true);
+        try {
+            const userId = localStorage.getItem("Medical_User_Id");
+            if (!userId) {
+                toast.error("Please log in to start a challenge.");
+                return;
+            }
+            const response = await axios.post(
+                `https://medical-backend-3eek.onrender.com/api/challenge/start?userId=${userId}`,
+                { questionCount: 10 }
+            );
+
+            if (response.data.success) {
+                // Manually reset state to prepare for the new challenge
+                setSessionComplete(false);
+                setView('results');
+                setCurrentQuestionIndex(0);
+                setAnswerResult(null);
+                setSession(null);
+                setQuestions([]);
+
+                // Navigate to the new challenge page
+                router.push(`/dashboard/challenge/${response.data.sessionId}`);
+            } else {
+                toast.error(response.data.message || "Failed to start new challenge.");
+            }
+        } catch (error) {
+            console.error("Error starting challenge:", error);
+            toast.error("Failed to start challenge. Please try again later.");
+        } finally {
+            setIsStartingNewChallenge(false);
+        }
+    };
+
+    const viewHistory = async () => {
+        setIsLoadingHistory(true);
+        try {
+            const userId = localStorage.getItem("Medical_User_Id");
+            const response = await axios.get(
+                `https://medical-backend-3eek.onrender.com/api/challenge/history?userId=${userId}`
+            );
+            if (response.data.success) {
+                setHistoryData(response.data.sessions);
+                setView("history");
+            } else {
+                toast.error("Failed to load history.");
+            }
+        } catch (error) {
+            console.error("Error fetching history:", error);
+            toast.error("Could not fetch challenge history.");
+        } finally {
+            setIsLoadingHistory(false);
+        }
+    };
 
     const calculateResults = (sessionData: SessionResponse["session"]) => {
-        const totalQuestions = sessionData.questions.length
-        const correctAnswers = sessionData.questions.filter((q) => q.isCorrect).length
-        const percentage = Math.round((correctAnswers / totalQuestions) * 100)
-        const totalTimeSpent = sessionData.questions.reduce((total, q) => total + (q.timeSpent || 0), 0)
+        const totalQuestions = sessionData.questions.length;
+        const correctAnswers = sessionData.questions.filter((q) => q.isCorrect).length;
+        const percentage = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
+        // Calculate total time spent as a fallback (metrics does not contain totalTimeSpent)
+        const totalTimeSpent =
+            sessionData.questions.reduce((total, q) => total + (q.timeSpent || 0), 0);
 
         setResults({
             correct: correctAnswers,
             total: totalQuestions,
             percentage,
             timeSpent: totalTimeSpent,
-        })
-    }
+        });
+    };
 
     const fetchQuestionAnalytics = async (questionId: string) => {
         setIsLoadingAnalytics(true)
@@ -291,47 +388,42 @@ export default function ChallengePage() {
         }
     }
 
-    const fetchAiExplanation = async (questionId: string, userAnswer: string | null) => {
-        setIsLoadingAiExplanation(true)
-        setAiExplanationError(null)
+   const fetchAiExplanation = async (questionId: string, userAnswer: string | null, correctAnswer: string) => {
+        setIsLoadingAiExplanation(true);
+        setAiExplanationError(null);
+        setAiExplanation(null); // Clear previous explanation
 
         try {
-            const currentQuestion = questions[currentQuestionIndex]
+            const currentQuestion = questions[currentQuestionIndex];
+            const safeOptions = Array.isArray(currentQuestion.options) ? currentQuestion.options : [];
 
-            // Make sure options is properly formatted before sending
-            const safeOptions = Array.isArray(currentQuestion.options) ? currentQuestion.options : []
-
-            // Call your backend API that will use OpenAI
-            const response = await axios.post(`https://medical-backend-3eek.onrender.com/api/test/ai-explain`, {
+            const response = await axios.post(`https://medical-backend-3eek.onrender.com/api/ai-explain/ai-explain`, {
                 question: currentQuestion.question,
                 options: safeOptions,
-                correctAnswer: userAnswer, // This will be updated with the correct answer from the response
+                correctAnswer: correctAnswer, // Pass the correct answer from the server response
                 userAnswer: userAnswer || "No answer provided",
-            })
+            });
 
-            setAiExplanation(response.data.explanation)
+            if (response.data.explanation) {
+                setAiExplanation(response.data.explanation);
+            } else {
+                throw new Error("Received an empty explanation from the server.");
+            }
+
         } catch (error) {
-            console.error("Error fetching AI explanation:", error)
-
-            // Create a basic fallback explanation
-            const localFallbackExplanation = `
-The correct answer is provided above.
-
-This question tests your understanding of medical concepts related to ${questions[currentQuestionIndex].specialty || questions[currentQuestionIndex].topic || "this topic"}.
-
-To remember this concept: Focus on connecting the key symptoms or findings with the most appropriate medical approach.
-
-Note: A more detailed explanation will be available when our explanation service is fully online.
-            `
-
-            setAiExplanation(localFallbackExplanation)
-            setAiExplanationError("Failed to load AI explanation")
+            console.error("Error fetching AI explanation:", error);
+            let errorMessage = "Failed to load AI explanation. The service may be temporarily unavailable.";
+            if (axios.isAxiosError(error) && error.response?.data?.error) {
+                errorMessage = error.response.data.error;
+            }
+            setAiExplanationError(errorMessage);
+            setAiExplanation(errorMessage); // Display error in the explanation box
         } finally {
-            setIsLoadingAiExplanation(false)
+            setIsLoadingAiExplanation(false);
         }
-    }
+    };
 
-    const submitAnswer = async () => {
+  const submitAnswer = async () => {
         if (!selectedAnswer) {
             toast.error("Please select an answer before submitting", {
                 duration: 2000,
@@ -364,20 +456,18 @@ Note: A more detailed explanation will be available when our explanation service
                     explanation: response.data.explanation || "No explanation provided.",
                 })
 
-                // Fetch question analytics and AI explanation
-                // Make sure these are called immediately and not conditionally
-                if (response.data.success) {
-                    console.log("flashcard created", response.data)
+                if (response.data.flashcardCreated) {
                     setFlashcardCreated(true)
                     setFlashcardCategory(response.data.flashcardCategory || "Mistakes")
-                    setFlashcardId(response.data.flashcardId || null) // Set flashcard ID
+                    setFlashcardId(response.data.flashcardId || null) 
                 } else {
                     setFlashcardCreated(false)
                 }
+                
                 fetchQuestionAnalytics(currentQuestion._id)
-                fetchAiExplanation(currentQuestion._id, response.data.correctAnswer)
+                // FIX: Pass all three required arguments to the function
+                fetchAiExplanation(currentQuestion._id, selectedAnswer, response.data.correctAnswer)
 
-                // Show toast based on answer correctness
                 if (response.data.isCorrect) {
                     toast.success("Correct answer! 🎉", {
                         duration: 2000,
@@ -391,19 +481,12 @@ Note: A more detailed explanation will be available when our explanation service
                     })
                 }
 
-                // Check if session is complete
                 if (response.data.sessionComplete) {
-                    const isLastQuestion = true
-
-                    // Fetch updated session to get final results
                     const sessionResponse = await axios.get<SessionResponse>(
                         `https://medical-backend-3eek.onrender.com/api/challenge/${sessionId}?userId=${userId}`,
                     )
-
                     if (sessionResponse.data.success) {
                         calculateResults(sessionResponse.data.session)
-
-                        // Show a toast notification that the challenge is complete
                         toast.success("Challenge completed! View results after reviewing this question.", {
                             duration: 4000,
                             position: "top-center",
@@ -419,7 +502,8 @@ Note: A more detailed explanation will be available when our explanation service
         } catch (error) {
             console.error("Error submitting answer:", error)
             const axiosError = error as AxiosError
-            toast.error(axiosError.message || "Failed to submit answer", {
+            const errorMessage = (axiosError.response?.data as { message?: string })?.message || "Failed to submit answer";
+            toast.error(errorMessage, {
                 duration: 3000,
                 position: "top-center",
             })
@@ -502,14 +586,22 @@ Note: A more detailed explanation will be available when our explanation service
         )
     }
 
-    if (sessionComplete) {
+if (sessionComplete) {
+            if (view === 'history') {
+            return (
+                <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto">
+                    <ChallengeHistory userId={userID} onBack={() => setView('results')} />
+                </div>
+            )
+        }
+
+
         return (
             <div className="flex-1 p-4 md:p-8 max-w-4xl mx-auto">
                 <Button variant="ghost" onClick={returnToDashboard} className="mb-6">
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back to Dashboard
                 </Button>
-
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                     <Card className="w-full overflow-hidden border-2 border-primary/10">
                         <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-6 flex items-center justify-between">
@@ -612,13 +704,13 @@ Note: A more detailed explanation will be available when our explanation service
                         </CardContent>
 
                         <CardFooter className="flex flex-col sm:flex-row gap-3 p-6 bg-muted/10">
-                            <Button variant="outline" onClick={returnToDashboard} className="w-full sm:w-auto">
+                           <Button variant="outline" onClick={returnToDashboard} className="w-full sm:w-auto">
                                 Return to Dashboard
                             </Button>
-                            <Button onClick={() => router.push("/dashboard/performance-tracking")} className="w-full sm:w-auto">
+                             <Button onClick={handleViewHistory} className="w-full sm:w-auto">
                                 View Performance History
                             </Button>
-                            <Button onClick={() => router.push("/dashboard/create-test")} className="w-full sm:w-auto bg-primary">
+                            <Button onClick={startNewChallenge} className="w-full sm:w-auto bg-primary" disabled={isStartingNewChallenge}>
                                 Practice More Questions
                             </Button>
                         </CardFooter>
@@ -626,7 +718,7 @@ Note: A more detailed explanation will be available when our explanation service
                 </motion.div>
                 <Toaster position="top-right" />
             </div>
-        )
+        );
     }
 
     const currentQuestion = questions[currentQuestionIndex]
@@ -1103,9 +1195,9 @@ Note: A more detailed explanation will be available when our explanation service
             {showFlashcard && flashcardId && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-xl max-w-md w-full p-0 shadow-xl">
-                        <FlashcardView 
-                            flashcardId={flashcardId} 
-                            onClose={() => setShowFlashcard(false)} 
+                        <FlashcardView
+                            flashcardId={flashcardId}
+                            onClose={() => setShowFlashcard(false)}
                         />
                     </div>
                 </div>

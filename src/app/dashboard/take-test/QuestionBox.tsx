@@ -117,55 +117,49 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
   }, [showCorrectAnswer, question._id])
 
   // Fetch AI explanation when answer is shown
-  useEffect(() => {
-    const fetchAiExplanation = async () => {
-      // Only fetch if showing correct answer AND we haven't attempted to fetch yet
-      if (showCorrectAnswer && !hasAttemptedAiExplanation) {
-        setIsLoadingAiExplanation(true)
-        setAiExplanationError(null)
-        setHasAttemptedAiExplanation(true)  // Mark that we've attempted a fetch
+  const fetchAiExplanation = async () => {
+    // Only fetch if showing correct answer AND we haven't attempted to fetch yet
+    if (showCorrectAnswer && !hasAttemptedAiExplanation) {
+      setIsLoadingAiExplanation(true);
+      setAiExplanationError(null);
+      setAiExplanation(null); // Clear previous one
+      setHasAttemptedAiExplanation(true); // Mark that we've attempted a fetch
 
-        try {
-          // Make sure options is properly formatted before sending
-          const safeOptions = Array.isArray(question.options) ? question.options : [];
+      try {
+        const safeOptions = Array.isArray(question.options) ? question.options : [];
 
-          // Call your backend API that will use OpenAI
-          const response = await axios.post(
-            `https://medical-backend-3eek.onrender.com/api/test/ai-explain`,
-            {
-              question: question.question,
-              options: safeOptions,
-              correctAnswer: question.answer,
-              userAnswer: selectedAnswer || "No answer provided"
-            }
-          )
-
-          setAiExplanation(response.data.explanation)
-        } catch (error) {
-          console.error("Error fetching AI explanation:", error)
-
-          // Create a basic fallback explanation in case the server fails completely
-          const localFallbackExplanation = `
-  The correct answer is: ${question.answer}
-
-  This question tests your understanding of medical concepts related to ${question.subsectionDisplay || question.subjectDisplay || "this topic"
-            }.
-
-  To remember this concept: Focus on connecting the key symptoms or findings with the most appropriate medical approach.
-
-  Note: A more detailed explanation will be available when our explanation service is fully online.
-            `;
-
-          setAiExplanation(localFallbackExplanation);
-          setAiExplanationError("Failed to load AI explanation")
-        } finally {
-          setIsLoadingAiExplanation(false)
+        const response = await axios.post(
+          `https://medical-backend-3eek.onrender.com/api/ai-explain/ai-explain`, {
+          question: question.question,
+          options: safeOptions,
+          correctAnswer: question.answer, // Correct answer is in the question prop
+          userAnswer: selectedAnswer || "No answer provided"
         }
+        );
+
+        if (response.data.explanation) {
+          setAiExplanation(response.data.explanation);
+        } else {
+          throw new Error("Received an empty explanation from the server.");
+        }
+
+      } catch (error) {
+        console.error("Error fetching AI explanation:", error);
+        let errorMessage = "Failed to load AI explanation. The service may be temporarily unavailable.";
+        if (axios.isAxiosError(error) && error.response?.data?.error) {
+          errorMessage = error.response.data.error;
+        }
+        setAiExplanationError(errorMessage);
+        setAiExplanation(errorMessage); // Display error in the explanation box
+      } finally {
+        setIsLoadingAiExplanation(false);
       }
     }
+  };
 
-    fetchAiExplanation()
-  }, [showCorrectAnswer, question, selectedAnswer, hasAttemptedAiExplanation])
+  useEffect(() => {
+    fetchAiExplanation();
+  }, [showCorrectAnswer, question, selectedAnswer, hasAttemptedAiExplanation]);
 
   // Reset the hasAttemptedAiExplanation flag when the question changes
   useEffect(() => {
@@ -241,16 +235,23 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
             {question.options.map((option, index) => (
               <label
                 key={index}
-                className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all cursor-pointer
-                    ${selectedAnswer === option
-                    ? showCorrectAnswer
-                      ? option === question.answer
-                        ? "border-emerald-500 bg-emerald-50"
-                        : "border-red-500 bg-red-50"
-                      : "border-blue-500 bg-blue-50"
-                    : "border-slate-200 hover:border-blue-200 hover:bg-blue-50"
+                className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all
+    ${showCorrectAnswer
+                    ? option === question.answer
+                      // Highlight the correct answer in green
+                      ? "border-emerald-500 bg-emerald-50 cursor-default"
+                      : option === selectedAnswer
+                        // Highlight the user's wrong answer in red
+                        ? "border-red-500 bg-red-50 cursor-default"
+                        // Fade out other incorrect options
+                        : "border-slate-200 opacity-50 cursor-default"
+                    // Default styling before submission
+                    : `cursor-pointer ${selectedAnswer === option
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-slate-200 hover:border-blue-200"
+                    }`
                   }
-                  `}
+`}
               >
                 <RadioGroupItem value={option} id={`option-${index}`} className="h-5 w-5" />
                 <Label htmlFor={`option-${index}`} className="flex-1 text-base text-slate-700">
@@ -462,20 +463,6 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
         <div className="relative h-full p-6 overflow-y-auto">
           {showCorrectAnswer && (
             <div className="space-y-6">
-              {question.explanation && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-amber-800">
-                    <AlertCircle className="h-5 w-5" />
-                    <h4 className="font-semibold">Detailed Explanation</h4>
-                  </div>
-                  <div className="pl-4 border-l-2 border-amber-200">
-                    <p className="text-slate-700 leading-relaxed whitespace-pre-line backdrop-blur-sm bg-white/20 p-4 rounded-lg">
-                      {question.explanation}
-                    </p>
-                  </div>
-                </div>
-              )}
-
               {/* AI Explanation Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-purple-800">
@@ -498,17 +485,34 @@ const QuestionBox: React.FC<QuestionBoxProps> = ({
                   )}
                 </div>
               </div>
+
+
+              {question.explanation && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-amber-800">
+                    <AlertCircle className="h-5 w-5" />
+                    <h4 className="font-semibold">Detailed Explanation</h4>
+                  </div>
+                  <div className="pl-4 border-l-2 border-amber-200">
+                    <p className="text-slate-700 leading-relaxed whitespace-pre-line backdrop-blur-sm bg-white/20 p-4 rounded-lg">
+                      {question.explanation}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+
             </div>
           )}
         </div>
       </div>
-       {/* Flashcard Modal */}
+      {/* Flashcard Modal */}
       {showFlashcard && flashcardId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-0 shadow-xl">
-            <FlashcardView 
-              flashcardId={flashcardId} 
-              onClose={() => setShowFlashcard(false)} 
+            <FlashcardView
+              flashcardId={flashcardId}
+              onClose={() => setShowFlashcard(false)}
             />
           </div>
         </div>

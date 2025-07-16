@@ -157,45 +157,40 @@ const ExamSimulation: React.FC = () => {
   }
 
   // Fetch AI explanation function
-  const fetchAiExplanation = async (questionId: string, userAnswer: string | null) => {
-    setIsLoadingAiExplanation(true)
-    setAiExplanationError(null)
+  const fetchAiExplanation = async (questionId: string, userAnswer: string | null, correctAnswer: string) => {
+        setIsLoadingAiExplanation(true);
+        setAiExplanationError(null);
+        setAiExplanation(null); // Clear previous explanation
 
-    try {
-      const currentQuestion = simulationQuestions[currentQuestionIndex]
+        try {
+            const currentQuestion = simulationQuestions[currentQuestionIndex];
+            const safeOptions = Array.isArray(currentQuestion.options) ? currentQuestion.options : [];
 
-      // Make sure options is properly formatted before sending
-      const safeOptions = Array.isArray(currentQuestion.options) ? currentQuestion.options : []
+            const response = await axios.post(`https://medical-backend-3eek.onrender.com/api/ai-explain/ai-explain`, {
+                question: currentQuestion.questionText || currentQuestion.question,
+                options: safeOptions,
+                correctAnswer: correctAnswer,
+                userAnswer: userAnswer || "No answer provided",
+            });
 
-      // Call your backend API that will use OpenAI (same endpoint used in challenge)
-      const response = await axios.post(`https://medical-backend-3eek.onrender.com/api/test/ai-explain`, {
-        question: currentQuestion.questionText || currentQuestion.question,
-        options: safeOptions,
-        correctAnswer: userAnswer, // This will be updated with the correct answer from the response
-        userAnswer: userAnswer || "No answer provided",
-      })
+            if (response.data.explanation) {
+                setAiExplanation(response.data.explanation);
+            } else {
+                throw new Error("Received an empty explanation from the server.");
+            }
 
-      setAiExplanation(response.data.explanation)
-    } catch (error) {
-      console.error("Error fetching AI explanation:", error)
-
-      // Create a basic fallback explanation
-      const localFallbackExplanation = `
-The correct answer is provided above.
-
-This question tests your understanding of medical concepts related to ${simulationQuestions[currentQuestionIndex].subject || simulationQuestions[currentQuestionIndex].specialty || simulationQuestions[currentQuestionIndex].topic || "this topic"}.
-
-To remember this concept: Focus on connecting the key symptoms or findings with the most appropriate medical approach.
-
-Note: A more detailed explanation will be available when our explanation service is fully online.
-      `
-
-      setAiExplanation(localFallbackExplanation)
-      setAiExplanationError("Failed to load AI explanation")
-    } finally {
-      setIsLoadingAiExplanation(false)
-    }
-  }
+        } catch (error) {
+            console.error("Error fetching AI explanation:", error);
+            let errorMessage = "Failed to load AI explanation. The service may be temporarily unavailable.";
+            if (axios.isAxiosError(error) && error.response?.data?.error) {
+                errorMessage = error.response.data.error;
+            }
+            setAiExplanationError(errorMessage);
+            setAiExplanation(errorMessage); // Display error in the explanation box
+        } finally {
+            setIsLoadingAiExplanation(false);
+        }
+    };
 
   // Toggle explanation visibility
   const toggleExplanation = () => {
@@ -568,8 +563,6 @@ Note: A more detailed explanation will be available when our explanation service
       const isCorrect = userAnswer.selectedAnswer.startsWith(correctAnswer) || 
                         userAnswer.selectedAnswer.includes(correctAnswer);
 
-      // Since we're handling this on the client side, we'll simulate the answer check
-      // In a real implementation, this would call the backend API
       setAnswerResult({
         isCorrect,
         correctAnswer,
@@ -578,28 +571,14 @@ Note: A more detailed explanation will be available when our explanation service
 
       // Fetch question analytics and AI explanation
       fetchQuestionAnalytics(currentQuestion._id);
-      fetchAiExplanation(currentQuestion._id, correctAnswer);
+      // FIX: Pass all three required arguments: questionId, userAnswer, and correctAnswer
+      fetchAiExplanation(currentQuestion._id, userAnswer.selectedAnswer, correctAnswer);
 
-      // Check if this would be added to flashcards (incorrect answers)
       if (!isCorrect) {
         setFlashcardCreated(true);
         setFlashcardCategory("Mistakes");
-        
-        // In a full implementation, you would call the API to add this to flashcards
-        try {
-          // This is a placeholder for the actual API call to save to flashcards
-          // await axios.post("https://medical-backend-3eek.onrender.com/api/flashcards/create", {
-          //   userId,
-          //   questionId: currentQuestion._id,
-          //   category: "Mistakes",
-          //   // other relevant data
-          // });
-        } catch (flashcardError) {
-          console.error("Error creating flashcard:", flashcardError);
-        }
       }
 
-      // Show toast based on answer correctness
       if (isCorrect) {
         toast.success("Correct answer! 🎉", {
           duration: 2000,

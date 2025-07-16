@@ -5,6 +5,7 @@ import { BarChart2, BookOpen, CheckCircle, Clock, Dna, Pause, PieChart, Play, Se
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { PiRankingDuotone } from "react-icons/pi"
+import ChallengeHistory from "./challenge/ChallengeHistory"
 import {
   Bar,
   BarChart,
@@ -21,7 +22,7 @@ import {
 import MentorshipsWidget from "@/components/upcoming-mentorships"
 import { OngoingCourses } from "@/components/ongoing-courses"
 import ChallengeButton from "@/components/challenge-button"
-import DailyChallengeButton from "@/components/daily-challenge-button"
+// import DailyChallengeButton from "@/components/daily-challenge-button"
 import DashboardNextReview from "@/components/dashboard-next-review"
 import DashboardToday from "@/components/dashboard-today"
 import { FlashcardChallengeButton } from "@/components/flashcard-challenge-button"
@@ -159,7 +160,7 @@ export default function DashboardPage() {
   const [examTypeStats, setExamTypeStats] = useState<ExamTypeStat[]>([])
   const [examTypeStatsLoading, setExamTypeStatsLoading] = useState(true)
   const [activeExamStatsTab, setActiveExamStatsTab] = useState<"accuracy" | "questions" | "time">("accuracy")
-  
+
   interface RecommendedCourse {
     _id: string
     title: string
@@ -191,24 +192,24 @@ export default function DashboardPage() {
       }
     }
   }, [])
-  
+
   // Load timer state from localStorage on initial mount
   useEffect(() => {
     const savedTimerState = localStorage.getItem(TIMER_STATE_KEY)
     if (savedTimerState) {
       try {
         const parsedState = JSON.parse(savedTimerState) as SavedTimerState
-        
+
         // Calculate elapsed time
         const now = Date.now()
         const elapsedSeconds = Math.floor((now - parsedState.startTimestamp) / 1000)
         const remainingTime = Math.max(0, parsedState.totalDuration - elapsedSeconds)
-        
+
         // Set the timer state
         setMode(parsedState.mode)
         setCycles(parsedState.cycles)
         setTime(remainingTime)
-        
+
         // Only resume if the timer was active and hasn't completed
         if (parsedState.isActive && remainingTime > 0) {
           setIsActive(true)
@@ -226,11 +227,11 @@ export default function DashboardPage() {
   useEffect(() => {
     if (isActive) {
       const timerState: SavedTimerState = {
-        startTimestamp: Date.now() - ((settings[mode] * 60) - time) * 1000,
+        startTimestamp: Date.now() - (settings[mode] * 60 - time) * 1000,
         totalDuration: settings[mode] * 60,
         mode,
         isActive,
-        cycles
+        cycles,
       }
       localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(timerState))
     }
@@ -283,13 +284,13 @@ export default function DashboardPage() {
     } catch (e) {
       console.error("Error playing notification sound:", e)
     }
-    
+
     // Stop the timer
     setIsActive(false)
-    
+
     // Remove from localStorage
     localStorage.removeItem(TIMER_STATE_KEY)
-    
+
     // Keep the timer at 00:00 without auto-transitioning to the next mode
     // The user will need to manually select the next mode or restart
   }, [])
@@ -324,15 +325,15 @@ export default function DashboardPage() {
   const toggleTimer = () => {
     const newActiveState = !isActive
     setIsActive(newActiveState)
-    
+
     if (newActiveState) {
       // Save timer state when starting
       const timerState: SavedTimerState = {
-        startTimestamp: Date.now() - ((settings[mode] * 60) - time) * 1000,
+        startTimestamp: Date.now() - (settings[mode] * 60 - time) * 1000,
         totalDuration: settings[mode] * 60,
         mode,
         isActive: true,
-        cycles
+        cycles,
       }
       localStorage.setItem(TIMER_STATE_KEY, JSON.stringify(timerState))
     } else {
@@ -376,7 +377,7 @@ export default function DashboardPage() {
       fetchExamTypeStats()
     }
   }, [userId])
-  
+
   useEffect(() => {
     const fetchRecommendedCourses = async () => {
       if (!userId || examTypeStatsLoading || examTypeStats.length === 0) return
@@ -594,13 +595,13 @@ export default function DashboardPage() {
         <h2 className="text-3xl font-bold tracking-tight mb-4 sm:mb-0">Welcome back, Student!</h2>
         <div className="flex space-x-2">
           <ChallengeButton />
-          <DailyChallengeButton />
+          {/* <DailyChallengeButton /> */}
           <FlashcardChallengeButton />
         </div>
       </div>
 
       {/* Top Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <Card className="overflow-hidden border-l-4 border-l-blue-500">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Current Study Streak</CardTitle>
@@ -678,10 +679,29 @@ export default function DashboardPage() {
               </button>
             </div>
             <p className="text-xs text-muted-foreground">
-              {isActive 
+              {isActive
                 ? `${mode === "work" ? "Working" : mode === "shortBreak" ? "Short Break" : "Long Break"}`
                 : "Click to start"}
             </p>
+          </CardContent>
+        </Card>
+        <Card
+          className="cursor-pointer group overflow-hidden border-l-4 border-l-yellow-500"
+          onClick={navigateToLeaderboard}
+        >
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Leaderboard Rank</CardTitle>
+            <PiRankingDuotone className="h-5 w-5 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            {rankLoading["all-time"] ? (
+              <div className="text-2xl font-bold">Loading...</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold">#{userRanks["all-time"] || "—"}</div>
+                <p className="text-xs text-muted-foreground">All-Time Ranking</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -690,6 +710,10 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Side (2/3 width) */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Weekly Performance Component */}
+          <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
+            <WeeklyPerformance />
+          </div>
           {/* Today's Dashboard Component */}
           <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
             <DashboardToday />
@@ -700,11 +724,6 @@ export default function DashboardPage() {
           </div>
           <div className="col-span-1">
             <MentorshipsWidget />
-          </div>
-
-          {/* Weekly Performance Component */}
-          <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border">
-            <WeeklyPerformance />
           </div>
 
           {/* Recent Test Component */}
@@ -727,30 +746,11 @@ export default function DashboardPage() {
           {/* Next Review Component */}
 
           {/* Leaderboard Card */}
-          <Card className="h-[210px] flex flex-col">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 flex-shrink-0">
-              <CardTitle className="text-sm font-medium">Leaderboard Rank</CardTitle>
-              <PiRankingDuotone className="h-6 w-6 text-yellow-500" />
-            </CardHeader>
-            <CardContent className="flex-grow overflow-hidden">
-              <ScrollArea className="h-full w-full pr-4">
-                {rankLoading["all-time"] ? (
-                  <div className="text-2xl font-bold">Loading...</div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full">
-                    <div className="text-3xl font-bold mb-2">#{userRanks["all-time"] || "—"}</div>
-                    <p className="text-sm text-muted-foreground mb-4">All-Time Ranking</p>
-                    <Button variant="outline" size="sm" onClick={navigateToLeaderboard} className="w-full">
-                      Detailed Rankings
-                    </Button>
-                  </div>
-                )}
-              </ScrollArea>
-            </CardContent>
-          </Card>
+
           <div className="bg-white dark:bg-gray-950 rounded-lg shadow-sm border max-h-[400px] overflow-y-auto">
             <DashboardNextReview />
           </div>
+          <ChallengeHistory userId={userId} />
 
           {/* Flashcards Preview */}
           {flashcards.length > 0 && (

@@ -476,9 +476,8 @@ const SmartStudyCalendar = () => {
       days.push(
         <div
           key={day}
-          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${
-            isSelected ? "bg-blue-500 text-white" : ""
-          }`}
+          className={`p-2 text-center cursor-pointer hover:bg-blue-100 transition-colors ${isSelected ? "bg-blue-500 text-white" : ""
+            }`}
           onClick={() => setSelectedDate(date)}
         >
           {day}
@@ -499,23 +498,23 @@ const SmartStudyCalendar = () => {
                 // } else if (test.completed === false) {
                 //   dotColor = "#ef4444" // red for incomplete
                 // }
-                const isMentorshipSession = 
-  test.taskType === "mentorship" || 
-  (test.subjectName || "").toLowerCase().includes("mentorship")
+                const isMentorshipSession =
+                  test.taskType === "mentorship" ||
+                  (test.subjectName || "").toLowerCase().includes("mentorship")
 
-if (isMentorshipSession) {
-  // Keep the original color for mentorship sessions
-  dotColor = "#8B5CF6" // Force purple color
-} else {
-  // For regular study tasks, apply status-based colors
-  if (test.completed === true) {
-    dotColor = "#22c55e" // green for complete
-  } else if (test.completed === false && testDate < today) {
-    dotColor = "#9ca3af" // gray for missed (past date and not completed)
-  } else if (test.completed === false) {
-    dotColor = "#ef4444" // red for incomplete
-  }
-}
+                if (isMentorshipSession) {
+                  // Keep the original color for mentorship sessions
+                  dotColor = "#8B5CF6" // Force purple color
+                } else {
+                  // For regular study tasks, apply status-based colors
+                  if (test.completed === true) {
+                    dotColor = "#22c55e" // green for complete
+                  } else if (test.completed === false && testDate < today) {
+                    dotColor = "#9ca3af" // gray for missed (past date and not completed)
+                  } else if (test.completed === false) {
+                    dotColor = "#ef4444" // red for incomplete
+                  }
+                }
 
 
                 return (
@@ -523,9 +522,8 @@ if (isMentorshipSession) {
                     key={index}
                     className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: dotColor }}
-                    title={`${test.subjectName}: ${test.testTopic} - ${
-                      test.completed ? "Complete" : testDate < today ? "Missed" : "Incomplete"
-                    }`}
+                    title={`${test.subjectName}: ${test.testTopic} - ${test.completed ? "Complete" : testDate < today ? "Missed" : "Incomplete"
+                      }`}
                   />
                 )
               })}
@@ -594,9 +592,9 @@ if (isMentorshipSession) {
           <span>Missed</span>
         </div>
         <div className="flex items-center">
-    <div className="w-3 h-3 rounded-full bg-[#8B5CF6] mr-2"></div>
-    <span>Mentorship</span>
-  </div>
+          <div className="w-3 h-3 rounded-full bg-[#8B5CF6] mr-2"></div>
+          <span>Mentorship</span>
+        </div>
       </div>
 
       {/* Today Dashboard - Daily Snapshot */}
@@ -611,36 +609,32 @@ if (isMentorshipSession) {
         <div className="flex border-b">
           <button
             onClick={() => setActiveTab("calendar")}
-            className={`px-4 py-3 font-medium flex items-center ${
-              activeTab === "calendar" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
-            }`}
+            className={`px-4 py-3 font-medium flex items-center ${activeTab === "calendar" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
+              }`}
           >
             <Calendar size={18} className="mr-2" />
             Calendar
           </button>
           <button
             onClick={() => setActiveTab("add")}
-            className={`px-4 py-3 font-medium flex items-center ${
-              activeTab === "add" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
-            }`}
+            className={`px-4 py-3 font-medium flex items-center ${activeTab === "add" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
+              }`}
           >
             <Plus size={18} className="mr-2" />
             Add Test
           </button>
           <button
             onClick={() => setActiveTab("sync")}
-            className={`px-4 py-3 font-medium flex items-center ${
-              activeTab === "sync" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
-            }`}
+            className={`px-4 py-3 font-medium flex items-center ${activeTab === "sync" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
+              }`}
           >
             <RefreshCw size={18} className="mr-2" />
             AI Sync
           </button>
           <button
             onClick={() => setActiveTab("performance")}
-            className={`px-4 py-3 font-medium flex items-center ${
-              activeTab === "performance" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
-            }`}
+            className={`px-4 py-3 font-medium flex items-center ${activeTab === "performance" ? "border-b-2 border-blue-500 text-blue-600" : "text-gray-600"
+              }`}
           >
             <FileText size={18} className="mr-2" />
             Performance
@@ -704,7 +698,7 @@ if (isMentorshipSession) {
                                   AI Planner
                                 </span>
                               )}
-                               {test.source === "manual" && (
+                              {test.source === "manual" && (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                                   Manual
                                 </span>
@@ -752,9 +746,8 @@ if (isMentorshipSession) {
                           ) : (
                             <button
                               onClick={() => test._id && handleToggleCompletion(test._id, !test.completed)}
-                              className={`${
-                                test.completed ? "bg-gray-500" : "bg-green-500"
-                              } text-white py-1 px-3 rounded hover:opacity-90 transition-colors text-sm`}
+                              className={`${test.completed ? "bg-gray-500" : "bg-green-500"
+                                } text-white py-1 px-3 rounded hover:opacity-90 transition-colors text-sm`}
                               disabled={isLoading}
                             >
                               {test.completed ? "Mark Incomplete" : "Complete"}

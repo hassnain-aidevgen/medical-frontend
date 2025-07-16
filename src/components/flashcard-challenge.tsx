@@ -1,13 +1,14 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
-import { BookOpen, CheckCircle2, Loader2, XCircle } from "lucide-react"
+import { BookOpen, CheckCircle2, Loader2, RefreshCw, Sparkles, XCircle } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import toast from "react-hot-toast"
+import "./flashcard-flip.css" // Ensure this CSS file exists and is imported
 
+// Interface Definitions
 interface FlashcardChallengeProps {
     isOpen: boolean
     onClose: () => void
@@ -17,389 +18,279 @@ type Flashcard = {
     _id: string
     question: string
     answer: string
-    mastery: number
-}
-
-type FlashcardEntry = {
-    flashcardId: Flashcard
-    isAttempted: boolean
-    isCorrect: boolean
-    attemptedAt?: string
 }
 
 type FlashcardChallenge = {
-    _id: string
-    userId: string
-    date: string
-    flashcards: FlashcardEntry[]
-    isCompleted: boolean
-    lastAttemptedAt?: string
+    _id?: string
+    flashcards: {
+        flashcardId: Flashcard
+        isAttempted?: boolean
+        isCorrect?: boolean
+    }[]
 }
 
 type ProgressData = {
     attemptedToday: boolean
-    total: number
-    attempted: number
     isCompleted: boolean
-    lastAttemptedAt?: string
 }
 
-type ChallengeView = "start" | "challenge" | "results"
+type ChallengeView = "loading" | "start" | "challenge" | "complete"
 
-type ResultsState = {
-    correct: number
-    total: number
+type SessionResults = {
+    correct: number;
+    incorrect: number;
 }
+
 
 export function FlashcardChallenge({ isOpen, onClose }: FlashcardChallengeProps) {
-    const [isLoading, setIsLoading] = useState<boolean>(false)
+    const [isMounted, setIsMounted] = useState(false)
     const [challenge, setChallenge] = useState<FlashcardChallenge | null>(null)
-    const [progress, setProgress] = useState<ProgressData | null>(null)
     const [currentIndex, setCurrentIndex] = useState<number>(0)
     const [showAnswer, setShowAnswer] = useState<boolean>(false)
-    const [results, setResults] = useState<ResultsState>({ correct: 0, total: 0 })
-    const [view, setView] = useState<ChallengeView>("start")
+    const [view, setView] = useState<ChallengeView>("loading")
     const [medicalUserId, setMedicalUserId] = useState<string | null>(null)
+    const [sessionResults, setSessionResults] = useState<SessionResults>({ correct: 0, incorrect: 0 })
 
     useEffect(() => {
+        setIsMounted(true)
         if (typeof window !== "undefined") {
             const storedUserId = localStorage.getItem("Medical_User_Id")
-            console.log("Dashboard - User ID from localStorage:", storedUserId)
             setMedicalUserId(storedUserId)
         }
     }, [])
 
-    // Fetch the daily challenge
-    const fetchChallenge = useCallback(
-        async (completed = false) => {
-            setIsLoading(true)
-            try {
-                const response = await fetch(`https://medical-backend-3eek.onrender.com/api/flashcards-daily?userId=${medicalUserId}`)
+    const resetScore = () => {
+        setSessionResults({ correct: 0, incorrect: 0 });
+    }
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`)
-                }
-
-                const data = (await response.json()) as { success: boolean; challenge?: FlashcardChallenge; error?: string }
-
-                if (data.success && data.challenge) {
-                    setChallenge(data.challenge)
-
-                    if (completed) {
-                        calculateResults(data.challenge)
-                    } else {
-                        setView("challenge")
-                    }
-                } else {
-                    toast.error(data.error || "No flashcards available for today's challenge")
-                }
-            } catch (error) {
-                toast.error(error instanceof Error ? error.message : "Failed to fetch flashcards")
-            } finally {
-                setIsLoading(false)
-            }
-        },
-        [medicalUserId],
-    )
-
-    // Fetch progress to check if there's an active challenge
-    const fetchProgress = useCallback(async () => {
+    const fetchChallenge = useCallback(async () => {
         if (!medicalUserId) return
-
+        setView("loading")
+        resetScore()
         try {
-            const response = await fetch(`https://medical-backend-3eek.onrender.com/api/flashcards-daily/progress?userId=${medicalUserId}`)
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`)
-            }
-
-            const data = (await response.json()) as { success: boolean } & ProgressData
-
-            if (data.success) {
-                setProgress(data)
-
-                // If there's a completed challenge today, show results directly
-                if (data.attemptedToday && data.isCompleted) {
-                    void fetchChallenge(true)
-                    setView("results")
-                }
+            const response = await fetch(`https://medical-backend-3eek.onrender.com/api/flashcards-daily?userId=${medicalUserId}`)
+            const data = await response.json()
+            if (data.success && data.challenge) {
+                setChallenge(data.challenge)
+                const startIndex = data.challenge.flashcards.findIndex((fc: any) => !fc.isAttempted)
+                setCurrentIndex(startIndex >= 0 ? startIndex : 0)
+                setView("challenge")
+            } else {
+                toast.error(data.error || "No flashcards for today's challenge")
+                setView("start")
             }
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : "Failed to fetch progress")
+            toast.error("Failed to fetch daily challenge")
+            setView("start")
         }
-    }, [medicalUserId, fetchChallenge])
+    }, [medicalUserId])
 
-    // Calculate results from completed challenge
-    const calculateResults = (challenge: FlashcardChallenge): void => {
-        const correct = challenge.flashcards.filter((f) => f.isCorrect).length
-        const total = challenge.flashcards.length
-        setResults({ correct, total })
-    }
+    const startPracticeSession = useCallback(async () => {
+        if (!medicalUserId) return
+        setView("loading")
+        resetScore()
+        try {
+            const response = await fetch(`https://medical-backend-3eek.onrender.com/api/flashcards-daily/practice?userId=${medicalUserId}`)
+            const data = await response.json()
+            if (data.success && data.practiceCards) {
+                setChallenge({
+                    flashcards: data.practiceCards.map((card: Flashcard) => ({ flashcardId: card })),
+                })
+                setCurrentIndex(0)
+                setView("challenge")
+            } else {
+                toast.error(data.error || "Could not start a practice session.")
+                setView("complete")
+            }
+        } catch (error) {
+            toast.error("Failed to start practice session")
+            setView("complete")
+        }
+    }, [medicalUserId])
 
-    // Submit an answer for the current flashcard
+    const fetchProgress = useCallback(async () => {
+        if (!medicalUserId) return
+        setView("loading")
+        try {
+            const response = await fetch(`https://medical-backend-3eek.onrender.com/api/flashcards-daily/progress?userId=${medicalUserId}`)
+            const data: { success: boolean } & ProgressData = await response.json()
+
+            if (data.success) {
+                if (data.attemptedToday && data.isCompleted) {
+                    setView("complete")
+                } else {
+                    setView("start")
+                }
+            } else {
+                setView("start")
+            }
+        } catch (error) {
+            toast.error("Failed to fetch progress")
+            setView("start")
+        }
+    }, [medicalUserId])
+
     const submitAnswer = useCallback(
         async (isCorrect: boolean) => {
-            if (!challenge || !medicalUserId) return
-
-            const currentFlashcard = challenge.flashcards[currentIndex]
-
-            try {
-                const response = await fetch("https://medical-backend-3eek.onrender.com/api/flashcards-daily/submit", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        userId: medicalUserId,
-                        flashcardId: currentFlashcard.flashcardId._id,
-                        isCorrect,
-                    }),
-                })
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`)
-                }
-
-                const data = (await response.json()) as { success: boolean; error?: string }
-
-                if (data.success) {
-                    // Update local state to reflect the answer
-                    const updatedChallenge = {
-                        ...challenge,
-                        flashcards: challenge.flashcards.map((fc, idx) =>
-                            idx === currentIndex ? { ...fc, isAttempted: true, isCorrect } : fc,
-                        ),
-                    }
-                    setChallenge(updatedChallenge)
-
-                    // Move to next card or complete the challenge
-                    if (currentIndex < challenge.flashcards.length - 1) {
-                        setTimeout(() => {
-                            setCurrentIndex((prev) => prev + 1)
-                            setShowAnswer(false)
-                        }, 1000)
-                    } else {
-                        // Challenge completed
-                        setTimeout(() => {
-                            calculateResults(updatedChallenge)
-                            setView("results")
-                        }, 1000)
-                    }
-                } else if (data.error) {
-                    throw new Error(data.error)
-                }
-            } catch (error) {
-                toast.error(error instanceof Error ? error.message : "Failed to submit answer")
+            if (isCorrect) {
+                setSessionResults(prev => ({ ...prev, correct: prev.correct + 1 }));
+            } else {
+                setSessionResults(prev => ({ ...prev, incorrect: prev.incorrect + 1 }));
             }
+
+            setShowAnswer(false)
+
+            setTimeout(async () => {
+                const isLastCard = currentIndex >= challenge!.flashcards.length - 1;
+
+                if (isLastCard) {
+                    setView("complete");
+                } else {
+                    setCurrentIndex((prev) => prev + 1);
+                }
+
+                if (challenge?._id) {
+                    await fetch("https://medical-backend-3eek.onrender.com/api/flashcards-daily/submit", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            userId: medicalUserId,
+                            flashcardId: challenge.flashcards[currentIndex].flashcardId._id,
+                            isCorrect,
+                        }),
+                    });
+                }
+            }, 600)
         },
-        [challenge, currentIndex, medicalUserId],
+        [challenge, currentIndex, medicalUserId]
     )
 
-    // Start a new challenge
-    const startChallenge = useCallback(() => {
-        void fetchChallenge()
-    }, [fetchChallenge])
-
-    // Reset the challenge state
-    const resetChallenge = useCallback(() => {
-        setChallenge(null)
-        setCurrentIndex(0)
-        setShowAnswer(false)
-        setView("start")
-        onClose()
-    }, [onClose])
-
-    // Reset when modal opens
     useEffect(() => {
-        if (isOpen) {
-            setView("start")
-            void fetchProgress()
+        if (isOpen && medicalUserId) {
+            fetchProgress()
+        } else if (!isOpen) {
+            setChallenge(null)
+            setCurrentIndex(0)
+            setShowAnswer(false)
+            setView("loading")
         }
-    }, [isOpen, fetchProgress])
+    }, [isOpen, medicalUserId, fetchProgress])
 
-    // Render the start button
-    const renderStartButton = () => {
-        const hasIncompleteChallenge = progress?.attemptedToday && !progress.isCompleted
-
-        return (
-            <div className="flex flex-col items-center justify-center py-6 text-center">
-                <div className="bg-blue-50 rounded-full p-3 mb-4">
-                    <BookOpen className="h-8 w-8 text-blue-600" />
-                </div>
-                <h2 className="text-xl font-bold mb-4 text-blue-900">Daily Flashcard Challenge</h2>
-                <p className="mb-6 text-slate-600 max-w-md text-sm">
-                    Test your medical knowledge with today&apos;s flashcard challenge. Answer questions to improve your mastery.
-                </p>
-
-                {hasIncompleteChallenge ? (
-                    <>
-                        <p className="mb-4 text-amber-600 dark:text-amber-400 text-sm">
-                            You have an incomplete challenge from today.
-                        </p>
-                        <Progress
-                            value={(progress.attempted / progress.total) * 100}
-                            className="w-64 mb-4 bg-blue-500"
-                        />
-                        <p className="mb-4 text-xs text-slate-500">
-                            {progress.attempted} of {progress.total} completed
-                        </p>
-                    </>
-                ) : null}
-
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={onClose} className="border-slate-300 text-slate-700 hover:bg-slate-100">
-                        Cancel
-                    </Button>
-                    <Button onClick={startChallenge} className="bg-blue-600 hover:bg-blue-700 text-white">
-                        {hasIncompleteChallenge ? "Continue Challenge" : "Start Today's Challenge"}
-                    </Button>
-                </div>
+    const renderStartButton = () => (
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="bg-sky-100 rounded-full p-4 mb-4">
+                <BookOpen className="h-10 w-10 text-sky-600" />
             </div>
-        )
-    }
+            <h2 className="text-xl font-bold mb-2">Daily Flashcard Challenge</h2>
+            <p className="mb-6 text-slate-600 max-w-sm">Review cards you've learned or struggled with to build long-term memory.</p>
+            <Button onClick={fetchChallenge} size="lg" className="bg-sky-600 hover:bg-sky-700">
+                {"Start Today's Challenge"}
+            </Button>
+        </div>
+    )
 
-    // Render the current flashcard
     const renderFlashcard = () => {
         if (!challenge) return null
-
         const currentFlashcard = challenge.flashcards[currentIndex]
         const progressPercentage = ((currentIndex + 1) / challenge.flashcards.length) * 100
 
         return (
             <div className="flex flex-col items-center">
-                <div className="w-full mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-slate-600">
-                            Question {currentIndex + 1} of {challenge.flashcards.length}
-                        </span>
+                <Progress value={progressPercentage} className="w-full h-2 mb-4" />
+                <div className="card-container w-full h-[250px] mb-4">
+                    <div className={`card-inner ${showAnswer ? 'is-flipped' : ''}`}>
+                        <div className="card-face card-front">
+                            {currentFlashcard.flashcardId.question}
+                        </div>
+                        <div className="card-face card-back">
+                            {currentFlashcard.flashcardId.answer}
+                        </div>
                     </div>
-                    <Progress value={progressPercentage} className="h-2 bg-blue-500" />
                 </div>
-
-                <Card className="w-full mb-4 min-h-[250px] flex flex-col border-slate-200 shadow-sm">
-                    <CardHeader className="pb-2 border-b border-slate-100">
-                        <h3 className="text-md font-medium text-blue-900">Question</h3>
-                    </CardHeader>
-                    <CardContent className="flex-grow flex items-center justify-center py-6 bg-white">
-                        <p className="text-lg text-center text-slate-800">{currentFlashcard.flashcardId.question}</p>
-                    </CardContent>
-                    <CardFooter className="flex flex-col items-center pt-0 pb-4 bg-slate-50">
-                    {!showAnswer ? (
-    <Button
-        onClick={() => setShowAnswer(true)}
-        variant="outline"
-        className="mb-4 w-full border-blue-200 text-blue-700 hover:bg-blue-50"
-    >
-        Show Answer
-    </Button>
-) : (
-    <>
-        <div className="bg-blue-50 p-4 rounded-md w-full mb-4 text-center border border-blue-100">
-            <p className="font-medium text-blue-900">{currentFlashcard.flashcardId.answer}</p>
-        </div>
-        <Button
-            onClick={() => void submitAnswer(true)}
-            variant="outline"
-            className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"
-        >
-            Next
-        </Button>
-    </>
-)}
-                    </CardFooter>
-                </Card>
+                {!showAnswer ? (
+                    <Button onClick={() => setShowAnswer(true)} variant="outline" size="lg" className="w-full">
+                        Flip to See Answer
+                    </Button>
+                ) : (
+                    <div className="w-full text-center">
+                        <p className="text-sm text-muted-foreground mb-3">Did you know the answer?</p>
+                        <div className="grid grid-cols-2 gap-3 w-full">
+                            <Button onClick={() => submitAnswer(false)} variant="outline" size="lg" className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200">
+                                <XCircle className="mr-2 h-4 w-4" /> Incorrect
+                            </Button>
+                            <Button onClick={() => submitAnswer(true)} variant="outline" size="lg" className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200">
+                                <CheckCircle2 className="mr-2 h-4 w-4" /> Correct
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </div>
         )
     }
 
-    // Render the results screen
-    const renderResults = () => {
-        const percentage = (results.correct / results.total) * 100
-        let message = ""
-        let emoji = ""
+    const renderComplete = () => {
+        const total = sessionResults.correct + sessionResults.incorrect;
+        const percentage = total > 0 ? (sessionResults.correct / total) * 100 : 0;
+        let feedbackMessage = "";
 
         if (percentage >= 80) {
-            message = "Excellent work! You're mastering these concepts!"
-            emoji = "🎉"
-        } else if (percentage >= 60) {
-            message = "Good job! Keep practicing to improve further."
-            emoji = "👍"
-        } else if (percentage >= 40) {
-            message = "Nice effort! Regular practice will help you improve."
-            emoji = "💪"
+            feedbackMessage = "Excellent work! You have a strong grasp of this material.";
+        } else if (percentage >= 50) {
+            feedbackMessage = "Good job! Keep up the consistent practice.";
         } else {
-            message = "Keep going! Every review helps strengthen your knowledge."
-            emoji = "🌱"
+            feedbackMessage = "Nice effort! Every review session helps you learn.";
         }
 
         return (
-            <Card className="w-full border-0 shadow-none">
-                <CardHeader className="text-center pb-2">
-                    <h2 className="text-xl font-bold text-blue-900">Challenge Complete! {emoji}</h2>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center">
-                    <div className="text-5xl font-bold mb-4 text-blue-700">
-                        {results.correct}/{results.total}
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="bg-green-100 rounded-full p-4 mb-4">
+                    <Sparkles className="h-10 w-10 text-green-600" />
+                </div>
+                <h2 className="text-xl font-bold mb-2">Session Complete!</h2>
+                <p className="mb-4 text-slate-600 max-w-sm">{feedbackMessage}</p>
+
+                <div className="grid grid-cols-2 gap-4 w-full mb-6">
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-800 font-medium">Correct</p>
+                        <p className="text-2xl font-bold text-green-600">{sessionResults.correct}</p>
                     </div>
-
-                    <Progress value={percentage} className="w-full h-3 mb-4 bg-blue-500" />
-
-                    <p className="text-center mb-4 text-sm text-slate-700">{message}</p>
-
-                    <div className="grid grid-cols-2 gap-3 w-full mb-4">
-                        <div className="bg-green-50 p-3 rounded-md text-center border border-green-100">
-                            <p className="text-xs text-slate-600">Correct</p>
-                            <p className="text-xl font-bold text-green-600">{results.correct}</p>
-                        </div>
-                        <div className="bg-red-50 p-3 rounded-md text-center border border-red-100">
-                            <p className="text-xs text-slate-600">Incorrect</p>
-                            <p className="text-xl font-bold text-red-600">{results.total - results.correct}</p>
-                        </div>
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-sm text-red-800 font-medium">Incorrect</p>
+                        <p className="text-2xl font-bold text-red-600">{sessionResults.incorrect}</p>
                     </div>
+                </div>
 
-                    {percentage < 100 && (
-                        <p className="text-xs text-slate-600 text-center mb-4">
-                            Don&apos;t worry about the ones you missed. They&apos;ll appear in future challenges to help you improve!
-                        </p>
-                    )}
-                </CardContent>
-                <CardFooter>
-                    <Button onClick={resetChallenge} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                        Close
+                <div className="flex flex-col sm:flex-row gap-2 w-full">
+                    <Button variant="outline" onClick={onClose} className="w-full">Close</Button>
+                    <Button onClick={startPracticeSession} className="w-full bg-sky-600 hover:bg-sky-700">
+                        <RefreshCw className="mr-2 h-4 w-4"/> Practice More
                     </Button>
-                </CardFooter>
-            </Card>
+                </div>
+            </div>
         )
     }
 
-    // Render the appropriate content based on the current view
     const renderContent = () => {
-        if (isLoading) {
+        if (!isMounted || view === "loading") {
             return (
-                <div className="flex flex-col items-center justify-center py-8">
-                    <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-                    <p className="mt-4 text-md text-slate-700">Loading your flashcards...</p>
+                <div className="flex items-center justify-center h-[400px]">
+                    <Loader2 className="h-8 w-8 animate-spin text-sky-600" />
                 </div>
             )
         }
-
         switch (view) {
-            case "start":
-                return renderStartButton()
-            case "challenge":
-                return renderFlashcard()
-            case "results":
-                return renderResults()
-            default:
-                return renderStartButton()
+            case "start": return renderStartButton()
+            case "challenge": return renderFlashcard()
+            case "complete": return renderComplete()
+            default: return renderStartButton()
         }
     }
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="sm:max-w-md bg-white border-slate-200">
-                <DialogHeader className="border-b border-slate-100 pb-3">
-                    <DialogTitle className="text-blue-900">Flashcard Challenge</DialogTitle>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Flashcard Challenge</DialogTitle>
                 </DialogHeader>
                 {renderContent()}
             </DialogContent>

@@ -7,7 +7,7 @@ import { Sidebar } from "@/components/sidebar";
 import { Inter } from "next/font/google";
 import "../globals.css";
 
-import { DailyChallengeProvider } from "@/contexts/daily-challenge-context";
+// import { DailyChallengeProvider } from "@/contexts/daily-challenge-context";
 import { usePathname } from "next/navigation";
 import type React from "react"; // Import React
 
@@ -76,7 +76,8 @@ export default function RootLayout({
           <div className="flex flex-col flex-1  ">
             <Navbar toggleSidebar={toggleSidebar} />
             <main className="flex-1  bg-gray-50 p-6 overflow-y-auto">
-              <DailyChallengeProvider>{children}</DailyChallengeProvider>
+              {/* <DailyChallengeProvider>{children}</DailyChallengeProvider> */}
+              {children}
             </main>
           </div>
         </div>

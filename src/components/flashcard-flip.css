@@ -1,0 +1,52 @@
+/* Container to set up the 3D space */
+.card-container {
+    perspective: 1000px;
+}
+
+/* The card's inner element that actually flips */
+.card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.7s;
+    transform-style: preserve-3d;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border-radius: 0.75rem; /* 12px */
+}
+
+/* This class is added with JavaScript to trigger the flip */
+.card-inner.is-flipped {
+    transform: rotateY(180deg);
+}
+
+/* Shared styles for the front and back faces of the card */
+.card-face {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    /* This crucial property hides the face when it's turned away from the viewer */
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem; /* 24px */
+    border-radius: 0.75rem; /* 12px */
+    border: 1px solid #e5e7eb; /* gray-200 */
+}
+
+/* Styles for the front (Question) */
+.card-front {
+    background: white;
+    color: #111827; /* gray-900 */
+    font-size: 1.125rem; /* 18px */
+}
+
+/* Styles for the back (Answer) */
+.card-back {
+    background: linear-gradient(135deg, #f0f9ff, #e0f2fe); /* sky-50 to sky-100 */
+    color: #0c4a6e; /* sky-900 */
+    transform: rotateY(180deg);
+    font-size: 1.25rem; /* 20px */
+    font-weight: 600;
+}
