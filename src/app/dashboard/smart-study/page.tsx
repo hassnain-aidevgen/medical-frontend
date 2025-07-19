@@ -26,7 +26,8 @@ import axios from "axios"
 import { Calendar, ChevronLeft, ChevronRight, Clock, FileText, Plus, RefreshCw, Trash2 } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 import toast, { Toaster } from "react-hot-toast"
-import ExamInterface from "./examInterface"
+// import ExamInterface from "./examInterface"
+import ExamSimulation from "@/components/exam-simulation"
 import PerformanceVisualizer from "./performance-visualizer"
 import PlannerSyncScheduler from "./planner-sync-scheduler"
 import PriorityIndicator from "./priority-indicator"
@@ -996,8 +997,8 @@ const SmartStudyCalendar = () => {
         </div>
       </div>
 
-      <div id="exam-simulation">
-        <ExamInterface tests={getExamTests()} />
+      <div className="mb-8">
+        <ExamSimulation />
       </div>
 
       {/* Add these lines just before the final closing div */}

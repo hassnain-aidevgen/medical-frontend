@@ -1099,9 +1099,9 @@ export default function CreateTest() {
           <AITestSuggestions mode={mode} />
         </div>
 
-        <div className="mb-8">
+        {/* <div className="mb-8">
           <ExamSimulation />
-        </div>
+        </div> */}
 
         <div className="mt-8 pb-60">
           <RecentTests performanceData={performanceData} isLoading={isLoading} />

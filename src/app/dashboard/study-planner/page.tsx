@@ -291,17 +291,24 @@ const PlannerForm: React.FC = () => {
         break
 
       case 2:
-        if (!formData.targetExam) newErrors.targetExam = "Target exam is required"
-        if (!formData.examDate) {
-          newErrors.examDate = "Exam date is required"
-        } else if (formData.examDate) {
-          const examDate = new Date(formData.examDate)
-          const today = new Date()
-          if (examDate < today) {
-            newErrors.examDate = "Exam date cannot be in the past"
+         if (!formData.targetExam) newErrors.targetExam = "Target exam is required"
+         if (!formData.examDate) {
+           newErrors.examDate = "Exam date is required"
+         } else if (formData.examDate) {
+           const examDate = new Date(formData.examDate)
+           const today = new Date()
+          today.setHours(0, 0, 0, 0) // Normalize to the beginning of the day
+           if (examDate < today) {
+             newErrors.examDate = "Exam date cannot be in the past"
+           }
+          // Add a max date validation for 4 weeks
+          const maxDate = new Date()
+          maxDate.setDate(maxDate.getDate() + 28) // 4 weeks from today
+          if (examDate > maxDate) {
+            newErrors.examDate = "Plans can only be generated for up to 4 weeks in advance."
           }
-        }
-        break
+         }
+         break
 
       case 3:
         // FIXED: Always require at least one strong and one weak subject
