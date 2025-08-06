@@ -25,6 +25,7 @@ import {
   X,
   XCircle,
   Check,
+  BookOpen,
 } from "lucide-react"
 import { useEffect, useRef, useMemo } from "react"
 // Add this import at the top
@@ -72,6 +73,8 @@ const SimpleTaskActions: React.FC<{
     status: "completed" | "incomplete"
   ) => void
   currentStatus: "completed" | "incomplete"
+  onStartTest: (taskId: string) => void;
+  testResult?: { score: number };
 }> = ({
   taskId,
   subject,
@@ -81,117 +84,150 @@ const SimpleTaskActions: React.FC<{
   date,
   onStatusChange,
   currentStatus,
+  onStartTest,
+  testResult,
 }) => {
- const [isRescheduling, setIsRescheduling] = useState(false);
+    const [isRescheduling, setIsRescheduling] = useState(false);
 
-  // Check if task is overdue
-  const isTaskOverdue = () => {
-    if (!date || currentStatus === "completed") return false;
-    
-    const today = new Date();
-    const taskDate = new Date(date);
-    
-    // Format both dates as YYYY-MM-DD for comparison
-    const formatDate = (d: any) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+    // Check if task is overdue
+    const isTaskOverdue = () => {
+      if (!date || currentStatus === "completed") return false;
+
+      const today = new Date();
+      const taskDate = new Date(date);
+
+      // Format both dates as YYYY-MM-DD for comparison
+      const formatDate = (d: any) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+
+      return formatDate(taskDate) < formatDate(today);
     };
-    
-    return formatDate(taskDate) < formatDate(today);
-  };
 
-  const handleToggleComplete = () => {
-    const newStatus = currentStatus === "completed" ? "incomplete" : "completed"
-    onStatusChange(taskId, subject, activity, weekNumber, dayOfWeek, newStatus)
-  }
-
-   const handleReschedule = async () => {
-    setIsRescheduling(true);
-    
-    try {
-      const planId = localStorage.getItem("currentPlanId");
-      const response = await fetch(`https://medical-backend-3eek.onrender.com/api/ai-planner/rescheduleTask/${planId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          taskId: taskId,
-          currentWeekNumber: weekNumber,
-          currentDayOfWeek: dayOfWeek
-        }),
-      });
-
-      const result = await response.json();
-      
-      if (response.ok) {
-        // Show success toast
-        toast.success(`Task rescheduled to ${result.newDate}`);
-        // Refresh the page to show updated plan
-        window.location.reload();
-      } else {
-        toast.error('Failed to reschedule task');
-      }
-    } catch (error) {
-      toast.error('Failed to reschedule task');
-    } finally {
-      setIsRescheduling(false);
+    const handleToggleComplete = () => {
+      const newStatus = currentStatus === "completed" ? "incomplete" : "completed"
+      onStatusChange(taskId, subject, activity, weekNumber, dayOfWeek, newStatus)
     }
-  };
 
-   const overdue = isTaskOverdue();
+    const handleReschedule = async () => {
+      setIsRescheduling(true);
 
-  return (
-    <div className="flex items-center justify-end mt-3">
-      {overdue ? (
-        <button
-          onClick={handleReschedule}
-          disabled={isRescheduling}
-          className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
-            isRescheduling
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-              : "bg-orange-100 text-orange-700 hover:bg-orange-200"
-          }`}
-        >
-          {isRescheduling ? (
-            <>
-              <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin mr-1.5"></div>
-              Rescheduling...
-            </>
+      try {
+        const planId = localStorage.getItem("currentPlanId");
+        const response = await fetch(`https://medical-backend-3eek.onrender.com/api/ai-planner/rescheduleTask/${planId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            taskId: taskId,
+            currentWeekNumber: weekNumber,
+            currentDayOfWeek: dayOfWeek
+          }),
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          // Show success toast
+          toast.success(`Task rescheduled to ${result.newDate}`);
+          // Refresh the page to show updated plan
+          window.location.reload();
+        } else {
+          toast.error('Failed to reschedule task');
+        }
+      } catch (error) {
+        toast.error('Failed to reschedule task');
+      } finally {
+        setIsRescheduling(false);
+      }
+    };
+
+    const overdue = isTaskOverdue();
+
+    const isRecommendationTask = subject.toLowerCase() === "recommended" || 
+                                subject.toLowerCase().includes("recommendation") ||
+                                activity.toLowerCase().includes("recommendation");
+
+    return (
+      <div className="flex flex-col space-y-2 mt-3">
+        {/* Show recommendation notice for recommendation tasks */}
+        {isRecommendationTask ? (
+          <div className="flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-blue-100 text-blue-700">
+            <HelpCircle size={16} className="mr-1.5" />
+            This is a recommendation
+          </div>
+        ) : (
+          /* Show test button for regular subjects */
+          <div className="flex items-center justify-end space-x-2">
+            {testResult ? (
+              <div className="flex items-center px-3 py-1.5 rounded-md text-sm font-medium bg-purple-100 text-purple-700">
+                <CheckCircle size={16} className="mr-1.5" />
+                Test Done: {testResult.score}%
+              </div>
+            ) : (
+              <button
+                onClick={() => onStartTest(taskId)}
+                className="flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 bg-blue-100 text-blue-700 hover:bg-blue-200"
+              >
+                <BookOpen size={16} className="mr-1.5" />
+                Start Test
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Always show completion/reschedule buttons */}
+        <div className="flex items-center justify-end space-x-2">
+          {overdue ? (
+            <button
+              onClick={handleReschedule}
+              disabled={isRescheduling}
+              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${isRescheduling
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                }`}
+            >
+              {isRescheduling ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin mr-1.5"></div>
+                  Rescheduling...
+                </>
+              ) : (
+                <>
+                  <Calendar size={16} className="mr-1.5" />
+                  Reschedule
+                </>
+              )}
+            </button>
           ) : (
-            <>
-              <Calendar size={16} className="mr-1.5" />
-              Reschedule
-            </>
+            <button
+              onClick={handleToggleComplete}
+              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${currentStatus === "completed"
+                  ? "bg-green-100 text-green-700 hover:bg-green-200"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+            >
+              {currentStatus === "completed" ? (
+                <>
+                  <CheckCircle size={16} className="mr-1.5" />
+                  Completed
+                </>
+              ) : (
+                <>
+                  <div className="w-4 h-4 border-2 border-gray-400 rounded mr-1.5"></div>
+                  Mark Complete
+                </>
+              )}
+            </button>
           )}
-        </button>
-      ) : (
-        <button
-          onClick={handleToggleComplete}
-          className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
-            currentStatus === "completed"
-              ? "bg-green-100 text-green-700 hover:bg-green-200"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-          }`}
-        >
-          {currentStatus === "completed" ? (
-            <>
-              <CheckCircle size={16} className="mr-1.5" />
-              Completed
-            </>
-          ) : (
-            <>
-              <div className="w-4 h-4 border-2 border-gray-400 rounded mr-1.5"></div>
-              Mark Complete
-            </>
-          )}
-        </button>
-      )}
-    </div>
-  )
-}
+        </div>
+      </div>
+    )
+  }
 
 
 const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onReset }) => {
@@ -199,6 +235,7 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
   const [activeWeek, setActiveWeek] = useState<number>(1)
   const [showTip, setShowTip] = useState<boolean>(false)
   const [studyPlan, setStudyPlan] = useState<StudyPlanResponse>(plan)
+  const [activeTest, setActiveTest] = useState<string | null>(null);
 
   const studyPlanData = studyPlan.plan
   const metadata = studyPlan.metadata
@@ -218,26 +255,26 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
   );
 
   const hasRemainingDays = () => {
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(0, 0, 0, 0); // Set to beginning of tomorrow
-  
-  // Check all weeks and days
-  for (const week of weeklyPlans) {
-    if (week.days) {
-      for (const day of week.days) {
-        if (day.date) {
-          const dayDate = new Date(day.date);
-          if (dayDate >= tomorrow) {
-            return true; // Found at least one day in the future
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0); // Set to beginning of tomorrow
+
+    // Check all weeks and days
+    for (const week of weeklyPlans) {
+      if (week.days) {
+        for (const day of week.days) {
+          if (day.date) {
+            const dayDate = new Date(day.date);
+            if (dayDate >= tomorrow) {
+              return true; // Found at least one day in the future
+            }
           }
         }
       }
     }
-  }
-  
-  return false; // No future days found
-};
+
+    return false; // No future days found
+  };
 
   const formatDateWithDay = (dateString: string | number | Date, dayOfWeek: any) => {
     if (!dateString) return dayOfWeek;
@@ -248,6 +285,66 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
 
     return `${dayOfWeek}, ${formattedDate}`;
   };
+
+ const handleTestComplete = async (taskId: string, weekNumber: number, dayOfWeek: string, results: { score: number; correct: number; total: number }) => {
+        const planId = localStorage.getItem("currentPlanId");
+        
+        // Guard Clause: Exit if there's no planId or studyPlan object. This resolves the TypeScript error.
+        if (!planId || !studyPlan) {
+            toast.error("Could not save results: Active plan not found.");
+            return;
+        }
+
+        try {
+            // 1. Save the test result to the database using fetch
+            const response = await fetch(`https://medical-backend-3eek.onrender.com/api/ai-planner/saveTestResult/${planId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    taskId,
+                    ...results,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || "Failed to save test result");
+            }
+
+            // 2. Mark the task as complete
+            handleTaskStatusChange(taskId, "completed");
+
+            // 3. Update the local state to reflect the new test result
+            // The guard clause above ensures 'prevPlan' will not be null here.
+            setStudyPlan(prevPlan => {
+                 if (!prevPlan) return prevPlan; // Still good practice to have a fallback
+                
+                 const newPlan = JSON.parse(JSON.stringify(prevPlan)); // Deep copy to ensure state update
+                
+                 const week = newPlan.plan.weeklyPlans.find((w: { weekNumber: number; }) => w.weekNumber === weekNumber);
+                 if (week) {
+                     const day = week.days.find((d: { dayOfWeek: string; }) => d.dayOfWeek === dayOfWeek);
+                     if (day) {
+                         const task = day.tasks.find((t: { _id: string; }) => t._id === taskId);
+                         if (task) {
+                             task.testResult = { score: results.score, correct: results.correct, total: results.total };
+                         }
+                     }
+                 }
+                 return newPlan;
+            });
+
+            setActiveTest(null); // Close the test window
+            toast.success("Test results saved and task marked as complete!");
+
+        } catch (error) {
+            console.error("Failed to save test results:", error);
+            const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+            toast.error(`Error: ${errorMessage}`);
+        }
+    };
 
   useEffect(() => {
     // Show a tip when the results first load
@@ -594,15 +691,15 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
         </div>
       </div>
 
-   {plan && plan.plan && plan.plan.weeklyPlans && (
-  <StudyProgressBar
-    key={`progress-${studyPlan.completionStatus?.overallProgress || 0}-${Date.now()}`}
-    weeklyPlans={studyPlan.plan.weeklyPlans}
-    userData={userData}
-    planId={studyPlan.planId || ""}
-    completionStatus={studyPlan.completionStatus} // Pass the actual completion status
-  />
-)}
+      {plan && plan.plan && plan.plan.weeklyPlans && (
+        <StudyProgressBar
+          key={`progress-${studyPlan.completionStatus?.overallProgress || 0}-${Date.now()}`}
+          weeklyPlans={studyPlan.plan.weeklyPlans}
+          userData={userData}
+          planId={studyPlan.planId || ""}
+          completionStatus={studyPlan.completionStatus} // Pass the actual completion status
+        />
+      )}
 
       <div className="bg-white p-4 rounded-lg border shadow-sm mt-6">
         <div className="flex items-center mb-4">
@@ -791,7 +888,20 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
                         date={day.date}
                         onStatusChange={handleTaskStatusChangeWrapper}
                         currentStatus={status}
+                        onStartTest={() => setActiveTest(taskId)}
+                        testResult={task.testResult}
                       />
+
+                      {activeTest === taskId && (
+                        <MockExamBlock
+                          weekNumber={currentWeek.weekNumber}
+                          weekTheme={`Daily Test: ${task.subject}`}
+                          focusAreas={[task.subject]} // Pass the task's subject as the focus area
+                          dayOfWeek={day.dayOfWeek}
+                          examNumber={taskIndex + 1} // A unique number for the test
+                          onTestComplete={(results) => handleTestComplete(taskId, currentWeek.weekNumber, day.dayOfWeek, results)}
+                        />
+                      )}
                     </div>
                   )
                 })}
@@ -808,6 +918,11 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
                       focusAreas={currentWeek.focusAreas || []}
                       dayOfWeek={day.dayOfWeek}
                       examNumber={getExamNumber(currentWeek.weekNumber)}
+                      // Add this empty function to fix the error
+                      onTestComplete={() => {
+                        console.log("Weekly mock exam completed.");
+                        // No action needed as this is a general review
+                      }}
                     />
                   )}
               </div>
@@ -1056,14 +1171,14 @@ const StudyPlanResults: React.FC<StudyPlanResultsProps> = ({ plan, userData, onR
           </motion.div>
         </AnimatePresence>
         {!hasRemainingDays() && (
-  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-center">
-    <XCircle size={20} className="mr-2 text-red-500" />
-    <div>
-      <p className="font-medium">No days remaining in your plan or your plan past due date.</p>
-      <p className="text-sm">Please create a new study plan to continue your preparation.</p>
-    </div>
-  </div>
-)}
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 flex items-center">
+            <XCircle size={20} className="mr-2 text-red-500" />
+            <div>
+              <p className="font-medium">No days remaining in your plan or your plan past due date.</p>
+              <p className="text-sm">Please create a new study plan to continue your preparation.</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

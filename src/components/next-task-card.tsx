@@ -18,6 +18,16 @@ import {
 } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Progress } from "@/components/ui/progress"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 // Define type for the API response
 interface StudyPlanResponse {
@@ -55,9 +65,15 @@ interface DayPlan {
 }
 
 interface Task {
+  _id?: string
   subject: string
   duration: number
   activity: string
+  testResult?: {
+    score: number
+    correct: number
+    total: number
+  }
 }
 
 interface WeeklyProgress {
@@ -74,6 +90,13 @@ export default function NextTaskCard({ userId, onNavigate }: { userId: string | 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<StudyPlanResponse | null>(null)
+  const [showTestDialog, setShowTestDialog] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<{
+    subject: string
+    activity: string
+    weekNumber: number
+    dayOfWeek: string
+  } | null>(null)
 
   useEffect(() => {
     const fetchActivePlan = async () => {
@@ -117,6 +140,31 @@ export default function NextTaskCard({ userId, onNavigate }: { userId: string | 
   // Navigate to AI plan page
   const navigateToAIPlan = () => {
     router.push('/dashboard/study-planner') // Adjust the path as needed
+  }
+
+  // Handle start test button click
+  const handleStartTest = (task: Task, weekNumber: number, dayOfWeek: string) => {
+    setSelectedTask({
+      subject: task.subject,
+      activity: task.activity,
+      weekNumber,
+      dayOfWeek
+    })
+    setShowTestDialog(true)
+  }
+
+  // Handle test dialog confirmation
+  const handleTestDialogConfirm = () => {
+    setShowTestDialog(false)
+    setDialogOpen(false) // Close the main dialog
+    navigateToAIPlan() // Navigate to AI planner
+  }
+
+  // Check if task is a recommendation task
+  const isRecommendationTask = (task: Task): boolean => {
+    return task.subject.toLowerCase() === "recommended" || 
+           task.subject.toLowerCase().includes("recommendation") ||
+           task.activity.toLowerCase().includes("recommendation")
   }
 
   // Format duration to hours and minutes
@@ -280,7 +328,36 @@ export default function NextTaskCard({ userId, onNavigate }: { userId: string | 
                               <span>{formatDuration(task.duration)}</span>
                             </div>
                           </div>
-                          <p className="text-sm text-muted-foreground">{task.activity}</p>
+                          <p className="text-sm text-muted-foreground mb-3">{task.activity}</p>
+                          
+                          {/* Test Action Buttons */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {task.testResult ? (
+                                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                  Test Done: {task.testResult.score}%
+                                </Badge>
+                              ) : isRecommendationTask(task) ? (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                  <BookOpen className="h-3 w-3 mr-1" />
+                                  Recommendation
+                                </Badge>
+                              ) : null}
+                            </div>
+                            
+                            {/* Show Start Test button only if task doesn't have test result and is not a recommendation */}
+                            {!task.testResult && !isRecommendationTask(task) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleStartTest(task, currentWeek, day.dayOfWeek)}
+                                className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                              >
+                                <BookOpen className="h-4 w-4 mr-1" />
+                                Start Test
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -302,6 +379,39 @@ export default function NextTaskCard({ userId, onNavigate }: { userId: string | 
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Test Dialog */}
+      <AlertDialog open={showTestDialog} onOpenChange={setShowTestDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Start Test</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedTask && (
+                <div className="space-y-2">
+                  <p>You&apos;re about to start a test for:</p>
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <div className="font-medium">{selectedTask.subject}</div>
+                    <div className="text-sm text-gray-600">{selectedTask.activity}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Week {selectedTask.weekNumber} • {selectedTask.dayOfWeek}
+                    </div>
+                  </div>
+                  <p className="text-sm">
+                    You&apos;ll be redirected to the AI Study Planner to take this test. 
+                    Continue there to complete your assessment.
+                  </p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleTestDialogConfirm}>
+              Go to AI Planner
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

@@ -6,7 +6,7 @@ import axios from "axios"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { History, CheckCircle, XCircle, Clock, Loader2, ChevronDown, ChevronUp } from "lucide-react"
+import { History, CheckCircle, XCircle, Clock, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 
 // Define the shape of a session object with the new 'correctAnswer' field
 interface ChallengeSession {
@@ -89,7 +89,9 @@ export default function ChallengeHistory({ userId, onBack }: ChallengeHistoryPro
             <div className="space-y-2">
               {sessions.map((session) => (
                 <div key={session._id} className="border p-3 rounded-lg bg-background">
-                  <div className="flex items-center justify-between">
+                  {/* Always stack content vertically within each session item */}
+                  <div className="flex flex-col">
+                    {/* Session details (date, score) */}
                     <div className="flex items-center gap-3">
                        {session.status === 'completed' ? (
                         <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
@@ -105,7 +107,8 @@ export default function ChallengeHistory({ userId, onBack }: ChallengeHistoryPro
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    {/* Buttons always on a new line, aligned to the right, with top margin */}
+                    <div className="flex items-center justify-end gap-2 mt-3">
                         <Button variant="outline" size="sm" onClick={() => handleToggleDetails(session._id)}>
                             Details
                             {expandedSessionId === session._id ? <ChevronUp className="h-4 w-4 ml-2" /> : <ChevronDown className="h-4 w-4 ml-2" />}

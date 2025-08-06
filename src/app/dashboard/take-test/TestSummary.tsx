@@ -9,23 +9,12 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import axios from "axios"
 import { ArcElement, Chart as ChartJS, Legend, Tooltip } from "chart.js"
-import {
-  AlertCircle,
-  Brain,
-  Calendar,
-  CheckCircle,
-  Clock,
-  GraduationCap,
-  Loader2,
-  Share2,
-  Sparkles,
-  BookOpenCheck,
-  BarChart
-} from "lucide-react"
+import { AlertCircle, Brain, Calendar, CheckCircle, Clock, GraduationCap, Loader2, Share2, Sparkles, BookOpenCheck, BarChart } from 'lucide-react'
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Doughnut } from "react-chartjs-2"
-import toast, { Toaster } from "react-hot-toast"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog" // Import Dialog components
+// Removed: import toast, { Toaster } from "react-hot-toast"
 import TargetedExamBlueprint from "@/components/targeted-exam-blueprint"
 import { Progress } from "@/components/ui/progress"
 
@@ -89,7 +78,10 @@ const TestSummary: React.FC<TestSummaryProps> = ({
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false)
   const [feedbackError, setFeedbackError] = useState<string | null>(null)
   const [questionAnalytics, setQuestionAnalytics] = useState<{[key: string]: QuestionAnalytics}>({});
-const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean}>({});
+  const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean}>({});
+
+  // State for the success dialog
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   // Check if this was a recommended test
   const isRecommendedTest = searchParams.get("isRecommendedTest") === "true"
@@ -359,11 +351,8 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
         }
       }
 
-      toast.success("Test Saved Successfully! 🎉");
+      setShowSuccessDialog(true); // Open the dialog on success
 
-      // setTimeout(() => {
-      //   router.push("/dashboard");
-      // }, 4500);
     } catch (err) {
       console.error("Error submitting test results:", err);
       setError(err instanceof Error ? err.message : "An unexpected error occurred.");
@@ -376,7 +365,7 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Toaster position="top-right" />
+      {/* Removed: <Toaster position="top-center" /> */}
       <h1 className="text-3xl font-bold mb-8">
         {isAIGenerated
           ? `AI-Generated Test Results: ${aiTopic}`
@@ -742,6 +731,26 @@ const [loadingAnalytics, setLoadingAnalytics] = useState<{[key: string]: boolean
           )
         })}
       </div>
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-[425px] p-6 text-center">
+          <DialogHeader className="items-center">
+            <BookOpenCheck className="h-16 w-16 text-green-500 mb-4" />
+            <DialogTitle className="text-3xl font-bold text-gray-800">Test Results Saved!</DialogTitle>
+            <DialogDescription className="text-lg text-gray-600 mt-2">
+              Your test performance has been successfully recorded.
+              <br />
+              Keep up the great work!
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6 flex justify-center">
+            <Button onClick={() => router.push("/dashboard")} className="w-full max-w-[200px] bg-green-600 hover:bg-green-700 text-white text-lg py-3">
+              Go to Dashboard
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

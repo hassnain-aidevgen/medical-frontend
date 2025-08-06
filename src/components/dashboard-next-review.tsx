@@ -1,7 +1,7 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Clock } from "lucide-react"
+import { Clock } from 'lucide-react'
 import { useEffect, useState } from "react"
 import axios from "axios"
 
@@ -11,6 +11,10 @@ interface Review {
   type: "daily" | "other"
   scheduledFor: string
   stage: number
+  flashcardIds: any
+  description: any
+  completed: any
+  isTestReview: boolean
 }
 
 export default function DashboardNextReview() {
@@ -32,11 +36,46 @@ export default function DashboardNextReview() {
         }
 
         const response = await axios.get(
-          `https://medical-backend-3eek.onrender.com/api/reviews/dashboard?userId=${userId}`,
+          `https://medical-backend-3eek.onrender.com/api/test/reviews/sessions?userId=${userId}`,
         )
 
-        if (response.data && response.data.upcomingReviews && response.data.upcomingReviews.length > 0) {
-          setNextReview(response.data.upcomingReviews[0])
+        const allReviews = response.data.map(
+          (session: {
+            _id: any
+            title: string | string[]
+            type: any
+            scheduledFor: any
+            stage: any
+            flashcardIds: any
+            description: any
+            completed: any
+          }) => ({
+            _id: session._id,
+            title: session.title,
+            type: session.type,
+            scheduledFor: session.scheduledFor,
+            stage: session.stage,
+            flashcardIds: session.flashcardIds,
+            description: session.description,
+            completed: session.completed,
+            isTestReview: session.title.includes("Test Review"),
+          }),
+        )
+
+        // Sort sessions by scheduled date (most recent first)
+        const sortedReviews = allReviews.sort(
+          (a: { scheduledFor: string | number | Date }, b: { scheduledFor: string | number | Date }) => {
+            const dateA = new Date(a.scheduledFor).getTime()
+            const dateB = new Date(b.scheduledFor).getTime()
+            return dateA - dateB // Ascending order - soonest first
+          },
+        )
+
+        // Filter upcoming sessions based on completion status
+        const upcomingSessions = sortedReviews.filter((r: { completed: any }) => !r.completed)
+
+        if (upcomingSessions.length > 0) {
+          setNextReview(upcomingSessions[0])
         }
 
         setLoading(false)

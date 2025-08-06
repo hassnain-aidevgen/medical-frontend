@@ -216,10 +216,10 @@ export function FlashcardChallenge({ isOpen, onClose }: FlashcardChallengeProps)
                         <p className="text-sm text-muted-foreground mb-3">Did you know the answer?</p>
                         <div className="grid grid-cols-2 gap-3 w-full">
                             <Button onClick={() => submitAnswer(false)} variant="outline" size="lg" className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200">
-                                <XCircle className="mr-2 h-4 w-4" /> Incorrect
+                                <XCircle className="mr-2 h-4 w-4" /> No
                             </Button>
                             <Button onClick={() => submitAnswer(true)} variant="outline" size="lg" className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200">
-                                <CheckCircle2 className="mr-2 h-4 w-4" /> Correct
+                                <CheckCircle2 className="mr-2 h-4 w-4" /> Yes
                             </Button>
                         </div>
                     </div>
@@ -251,11 +251,11 @@ export function FlashcardChallenge({ isOpen, onClose }: FlashcardChallengeProps)
 
                 <div className="grid grid-cols-2 gap-4 w-full mb-6">
                     <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-sm text-green-800 font-medium">Correct</p>
+                        <p className="text-sm text-green-800 font-medium">Yes</p>
                         <p className="text-2xl font-bold text-green-600">{sessionResults.correct}</p>
                     </div>
                     <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-sm text-red-800 font-medium">Incorrect</p>
+                        <p className="text-sm text-red-800 font-medium">No</p>
                         <p className="text-2xl font-bold text-red-600">{sessionResults.incorrect}</p>
                     </div>
                 </div>

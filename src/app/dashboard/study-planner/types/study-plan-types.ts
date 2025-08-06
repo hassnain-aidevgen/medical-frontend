@@ -11,6 +11,7 @@ export interface StudyPlanResource {
 }
 
 export interface StudyPlanTask {
+  testResult: { score: number; correct: number; total: number; };
   _id: any;
   details: string;
   subject: string;
